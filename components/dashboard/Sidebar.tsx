@@ -19,6 +19,7 @@ import {
   Lightbulb,
   KanbanSquare,
   Users,
+  Plug,
 } from "lucide-react";
 
 const navGroups = [
@@ -45,6 +46,12 @@ const navGroups = [
       { label: "Audience", href: "/audience", icon: Users },
       { label: "Monetize", href: "/monetize", icon: DollarSign },
       { label: "Learn", href: "/learn", icon: GraduationCap },
+    ],
+  },
+  {
+    label: "Wire it up",
+    items: [
+      { label: "Integrations", href: "/integrations", icon: Plug },
     ],
   },
 ];

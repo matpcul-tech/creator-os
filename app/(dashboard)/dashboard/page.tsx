@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { formatCents, formatNumber, parseJSON, relativeTime } from "@/lib/utils";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
+import { TrendRadar } from "@/components/dashboard/TrendRadar";
 
 export const dynamic = "force-dynamic";
 
@@ -204,8 +205,11 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Triple row */}
+      {/* Trend radar (real, live) + Latest ideas */}
       <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <TrendRadar />
+        </div>
         <div className="cai-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Latest ideas</h2>
