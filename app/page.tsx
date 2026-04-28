@@ -65,8 +65,8 @@ function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/login"><Button variant="ghost" size="sm">Log In</Button></Link>
-          <Link href="/signup"><Button size="sm">Get Early Access</Button></Link>
+          <Link href="/dashboard"><Button variant="ghost" size="sm">Open app</Button></Link>
+          <Link href="/onboarding"><Button size="sm">Get started free</Button></Link>
         </div>
 
         <button className="md:hidden text-white" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -79,8 +79,8 @@ function Navbar() {
           {links.map((l) => (
             <a key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block py-3 text-dark-300 hover:text-white border-b border-dark-800/50">{l.label}</a>
           ))}
-          <Link href="/signup" onClick={() => setMobileOpen(false)} className="block mt-4 text-center">
-            <Button className="w-full">Get Early Access</Button>
+          <Link href="/onboarding" onClick={() => setMobileOpen(false)} className="block mt-4 text-center">
+            <Button className="w-full">Get started free</Button>
           </Link>
         </motion.div>
       )}
@@ -90,21 +90,6 @@ function Navbar() {
 
 /* ─── HERO ─────────────────────────────────────────────── */
 function Hero() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setLoading(true);
-    try {
-      await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
-    } catch {}
-    setSubmitted(true);
-    setLoading(false);
-  };
-
   return (
     <section id="hero" className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,58,237,0.15), transparent 70%)" }} />
@@ -115,7 +100,7 @@ function Hero() {
           <Anim>
             <Badge variant="success" className="mb-8">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-2 inline-block" />
-              Now in Early Access — Join 2,400+ Creators
+              Powered by Claude Opus 4.7 — Free & open
             </Badge>
           </Anim>
 
@@ -134,25 +119,19 @@ function Hero() {
           </Anim>
 
           <Anim delay={0.3}>
-            {!submitted ? (
-              <form onSubmit={handleSubmit}>
-                <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                  <input
-                    type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" required
-                    className="flex-1 px-5 py-4 rounded-xl bg-dark-800/50 border border-dark-700 text-white placeholder:text-dark-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all"
-                  />
-                  <Button type="submit" size="lg" className="shrink-0">
-                    {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span>Get Early Access</span><ArrowRight size={18} className="ml-2" /></>}
-                  </Button>
-                </div>
-                <p className="text-sm text-dark-500">Free to start · No credit card required · Cancel anytime</p>
-              </form>
-            ) : (
-              <div className="flex items-center gap-3 px-6 py-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0"><Check size={20} className="text-emerald-400" /></div>
-                <div><p className="text-white font-semibold">You&apos;re on the list!</p><p className="text-sm text-dark-400">We&apos;ll notify you when it&apos;s your turn.</p></div>
-              </div>
-            )}
+            <div className="flex flex-col sm:flex-row gap-3 mb-3">
+              <Link href="/onboarding" className="shrink-0">
+                <Button size="lg">
+                  Start free in 60 seconds <ArrowRight size={18} className="ml-2" />
+                </Button>
+              </Link>
+              <Link href="/dashboard" className="shrink-0">
+                <Button size="lg" variant="secondary">
+                  Open dashboard
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm text-dark-500">No signup. No waitlist. Open the app and start creating.</p>
           </Anim>
 
           <Anim delay={0.4}>
@@ -355,9 +334,9 @@ function Testimonials() {
 /* ─── PRICING ──────────────────────────────────────────── */
 function Pricing() {
   const plans = [
-    { name: "Starter", price: "Free", period: "", desc: "Perfect for getting started", features: ["5 AI content pieces/month", "1 platform", "Basic Brand DNA", "Community access"], cta: "Start Free", featured: false },
-    { name: "Creator", price: "$29", period: "/mo", desc: "For serious creators", features: ["Unlimited content", "All platforms", "Full Brand DNA Engine", "1-Click Repurposing", "Smart Calendar", "Cross-platform analytics", "Priority support"], cta: "Get Early Access", featured: true },
-    { name: "Empire", price: "$79", period: "/mo", desc: "For teams & agencies", features: ["Everything in Creator", "5 brand profiles", "Monetization Copilot", "API access", "Custom workflows", "Dedicated manager", "White-label options"], cta: "Contact Sales", featured: false },
+    { name: "Starter", price: "Free", period: "", desc: "Perfect for getting started", features: ["5 AI content pieces/month", "1 platform", "Basic Brand DNA", "Community access"], cta: "Start free", href: "/onboarding", featured: false },
+    { name: "Creator", price: "$29", period: "/mo", desc: "For serious creators", features: ["Unlimited content", "All platforms", "Full Brand DNA Engine", "1-Click Repurposing", "Smart Calendar", "Cross-platform analytics", "Priority support"], cta: "Get started free", href: "/onboarding", featured: true },
+    { name: "Empire", price: "$79", period: "/mo", desc: "For teams & agencies", features: ["Everything in Creator", "5 brand profiles", "Monetization Copilot", "API access", "Custom workflows", "Dedicated manager", "White-label options"], cta: "Get started free", href: "/onboarding", featured: false },
   ];
   return (
     <section id="pricing" className="relative py-28">
@@ -380,7 +359,9 @@ function Pricing() {
                     <li key={f} className="flex items-start gap-2 text-sm"><Check size={16} className="text-emerald-400 mt-0.5 shrink-0" /><span className="text-dark-300">{f}</span></li>
                   ))}
                 </ul>
-                <Button variant={p.featured ? "primary" : "secondary"} className="w-full">{p.cta}</Button>
+                <Link href={p.href} className="block">
+                  <Button variant={p.featured ? "primary" : "secondary"} className="w-full">{p.cta}</Button>
+                </Link>
               </div>
             </Anim>
           ))}
@@ -436,9 +417,9 @@ function FinalCTA() {
             <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 to-blue-500/5" />
             <div className="relative">
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-4">Ready to Build Your<br /><span className="gradient-text">Creator Empire?</span></h2>
-              <p className="text-lg text-dark-400 mb-8 max-w-xl mx-auto">Join 2,400+ creators on the waitlist. Be first in line when we launch.</p>
-              <Link href="/signup"><Button size="lg">Get Early Access <ArrowRight size={20} className="ml-2" /></Button></Link>
-              <p className="text-sm text-dark-500 mt-4">Free forever plan available · No credit card required</p>
+              <p className="text-lg text-dark-400 mb-8 max-w-xl mx-auto">5 minute setup. Free forever. No credit card.</p>
+              <Link href="/onboarding"><Button size="lg">Get started free <ArrowRight size={20} className="ml-2" /></Button></Link>
+              <p className="text-sm text-dark-500 mt-4">Open the app and start creating in 60 seconds.</p>
             </div>
           </div>
         </Anim>
