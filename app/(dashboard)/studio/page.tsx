@@ -11,6 +11,7 @@ import {
   Save,
   Repeat,
   Loader2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -18,6 +19,7 @@ import {
   type PlatformId,
   PLATFORM_LIST,
 } from "@/lib/platforms";
+import { PublishPanel } from "@/components/PublishPanel";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -46,6 +48,9 @@ function StudioInner() {
   const [adaptTargets, setAdaptTargets] = useState<PlatformId[]>([]);
   const [variants, setVariants] = useState<Variants>({});
   const [adapting, setAdapting] = useState(false);
+
+  // Tracking the saved ContentPiece so the publish panel can mark-as-published.
+  const [savedId, setSavedId] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialTitle) {
@@ -117,6 +122,8 @@ function StudioInner() {
       }),
     });
     if (res.ok) {
+      const piece = await res.json();
+      setSavedId(piece.id);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     }
@@ -376,6 +383,30 @@ function StudioInner() {
               })}
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Publish */}
+      {draft ? (
+        <div className="cai-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Send size={18} className="text-brand-400" />
+            <h2 className="text-lg font-bold text-white">Publish</h2>
+          </div>
+          {!savedId ? (
+            <p className="text-sm text-dark-400">
+              Save the draft first — then we&apos;ll route it to each platform&apos;s
+              composer with your text pre-filled.
+            </p>
+          ) : (
+            <PublishPanel
+              contentId={savedId}
+              title={title}
+              body={draft}
+              variants={variants}
+              platforms={[platform, ...adaptTargets]}
+            />
+          )}
         </div>
       ) : null}
     </div>

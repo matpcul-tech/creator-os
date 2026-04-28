@@ -74,6 +74,8 @@ model ContentPiece {
   thumbnailIdea String   @default("")
   scheduledAt   DateTime?
   publishedAt   DateTime?
+  publishUrl    String   @default("")
+  publishUrls   String   @default("{}")  // JSON: per-platform live URLs
   notes         String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

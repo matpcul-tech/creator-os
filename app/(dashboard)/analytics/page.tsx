@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, BarChart3, Plus, X } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Plus,
+  X,
+  Upload,
+  Link as LinkIcon,
+  Check,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { PLATFORMS, type PlatformId, PLATFORM_LIST } from "@/lib/platforms";
 import { formatNumber } from "@/lib/utils";
 
@@ -18,9 +29,21 @@ type Snap = {
   capturedAt: string;
 };
 
+type Mode = "manual" | "csv" | "url" | null;
+
 export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<div className="text-dark-500 text-sm">Loading…</div>}>
+      <AnalyticsInner />
+    </Suspense>
+  );
+}
+
+function AnalyticsInner() {
+  const searchParams = useSearchParams();
+  const captureParam = searchParams.get("capture");
   const [snaps, setSnaps] = useState<Snap[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<Mode>(captureParam ? "url" : null);
 
   async function load() {
     const data = await (await fetch("/api/analytics")).json();
@@ -62,19 +85,46 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Analytics</h1>
           <p className="text-dark-400">
-            Manually-entered cross-platform stats. Snapshot your numbers weekly to see your trajectory.
+            Drop in a CSV, paste a post URL, or punch in numbers manually.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-brand-500/25 transition-all flex items-center gap-2"
-        >
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          {showForm ? "Close" : "Add snapshot"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setMode(mode === "csv" ? null : "csv")}
+            className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-all flex items-center gap-2 ${
+              mode === "csv"
+                ? "bg-brand-500/15 border-brand-500/40 text-brand-300"
+                : "glass hover:border-brand-500/30"
+            }`}
+          >
+            <Upload size={16} /> Import CSV
+          </button>
+          <button
+            onClick={() => setMode(mode === "url" ? null : "url")}
+            className={`px-4 py-2.5 rounded-xl border text-sm font-medium transition-all flex items-center gap-2 ${
+              mode === "url"
+                ? "bg-brand-500/15 border-brand-500/40 text-brand-300"
+                : "glass hover:border-brand-500/30"
+            }`}
+          >
+            <LinkIcon size={16} /> Capture URL
+          </button>
+          <button
+            onClick={() => setMode(mode === "manual" ? null : "manual")}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-brand-500/25 transition-all flex items-center gap-2"
+          >
+            {mode === "manual" ? <X size={16} /> : <Plus size={16} />}
+            {mode === "manual" ? "Close" : "Add snapshot"}
+          </button>
+        </div>
       </div>
 
-      {showForm ? (
+      {mode === "csv" ? <CsvImportForm onDone={load} /> : null}
+      {mode === "url" ? (
+        <UrlCaptureForm onDone={load} initialUrl={captureParam ?? ""} />
+      ) : null}
+
+      {mode === "manual" ? (
         <NewSnapshotForm
           onCreate={async (data) => {
             await fetch("/api/analytics", {
@@ -83,7 +133,7 @@ export default function AnalyticsPage() {
               body: JSON.stringify(data),
             });
             await load();
-            setShowForm(false);
+            setMode(null);
           }}
         />
       ) : null}
@@ -257,6 +307,245 @@ function NewSnapshotForm({
       >
         Save snapshot
       </button>
+    </div>
+  );
+}
+
+function CsvImportForm({ onDone }: { onDone: () => void }) {
+  const [csv, setCsv] = useState("");
+  const [platform, setPlatform] = useState<PlatformId>("youtube");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<
+    | { ok: true; imported: number; skipped: number; matched: string[] }
+    | { ok: false; message: string }
+    | null
+  >(null);
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCsv(String(reader.result ?? ""));
+    reader.readAsText(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCsv(String(reader.result ?? ""));
+    reader.readAsText(file);
+  }
+
+  async function submit() {
+    if (!csv) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/analytics/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ csv, platform }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setResult({
+          ok: true,
+          imported: json.imported,
+          skipped: json.skipped,
+          matched: json.matchedColumns,
+        });
+        onDone();
+      } else {
+        setResult({ ok: false, message: json.error ?? `HTTP ${res.status}` });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cai-card">
+      <h3 className="text-base font-bold text-white mb-1">Import analytics CSV</h3>
+      <p className="text-sm text-dark-400 mb-4">
+        Paste a CSV or drop a file. Recognizable columns:{" "}
+        <code className="text-dark-300">views, likes, comments, shares, saves, followers</code>
+        {" "}(also: impressions, reposts, hearts, subscribers, bookmarks).
+        Works with YouTube Studio &amp; X analytics exports.
+      </p>
+
+      <div className="grid sm:grid-cols-[200px_1fr] gap-3 mb-3">
+        <div>
+          <label className="text-xs text-dark-500 mb-1 block">Platform</label>
+          <select
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value as PlatformId)}
+            className="cai-input"
+          >
+            {PLATFORM_LIST.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-dark-500 mb-1 block">Pick a file</label>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onPickFile}
+            className="cai-input file:mr-3 file:bg-brand-500/15 file:text-brand-300 file:border-0 file:rounded-md file:px-3 file:py-1 file:cursor-pointer"
+          />
+        </div>
+      </div>
+
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+        className="rounded-xl border border-dashed border-dark-700/60 bg-dark-900/40 p-3"
+      >
+        <textarea
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+          placeholder={"Paste CSV here, or drop a file on this area.\n\nExample:\nviews,likes,comments,shares\n1240,89,12,4\n3120,210,33,11"}
+          className="w-full min-h-[160px] bg-transparent border-0 outline-none text-xs font-mono text-dark-200 placeholder:text-dark-600"
+        />
+      </div>
+
+      <div className="flex items-center gap-3 mt-3">
+        <button
+          onClick={submit}
+          disabled={busy || !csv}
+          className="px-4 py-2 rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/40 text-sm font-medium hover:bg-brand-500/30 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          {busy ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Importing…
+            </>
+          ) : (
+            <>Import</>
+          )}
+        </button>
+
+        {result?.ok ? (
+          <span className="text-xs text-emerald-400 flex items-center gap-1">
+            <Check size={14} /> Imported {result.imported} · skipped{" "}
+            {result.skipped} · matched [{result.matched.join(", ")}]
+          </span>
+        ) : null}
+        {result && !result.ok ? (
+          <span className="text-xs text-red-400 flex items-center gap-1">
+            <AlertCircle size={14} /> {result.message}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function UrlCaptureForm({
+  onDone,
+  initialUrl = "",
+}: {
+  onDone: () => void;
+  initialUrl?: string;
+}) {
+  const [url, setUrl] = useState(initialUrl);
+  const [stats, setStats] = useState({
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    followers: 0,
+  });
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<
+    | { platform: string; oembed: { title: string | null; author: string | null } | null }
+    | null
+  >(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    if (!url) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/analytics/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, stats }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setInfo({ platform: json.platform, oembed: json.oembed });
+        onDone();
+      } else {
+        setError(json.error ?? `HTTP ${res.status}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cai-card">
+      <h3 className="text-base font-bold text-white mb-1">Capture from URL</h3>
+      <p className="text-sm text-dark-400 mb-4">
+        Paste the URL of a tweet, YouTube video, TikTok, or post. We&apos;ll
+        detect the platform and (where possible) pull the title via oEmbed.
+        Add the engagement numbers below — they&apos;re saved as a snapshot.
+      </p>
+
+      <input
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="https://x.com/.../status/..., https://youtube.com/watch?v=..., etc."
+        className="cai-input mb-3"
+      />
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+        {(["views", "likes", "comments", "shares", "saves", "followers"] as const).map((k) => (
+          <div key={k}>
+            <label className="text-xs text-dark-500 mb-1 block capitalize">{k}</label>
+            <input
+              type="number"
+              value={stats[k]}
+              onChange={(e) => setStats({ ...stats, [k]: Number(e.target.value) })}
+              className="cai-input"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={submit}
+          disabled={busy || !url}
+          className="px-4 py-2 rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/40 text-sm font-medium hover:bg-brand-500/30 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          {busy ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Saving…
+            </>
+          ) : (
+            <>Save snapshot</>
+          )}
+        </button>
+        {info ? (
+          <span className="text-xs text-emerald-400 flex items-center gap-1">
+            <Check size={14} /> Saved as {info.platform}
+            {info.oembed?.title ? ` · "${info.oembed.title}"` : ""}
+          </span>
+        ) : null}
+        {error ? (
+          <span className="text-xs text-red-400 flex items-center gap-1">
+            <AlertCircle size={14} /> {error}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
