@@ -1,0 +1,135 @@
+// Creator OS — single-user SQLite schema.
+// Models are intentionally flat; we'll add relations only where they pull weight.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// One row. Holds the creator's identity, niche, voice, goals.
+model Profile {
+  id              Int      @id @default(autoincrement())
+  name            String   @default("")
+  handle          String   @default("")
+  niche           String   @default("")
+  audience        String   @default("")
+  bio             String   @default("")
+  voice           String   @default("")
+  goals           String   @default("")
+  platforms       String   @default("[]") // JSON array of platform ids
+  weeklyCadence   Int      @default(3)
+  onboardedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Brand kit — colors, fonts, logo URL, voice guidelines, taglines.
+model Brand {
+  id             Int      @id @default(autoincrement())
+  primaryColor   String   @default("#0EA5E9")
+  accentColor    String   @default("#F59E0B")
+  bgColor        String   @default("#0B0F17")
+  fgColor        String   @default("#F4F4F5")
+  headingFont    String   @default("Inter")
+  bodyFont       String   @default("Inter")
+  logoEmoji      String   @default("✶")
+  logoUrl        String   @default("")
+  taglines       String   @default("[]") // JSON
+  voiceRules     String   @default("[]") // JSON list of style rules
+  doNotUse       String   @default("[]") // JSON list of words/phrases to avoid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// An idea is a content seed. Becomes a ContentPiece when promoted.
+model Idea {
+  id           Int      @id @default(autoincrement())
+  title        String
+  hook         String   @default("")
+  angle        String   @default("")
+  platform     String   @default("any")
+  tags         String   @default("[]") // JSON
+  score        Int      @default(0)
+  source       String   @default("manual") // manual | ai | trend
+  archived     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// A piece of content moves through a kanban: idea → draft → scheduled → published.
+model ContentPiece {
+  id            Int      @id @default(autoincrement())
+  title         String
+  status        String   @default("idea") // idea | draft | scheduled | published
+  platforms     String   @default("[]") // JSON array
+  body          String   @default("")    // master/long-form
+  variants      String   @default("{}")  // JSON: { youtube: "...", tiktok: "...", x: "..." }
+  hook          String   @default("")
+  cta           String   @default("")
+  tags          String   @default("[]")  // JSON
+  thumbnailIdea String   @default("")
+  scheduledAt   DateTime?
+  publishedAt   DateTime?
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Sponsorship pipeline.
+model Sponsor {
+  id            Int      @id @default(autoincrement())
+  brand         String
+  contactName   String   @default("")
+  contactEmail  String   @default("")
+  status        String   @default("prospect") // prospect | pitched | negotiating | booked | live | done | lost
+  amount        Int      @default(0) // in cents
+  deliverables  String   @default("")
+  dueDate       DateTime?
+  notes         String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Revenue events — sponsorships, affiliate payouts, product sales.
+model RevenueEntry {
+  id          Int      @id @default(autoincrement())
+  source      String   // sponsor | affiliate | product | platform
+  label       String
+  amount      Int      // cents
+  date        DateTime @default(now())
+  contentId   Int?     // optional link to ContentPiece
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+// Audience contacts — top fans, collab partners, sponsor reps, journalists.
+model Contact {
+  id           Int      @id @default(autoincrement())
+  name         String
+  handle       String   @default("")
+  email        String   @default("")
+  type         String   @default("fan") // fan | collab | sponsor | media | other
+  platform     String   @default("")
+  notes        String   @default("")
+  lastTouchAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Per-piece, per-platform analytics snapshot (manual-entry friendly).
+model AnalyticsSnapshot {
+  id           Int      @id @default(autoincrement())
+  contentId    Int?
+  platform     String   // youtube | tiktok | instagram | x | linkedin | threads | substack
+  views        Int      @default(0)
+  likes        Int      @default(0)
+  comments     Int      @default(0)
+  shares       Int      @default(0)
+  saves        Int      @default(0)
+  followers    Int      @default(0)
+  capturedAt   DateTime @default(now())
+}
