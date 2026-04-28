@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #020617;
+    --foreground: #f8fafc;
+  }
+  html { scroll-behavior: smooth; }
+  body { background: var(--background); color: var(--foreground); }
+  ::selection { background: rgba(139, 92, 246, 0.3); color: white; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-400 via-purple-400 to-blue-400;
+  }
+  .cai-input {
+    @apply w-full px-4 py-3 rounded-xl bg-dark-800/50 border border-dark-700 text-white placeholder:text-dark-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all;
+  }
+  .cai-chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-dark-700/50 bg-dark-800/40 text-dark-400;
+  }
+  .cai-card {
+    @apply rounded-2xl glass p-6;
+  }
+}
