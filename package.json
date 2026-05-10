@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push --skip-generate && prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio",
+    "db:push": "dotenv -c -- prisma db push --skip-generate && prisma generate",
+    "db:seed": "dotenv -c -- tsx prisma/seed.ts",
+    "db:studio": "dotenv -c -- prisma studio",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -31,6 +31,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.39",
