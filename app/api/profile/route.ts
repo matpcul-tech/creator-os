@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   const existing = await prisma.profile.findFirst();
   const profile = existing
     ? await prisma.profile.update({ where: { id: existing.id }, data })
-    : await prisma.profile.create({ data });
+    : await prisma.profile.create({ data: data as Prisma.ProfileCreateInput });
 
   return NextResponse.json(profile);
 }

@@ -21,7 +21,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 
 - **Next.js 14** (App Router) + **TypeScript** + **React 18**
 - **Tailwind v3** + **framer-motion** + **lucide-react**
-- **Prisma + SQLite** for persistence (single-user; everything in `dev.db`)
+- **Prisma Postgres** (via `@prisma/extension-accelerate`) — works locally and on Vercel
 - **@anthropic-ai/sdk 0.91+** with Opus 4.7, adaptive thinking, output_config, prompt caching
 
 ## Setup
@@ -30,19 +30,29 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 # 1. Install
 npm install
 
-# 2. Configure
-cp .env.example .env.local
-# edit .env.local — set ANTHROPIC_API_KEY
+# 2. Provision a Prisma Postgres database
+#    https://console.prisma.io/ → "New project" → copy the
+#    prisma+postgres://accelerate.prisma-data.net/?api_key=... URL.
 
-# 3. Initialize DB + seed singletons
+# 3. Configure
+cp .env.example .env.local
+# edit .env.local — set ANTHROPIC_API_KEY and DATABASE_URL
+
+# 4. Initialize schema + seed singletons
 npm run db:push
 npm run db:seed
 
-# 4. Run
+# 5. Run
 npm run dev
 ```
 
 Open http://localhost:3000 — the marketing landing page is at `/`, the app is at `/dashboard` (or `/onboarding` on first run).
+
+### Deploying to Vercel
+
+Set the same `ANTHROPIC_API_KEY` and `DATABASE_URL` in the Vercel project's
+environment variables. Run `npm run db:push` once locally (against the same
+`DATABASE_URL`) to sync the schema before the first deploy.
 
 ## How the AI is wired
 
