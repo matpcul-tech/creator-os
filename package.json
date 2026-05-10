@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "dotenv -c -- prisma db push --skip-generate && prisma generate",
+    "db:push": "dotenv -c -- prisma db push --skip-generate && prisma generate --no-engine",
     "db:seed": "dotenv -c -- tsx prisma/seed.ts",
     "db:studio": "dotenv -c -- prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate --no-engine"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
