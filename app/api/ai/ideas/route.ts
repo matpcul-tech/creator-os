@@ -3,6 +3,7 @@ import { complete } from "@/lib/anthropic";
 import { ideaBatchPrompt, ideaBatchSchema } from "@/lib/prompts";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 type AIIdea = {
   title: string;
@@ -14,6 +15,9 @@ type AIIdea = {
 };
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`ai:${clientIp(req)}`, 30, 60);
+  if (!limit.ok) return rateLimitResponse(limit);
+
   const body = await req.json();
   const count = Math.min(Math.max(body.count ?? 8, 1), 20);
   const topic: string | undefined = body.topic;
