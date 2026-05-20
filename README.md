@@ -53,19 +53,16 @@ Open http://localhost:3000 — the marketing landing page is at `/`, the app is 
 
 ### Deploying to Vercel
 
-The easiest path:
-
-1. **Storage** tab in your Vercel project → **Create Database** → **Postgres**.
-   Vercel auto-sets `DATABASE_URL` (and a few aliases) in the project env.
+1. **Storage** tab in your Vercel project → connect a Postgres database
+   (Neon, Vercel Postgres, Supabase — any provider with a `postgres://`
+   URL). Make sure the resulting env var is named exactly `DATABASE_URL`
+   (clear any "Custom Prefix" Vercel offers).
 2. Set the other env vars manually: `ANTHROPIC_API_KEY`, `APP_PASSWORD`,
    `APP_SESSION_SECRET` (run `openssl rand -base64 32`).
-3. Locally, pull the same env down and push the schema:
-   ```bash
-   npx vercel env pull .env.local
-   npm run db:push    # creates tables
-   npm run db:seed    # seeds Profile + Brand
-   ```
-4. Trigger a redeploy.
+3. Trigger a deploy. The `vercel-build` script runs `prisma db push` and
+   the seed automatically, so the schema is created and the Profile +
+   Brand singletons are seeded on first deploy. Subsequent deploys are
+   no-ops if the schema is unchanged.
 
 ### Auth
 
