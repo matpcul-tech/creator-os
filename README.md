@@ -21,7 +21,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 
 - **Next.js 14** (App Router) + **TypeScript** + **React 18**
 - **Tailwind v3** + **framer-motion** + **lucide-react**
-- **Prisma Postgres** (via `@prisma/extension-accelerate`) — works locally and on Vercel
+- **Postgres** via Prisma — works with any `postgres://` URL (Vercel Postgres, Neon, Supabase, RDS, local)
 - **@anthropic-ai/sdk 0.91+** with Opus 4.7, adaptive thinking, output_config, prompt caching
 
 ## Setup
@@ -30,9 +30,10 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 # 1. Install
 npm install
 
-# 2. Provision a Prisma Postgres database
-#    https://console.prisma.io/ → "New project" → copy the
-#    prisma+postgres://accelerate.prisma-data.net/?api_key=... URL.
+# 2. Provision a Postgres database. Any provider with a postgres:// URL works:
+#    - Vercel Postgres: project → Storage tab → Create Database → Postgres
+#    - Neon: https://neon.tech → New project → copy connection string
+#    - Local: `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 -d postgres`
 
 # 3. Configure
 cp .env.example .env.local
@@ -52,10 +53,19 @@ Open http://localhost:3000 — the marketing landing page is at `/`, the app is 
 
 ### Deploying to Vercel
 
-Set `ANTHROPIC_API_KEY`, `DATABASE_URL`, `APP_PASSWORD`, and
-`APP_SESSION_SECRET` in the Vercel project's environment variables. Run
-`npm run db:push` once locally (against the same `DATABASE_URL`) to sync
-the schema before the first deploy.
+The easiest path:
+
+1. **Storage** tab in your Vercel project → **Create Database** → **Postgres**.
+   Vercel auto-sets `DATABASE_URL` (and a few aliases) in the project env.
+2. Set the other env vars manually: `ANTHROPIC_API_KEY`, `APP_PASSWORD`,
+   `APP_SESSION_SECRET` (run `openssl rand -base64 32`).
+3. Locally, pull the same env down and push the schema:
+   ```bash
+   npx vercel env pull .env.local
+   npm run db:push    # creates tables
+   npm run db:seed    # seeds Profile + Brand
+   ```
+4. Trigger a redeploy.
 
 ### Auth
 
