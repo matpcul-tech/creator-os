@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles,
   LayoutDashboard,
@@ -20,6 +20,7 @@ import {
   KanbanSquare,
   Users,
   Plug,
+  Home,
 } from "lucide-react";
 
 const navGroups = [
@@ -58,7 +59,20 @@ const navGroups = [
 
 export function Sidebar({ creatorName }: { creatorName?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   return (
     <aside
@@ -126,9 +140,18 @@ export function Sidebar({ creatorName }: { creatorName?: string }) {
           href="/"
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-dark-400 hover:text-white hover:bg-dark-800/50 transition-all"
         >
-          <LogOut size={20} className="shrink-0" />
+          <Home size={20} className="shrink-0" />
           {!collapsed && <span>Landing</span>}
         </Link>
+        <button
+          onClick={signOut}
+          disabled={signingOut}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-dark-400 hover:text-white hover:bg-dark-800/50 transition-all w-full disabled:opacity-50"
+          title={collapsed ? "Sign out" : undefined}
+        >
+          <LogOut size={20} className="shrink-0" />
+          {!collapsed && <span>{signingOut ? "Signing out…" : "Sign out"}</span>}
+        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-dark-500 hover:text-white hover:bg-dark-800/50 transition-all w-full"

@@ -21,7 +21,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 
 - **Next.js 14** (App Router) + **TypeScript** + **React 18**
 - **Tailwind v3** + **framer-motion** + **lucide-react**
-- **Prisma + SQLite** for persistence (single-user; everything in `dev.db`)
+- **Postgres** via Prisma — works with any `postgres://` URL (Vercel Postgres, Neon, Supabase, RDS, local)
 - **@anthropic-ai/sdk 0.91+** with Opus 4.7, adaptive thinking, output_config, prompt caching
 
 ## Setup
@@ -30,19 +30,47 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 # 1. Install
 npm install
 
-# 2. Configure
-cp .env.example .env.local
-# edit .env.local — set ANTHROPIC_API_KEY
+# 2. Provision a Postgres database. Any provider with a postgres:// URL works:
+#    - Vercel Postgres: project → Storage tab → Create Database → Postgres
+#    - Neon: https://neon.tech → New project → copy connection string
+#    - Local: `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 -d postgres`
 
-# 3. Initialize DB + seed singletons
+# 3. Configure
+cp .env.example .env.local
+# edit .env.local — set ANTHROPIC_API_KEY, DATABASE_URL,
+# APP_PASSWORD (the password you'll sign in with),
+# and APP_SESSION_SECRET (generate one with `openssl rand -base64 32`).
+
+# 4. Initialize schema + seed singletons
 npm run db:push
 npm run db:seed
 
-# 4. Run
+# 5. Run
 npm run dev
 ```
 
 Open http://localhost:3000 — the marketing landing page is at `/`, the app is at `/dashboard` (or `/onboarding` on first run).
+
+### Deploying to Vercel
+
+1. **Storage** tab in your Vercel project → connect a Postgres database
+   (Neon, Vercel Postgres, Supabase — any provider with a `postgres://`
+   URL). Make sure the resulting env var is named exactly `DATABASE_URL`
+   (clear any "Custom Prefix" Vercel offers).
+2. Set the other env vars manually: `ANTHROPIC_API_KEY`, `APP_PASSWORD`,
+   `APP_SESSION_SECRET` (run `openssl rand -base64 32`).
+3. Trigger a deploy. The `vercel-build` script runs `prisma db push` and
+   the seed automatically, so the schema is created and the Profile +
+   Brand singletons are seeded on first deploy. Subsequent deploys are
+   no-ops if the schema is unchanged.
+
+### Auth
+
+The app is single-user. Middleware (`middleware.ts`) gates every page and
+API route except `/`, `/login`, `/api/auth/*`, and `/api/waitlist`. Signing
+in at `/login` with `APP_PASSWORD` sets an HMAC-signed, HttpOnly session
+cookie (30 days). Login attempts are rate-limited (5 / minute / IP) and
+the AI routes are rate-limited (30 / minute / IP) as defense in depth.
 
 ## How the AI is wired
 
@@ -78,11 +106,12 @@ Single-user — `Profile` and `Brand` are singletons, everything else is a norma
 | `npm run dev` | Dev server |
 | `npm run build` | Production build |
 | `npm run typecheck` | TS noEmit check |
-| `npm run db:push` | Sync Prisma schema → SQLite |
+| `npm run db:push` | Sync Prisma schema → Postgres |
+| `npm run lint` | ESLint |
 | `npm run db:seed` | Seed `Profile` + `Brand` singletons |
 | `npm run db:studio` | Open Prisma Studio (GUI for the DB) |
 
 ## Notes
 
-- This is a **single-user local app** by design — fastest to build, fully featured. Auth was kept as UI-only shells in `app/(auth)/*` so you can wire your auth provider later (Clerk / NextAuth / Supabase).
+- This is a **single-user app** by design — protected by a single workspace password (`APP_PASSWORD`). Swap the gate for NextAuth/Clerk/Supabase if you ever need multi-user support.
 - The marketing page at `/` is preserved from the original CreatorAI scaffold — unchanged, ready to ship as your landing page.

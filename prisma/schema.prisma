@@ -1,4 +1,4 @@
-// Creator OS — single-user SQLite schema.
+// Creator OS — single-user Postgres schema (Prisma Accelerate).
 // Models are intentionally flat; we'll add relations only where they pull weight.
 
 generator client {
@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

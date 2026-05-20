@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   const existing = await prisma.brand.findFirst();
   const brand = existing
     ? await prisma.brand.update({ where: { id: existing.id }, data })
-    : await prisma.brand.create({ data });
+    : await prisma.brand.create({ data: data as Prisma.BrandCreateInput });
 
   return NextResponse.json(brand);
 }
