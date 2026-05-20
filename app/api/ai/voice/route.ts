@@ -3,8 +3,12 @@ import { complete } from "@/lib/anthropic";
 import { brandVoicePrompt, brandVoiceSchema } from "@/lib/prompts";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`ai:${clientIp(req)}`, 30, 60);
+  if (!limit.ok) return rateLimitResponse(limit);
+
   const body = await req.json();
   const samples: string = body.samples ?? "";
 

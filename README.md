@@ -36,7 +36,9 @@ npm install
 
 # 3. Configure
 cp .env.example .env.local
-# edit .env.local — set ANTHROPIC_API_KEY and DATABASE_URL
+# edit .env.local — set ANTHROPIC_API_KEY, DATABASE_URL,
+# APP_PASSWORD (the password you'll sign in with),
+# and APP_SESSION_SECRET (generate one with `openssl rand -base64 32`).
 
 # 4. Initialize schema + seed singletons
 npm run db:push
@@ -50,9 +52,18 @@ Open http://localhost:3000 — the marketing landing page is at `/`, the app is 
 
 ### Deploying to Vercel
 
-Set the same `ANTHROPIC_API_KEY` and `DATABASE_URL` in the Vercel project's
-environment variables. Run `npm run db:push` once locally (against the same
-`DATABASE_URL`) to sync the schema before the first deploy.
+Set `ANTHROPIC_API_KEY`, `DATABASE_URL`, `APP_PASSWORD`, and
+`APP_SESSION_SECRET` in the Vercel project's environment variables. Run
+`npm run db:push` once locally (against the same `DATABASE_URL`) to sync
+the schema before the first deploy.
+
+### Auth
+
+The app is single-user. Middleware (`middleware.ts`) gates every page and
+API route except `/`, `/login`, `/api/auth/*`, and `/api/waitlist`. Signing
+in at `/login` with `APP_PASSWORD` sets an HMAC-signed, HttpOnly session
+cookie (30 days). Login attempts are rate-limited (5 / minute / IP) and
+the AI routes are rate-limited (30 / minute / IP) as defense in depth.
 
 ## How the AI is wired
 
@@ -88,11 +99,12 @@ Single-user — `Profile` and `Brand` are singletons, everything else is a norma
 | `npm run dev` | Dev server |
 | `npm run build` | Production build |
 | `npm run typecheck` | TS noEmit check |
-| `npm run db:push` | Sync Prisma schema → SQLite |
+| `npm run db:push` | Sync Prisma schema → Postgres |
+| `npm run lint` | ESLint |
 | `npm run db:seed` | Seed `Profile` + `Brand` singletons |
 | `npm run db:studio` | Open Prisma Studio (GUI for the DB) |
 
 ## Notes
 
-- This is a **single-user local app** by design — fastest to build, fully featured. Auth was kept as UI-only shells in `app/(auth)/*` so you can wire your auth provider later (Clerk / NextAuth / Supabase).
+- This is a **single-user app** by design — protected by a single workspace password (`APP_PASSWORD`). Swap the gate for NextAuth/Clerk/Supabase if you ever need multi-user support.
 - The marketing page at `/` is preserved from the original CreatorAI scaffold — unchanged, ready to ship as your landing page.

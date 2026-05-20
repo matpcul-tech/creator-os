@@ -1,8 +1,12 @@
 import { streamCompletion } from "@/lib/anthropic";
 import { scriptPrompt } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`ai:${clientIp(req)}`, 30, 60);
+  if (!limit.ok) return rateLimitResponse(limit);
+
   const body = await req.json();
   const title: string = body.title ?? "";
   const platform: PlatformId = body.platform ?? "youtube";

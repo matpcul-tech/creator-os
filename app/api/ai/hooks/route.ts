@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { complete } from "@/lib/anthropic";
 import { hookBatchPrompt, hookBatchSchema } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
+import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limit = rateLimit(`ai:${clientIp(req)}`, 30, 60);
+  if (!limit.ok) return rateLimitResponse(limit);
+
   const body = await req.json();
   const topic: string = body.topic ?? "";
   const count = Math.min(Math.max(body.count ?? 6, 1), 12);
