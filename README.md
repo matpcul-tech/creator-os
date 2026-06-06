@@ -12,6 +12,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 | **Planner (Kanban)** | Idea → Draft → Scheduled → Published columns with click-to-edit drawer (title, hook, CTA, master draft, platforms, schedule, notes) |
 | **Calendar** | Monthly calendar view of every scheduled + published piece, color-coded by platform |
 | **Studio** | Streaming AI script writer: pick a title + platform, Claude streams the script live. One-click adapt to other platforms (write once, post everywhere). Save to planner. |
+| **Avatar video (HeyGen)** | Render any script as a talking-head video of your cloned digital twin + voice. Available from Studio (right after the script is written) and from any piece in the Planner. |
 | **Brand DNA** | Paste samples → Claude extracts traits (with strength bars), keywords, do-not-use phrases, voice description. All persisted and used in every future generation. |
 | **Analytics** | Manual snapshot entry across platforms. Aggregate view + per-platform cards + history table. |
 | **Monetization** | Sponsor pipeline (7-stage), revenue ledger, monthly total, per-source breakdown. |
@@ -23,6 +24,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 - **Tailwind v3** + **framer-motion** + **lucide-react**
 - **Postgres** via Prisma — works with any `postgres://` URL (Vercel Postgres, Neon, Supabase, RDS, local)
 - **@anthropic-ai/sdk 0.91+** with Opus 4.7, adaptive thinking, output_config, prompt caching
+- **HeyGen v3 API** for talking-head video rendering with the creator's own cloned avatar + voice (optional — set `HEYGEN_API_KEY` to enable)
 
 ## Setup
 
@@ -83,6 +85,9 @@ Every AI route in `/api/ai/*` uses this helper:
 - `/api/ai/adapt` — multi-platform adaptation (write once → variants for X / IG / TikTok / LinkedIn / etc., respecting per-platform character limits and conventions)
 - `/api/ai/voice` — analyze writing samples → extract traits + keywords + do-not-use list, persist to `Brand`
 - `/api/ai/hooks` — generate hook variations for a topic
+- `/api/ai/video` — submit a script to HeyGen for avatar video rendering (async)
+- `/api/ai/video/[id]` — poll a HeyGen render, writes the MP4 url back onto the content piece when complete
+- `/api/heygen` — list the avatars + voices on your HeyGen account, save the chosen ids to `Profile`
 
 Model: `claude-opus-4-7` with `thinking: { type: "adaptive" }` and `effort: "high"` (or `xhigh` for the streaming script writer).
 

@@ -12,6 +12,7 @@ import {
   Repeat,
   Loader2,
   Send,
+  Film,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -20,6 +21,7 @@ import {
   PLATFORM_LIST,
 } from "@/lib/platforms";
 import { PublishPanel } from "@/components/PublishPanel";
+import { VideoRenderer } from "@/components/VideoRenderer";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -383,6 +385,29 @@ function StudioInner() {
               })}
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Video render */}
+      {draft ? (
+        <div className="cai-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Film size={18} className="text-brand-400" />
+            <h2 className="text-lg font-bold text-white">Render avatar video</h2>
+          </div>
+          <p className="text-sm text-dark-400 mb-4">
+            Turn this script into a talking-head video using your cloned digital
+            twin and voice. Connect HeyGen in{" "}
+            <a href="/integrations" className="text-brand-400 hover:underline">
+              integrations
+            </a>{" "}
+            first.
+          </p>
+          <VideoRenderer
+            script={draft}
+            title={title}
+            contentId={savedId ?? undefined}
+          />
         </div>
       ) : null}
 

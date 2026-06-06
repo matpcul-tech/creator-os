@@ -8,10 +8,12 @@ import {
   Calendar as CalIcon,
   X,
   Send,
+  Film,
 } from "lucide-react";
 import { PLATFORMS, type PlatformId, PLATFORM_LIST } from "@/lib/platforms";
 import { parseJSON, formatDate } from "@/lib/utils";
 import { PublishPanel } from "@/components/PublishPanel";
+import { VideoRenderer } from "@/components/VideoRenderer";
 
 type Piece = {
   id: number;
@@ -27,6 +29,9 @@ type Piece = {
   publishedAt: string | null;
   publishUrl: string;
   publishUrls: string;
+  videoId: string;
+  videoUrl: string;
+  videoStatus: string;
   notes: string;
   updatedAt: string;
 };
@@ -406,6 +411,25 @@ function PieceDrawer({
               className="cai-input min-h-[80px]"
             />
           </Field>
+
+          {body ? (
+            <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Film size={16} className="text-brand-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Avatar video
+                </h3>
+              </div>
+              <VideoRenderer
+                contentId={piece.id}
+                script={body}
+                title={title}
+                initialVideoId={piece.videoId}
+                initialVideoUrl={piece.videoUrl}
+                initialVideoStatus={piece.videoStatus}
+              />
+            </div>
+          ) : null}
 
           {platforms.length > 0 && body ? (
             <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
