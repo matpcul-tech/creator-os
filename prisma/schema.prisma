@@ -1,4 +1,4 @@
-// Creator OS — single-user Postgres schema (Prisma Accelerate).
+// Creator OS — single-user Postgres schema.
 // Models are intentionally flat; we'll add relations only where they pull weight.
 
 generator client {
@@ -22,6 +22,8 @@ model Profile {
   goals           String   @default("")
   platforms       String   @default("[]") // JSON array of platform ids
   weeklyCadence   Int      @default(3)
+  heygenAvatarId  String   @default("") // creator's cloned digital twin / photo avatar id
+  heygenVoiceId   String   @default("") // creator's cloned voice id
   onboardedAt     DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -76,6 +78,9 @@ model ContentPiece {
   publishedAt   DateTime?
   publishUrl    String   @default("")
   publishUrls   String   @default("{}")  // JSON: per-platform live URLs
+  videoId       String   @default("")    // HeyGen video id for the avatar render
+  videoUrl      String   @default("")    // rendered MP4 url once complete
+  videoStatus   String   @default("")    // "" | generating | completed | failed
   notes         String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
