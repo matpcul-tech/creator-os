@@ -12,6 +12,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 | **Planner (Kanban)** | Idea → Draft → Scheduled → Published columns with click-to-edit drawer (title, hook, CTA, master draft, platforms, schedule, notes) |
 | **Calendar** | Monthly calendar view of every scheduled + published piece, color-coded by platform |
 | **Studio** | Streaming AI script writer: pick a title + platform, Claude streams the script live. One-click adapt to other platforms (write once, post everywhere). Save to planner. |
+| **Avatar video (HeyGen)** | Render any script as a talking-head video of your cloned digital twin + voice. Available from Studio (right after the script is written) and from any piece in the Planner. |
 | **Brand DNA** | Paste samples → Claude extracts traits (with strength bars), keywords, do-not-use phrases, voice description. All persisted and used in every future generation. |
 | **Analytics** | Manual snapshot entry across platforms. Aggregate view + per-platform cards + history table. |
 | **Monetization** | Sponsor pipeline (7-stage), revenue ledger, monthly total, per-source breakdown. |
@@ -21,8 +22,9 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 
 - **Next.js 14** (App Router) + **TypeScript** + **React 18**
 - **Tailwind v3** + **framer-motion** + **lucide-react**
-- **Prisma Postgres** (via `@prisma/extension-accelerate`) — works locally and on Vercel
+- **Postgres** via Prisma — works with any `postgres://` URL (Vercel Postgres, Neon, Supabase, RDS, local)
 - **@anthropic-ai/sdk 0.91+** with Opus 4.7, adaptive thinking, output_config, prompt caching
+- **HeyGen v3 API** for talking-head video rendering with the creator's own cloned avatar + voice (optional — set `HEYGEN_API_KEY` to enable)
 
 ## Setup
 
@@ -30,9 +32,10 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 # 1. Install
 npm install
 
-# 2. Provision a Prisma Postgres database
-#    https://console.prisma.io/ → "New project" → copy the
-#    prisma+postgres://accelerate.prisma-data.net/?api_key=... URL.
+# 2. Provision a Postgres database. Any provider with a postgres:// URL works:
+#    - Vercel Postgres: project → Storage tab → Create Database → Postgres
+#    - Neon: https://neon.tech → New project → copy connection string
+#    - Local: `docker run -e POSTGRES_PASSWORD=pw -p 5432:5432 -d postgres`
 
 # 3. Configure
 cp .env.example .env.local
@@ -52,10 +55,16 @@ Open http://localhost:3000 — the marketing landing page is at `/`, the app is 
 
 ### Deploying to Vercel
 
-Set `ANTHROPIC_API_KEY`, `DATABASE_URL`, `APP_PASSWORD`, and
-`APP_SESSION_SECRET` in the Vercel project's environment variables. Run
-`npm run db:push` once locally (against the same `DATABASE_URL`) to sync
-the schema before the first deploy.
+1. **Storage** tab in your Vercel project → connect a Postgres database
+   (Neon, Vercel Postgres, Supabase — any provider with a `postgres://`
+   URL). Make sure the resulting env var is named exactly `DATABASE_URL`
+   (clear any "Custom Prefix" Vercel offers).
+2. Set the other env vars manually: `ANTHROPIC_API_KEY`, `APP_PASSWORD`,
+   `APP_SESSION_SECRET` (run `openssl rand -base64 32`).
+3. Trigger a deploy. The `vercel-build` script runs `prisma db push` and
+   the seed automatically, so the schema is created and the Profile +
+   Brand singletons are seeded on first deploy. Subsequent deploys are
+   no-ops if the schema is unchanged.
 
 ### Auth
 
@@ -76,6 +85,9 @@ Every AI route in `/api/ai/*` uses this helper:
 - `/api/ai/adapt` — multi-platform adaptation (write once → variants for X / IG / TikTok / LinkedIn / etc., respecting per-platform character limits and conventions)
 - `/api/ai/voice` — analyze writing samples → extract traits + keywords + do-not-use list, persist to `Brand`
 - `/api/ai/hooks` — generate hook variations for a topic
+- `/api/ai/video` — submit a script to HeyGen for avatar video rendering (async)
+- `/api/ai/video/[id]` — poll a HeyGen render, writes the MP4 url back onto the content piece when complete
+- `/api/heygen` — list the avatars + voices on your HeyGen account, save the chosen ids to `Profile`
 
 Model: `claude-opus-4-7` with `thinking: { type: "adaptive" }` and `effort: "high"` (or `xhigh` for the streaming script writer).
 

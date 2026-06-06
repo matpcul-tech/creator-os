@@ -6,7 +6,10 @@ import {
   Check,
   Copy,
   ExternalLink,
+  Film,
+  Loader2,
   Plug,
+  Save,
   Send,
   TrendingUp,
   Upload,
@@ -101,6 +104,8 @@ export default function IntegrationsPage() {
         </details>
       </div>
 
+      <HeyGenConnect />
+
       <Section
         icon={Upload}
         title="Bulk analytics — CSV import"
@@ -174,6 +179,196 @@ function Section({
       >
         {link.label} <ExternalLink size={12} />
       </a>
+    </div>
+  );
+}
+
+type Avatar = { id: string; name: string; previewUrl: string };
+type Voice = { id: string; name: string; language: string };
+
+function HeyGenConnect() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [avatars, setAvatars] = useState<Avatar[]>([]);
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [avatarId, setAvatarId] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/heygen");
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(json.error || `HeyGen ${res.status}`);
+          return;
+        }
+        setAvatars(json.avatars ?? []);
+        setVoices(json.voices ?? []);
+        setAvatarId(json.selected?.avatarId ?? "");
+        setVoiceId(json.selected?.voiceId ?? "");
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function save() {
+    if (saving || !avatarId || !voiceId) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/heygen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarId, voiceId }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="cai-card">
+      <div className="flex items-center gap-2 mb-2">
+        <Film size={18} className="text-brand-400" />
+        <h2 className="text-lg font-bold text-white">HeyGen — talking-head video</h2>
+      </div>
+      <p className="text-sm text-dark-400">
+        Render any script as a video of your cloned digital twin speaking in
+        your own voice. Set <code className="text-xs text-brand-300">HEYGEN_API_KEY</code> in
+        your environment, then pick your avatar + voice below.
+      </p>
+      <a
+        href="https://app.heygen.com"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300"
+      >
+        Open HeyGen dashboard <ExternalLink size={11} />
+      </a>
+
+      <div className="mt-5">
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-dark-400">
+            <Loader2 size={14} className="animate-spin" />
+            Loading your avatars and voices…
+          </div>
+        ) : error ? (
+          <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs uppercase tracking-wider font-semibold text-dark-500 mb-2 block">
+                Avatar
+              </label>
+              {avatars.length === 0 ? (
+                <p className="text-xs text-dark-500">
+                  No avatars on your HeyGen account yet. Create one in the
+                  HeyGen dashboard, then refresh.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[280px] overflow-y-auto pr-1">
+                  {avatars.map((a) => {
+                    const active = a.id === avatarId;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => setAvatarId(a.id)}
+                        className={`group rounded-xl overflow-hidden border text-left transition-all ${
+                          active
+                            ? "border-brand-500/60 ring-2 ring-brand-500/30"
+                            : "border-dark-700/40 hover:border-dark-600"
+                        }`}
+                      >
+                        {a.previewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={a.previewUrl}
+                            alt={a.name}
+                            className="w-full aspect-[3/4] object-cover bg-dark-800"
+                          />
+                        ) : (
+                          <div className="w-full aspect-[3/4] bg-dark-800 flex items-center justify-center">
+                            <Film size={20} className="text-dark-600" />
+                          </div>
+                        )}
+                        <div className="px-2 py-1.5 bg-dark-900/60">
+                          <p className="text-xs font-medium text-white truncate">
+                            {a.name}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs uppercase tracking-wider font-semibold text-dark-500 mb-2 block">
+                Voice
+              </label>
+              {voices.length === 0 ? (
+                <p className="text-xs text-dark-500">
+                  No voices available. Clone your voice in the HeyGen dashboard.
+                </p>
+              ) : (
+                <select
+                  value={voiceId}
+                  onChange={(e) => setVoiceId(e.target.value)}
+                  className="cai-input"
+                >
+                  <option value="">Select a voice…</option>
+                  {voices.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                      {v.language ? ` — ${v.language}` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={save}
+                disabled={!avatarId || !voiceId || saving}
+                className="px-4 py-2 rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/40 text-sm font-medium hover:bg-brand-500/30 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saved ? (
+                  <>
+                    <Check size={14} /> Saved
+                  </>
+                ) : saving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} /> Save selection
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
