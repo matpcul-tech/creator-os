@@ -15,24 +15,27 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`login:${clientIp(req)}`, 5, 60);
   if (!limit.ok) return rateLimitResponse(limit);
 
-  const expected = process.env.APP_PASSWORD;
-  if (!expected) {
+  const expectedUsername = process.env.APP_USERNAME;
+  const expectedPassword = process.env.APP_PASSWORD;
+  if (!expectedUsername || !expectedPassword) {
     return NextResponse.json(
-      { error: "APP_PASSWORD is not configured on the server." },
+      { error: "APP_USERNAME or APP_PASSWORD is not configured on the server." },
       { status: 500 },
     );
   }
 
+  let username = "";
   let password = "";
   try {
     const body = await req.json();
+    username = typeof body?.username === "string" ? body.username : "";
     password = typeof body?.password === "string" ? body.password : "";
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  if (!password || !timingSafeEqual(password, expected)) {
-    return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
+  if (!timingSafeEqual(username, expectedUsername) || !timingSafeEqual(password, expectedPassword)) {
+    return NextResponse.json({ error: "Incorrect username or password" }, { status: 401 });
   }
 
   const token = await signSession();

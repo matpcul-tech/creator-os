@@ -17,6 +17,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = isSafeRedirect(params.get("next"));
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,7 @@ function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -59,12 +60,20 @@ function LoginForm() {
           <div>
             <h1 className="text-xl font-semibold text-white">Sign in</h1>
             <p className="text-sm text-dark-400 mt-1">
-              Enter the workspace password to continue.
+              Enter your username and password to continue.
             </p>
           </div>
           <Input
-            type="password"
+            type="text"
             autoFocus
+            autoComplete="username"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+          />
+          <Input
+            type="password"
             autoComplete="current-password"
             placeholder="Password"
             value={password}
@@ -72,7 +81,7 @@ function LoginForm() {
             disabled={loading}
           />
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
-          <Button type="submit" className="w-full" disabled={loading || !password}>
+          <Button type="submit" className="w-full" disabled={loading || !username || !password}>
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
