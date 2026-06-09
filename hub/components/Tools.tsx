@@ -1,5 +1,5 @@
 const LINKS = {
-  creatorOS: 'https://creator-os.vercel.app',
+  creatorOS: 'https://creator-os-5zc8.vercel.app',
   promptArchitect: 'https://prompt-architect-gules.vercel.app',
   manuscriptStudio: 'https://manuscript-studio-os.com',
 }
