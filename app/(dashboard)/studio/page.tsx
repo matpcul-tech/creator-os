@@ -21,7 +21,7 @@ import {
   PLATFORM_LIST,
 } from "@/lib/platforms";
 import { PublishPanel } from "@/components/PublishPanel";
-import { VideoRenderer } from "@/components/VideoRenderer";
+import { FacelessCut } from "@/components/FacelessCut";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -41,7 +41,7 @@ function StudioInner() {
 
   const [title, setTitle] = useState(initialTitle);
   const [platform, setPlatform] = useState<PlatformId>(initialPlatform);
-  const [context, setContext] = useState("");
+  const [context, setContext] = useState("Faceless. No on-camera person. Write for burned-in captions.");
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -50,14 +50,10 @@ function StudioInner() {
   const [adaptTargets, setAdaptTargets] = useState<PlatformId[]>([]);
   const [variants, setVariants] = useState<Variants>({});
   const [adapting, setAdapting] = useState(false);
-
-  // Tracking the saved ContentPiece so the publish panel can mark-as-published.
   const [savedId, setSavedId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (initialTitle) {
-      setTitle(initialTitle);
-    }
+    if (initialTitle) setTitle(initialTitle);
   }, [initialTitle]);
 
   async function generate() {
@@ -70,11 +66,14 @@ function StudioInner() {
       const res = await fetch("/api/ai/script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, platform, context }),
+        body: JSON.stringify({
+          title,
+          platform,
+          context: `${context}\n\nHard rule: faceless video. Do not write a talking-head script, do not mention a host, face, or avatar. Short caption cards a viewer can read with the sound off.`,
+        }),
       });
       if (!res.ok || !res.body) {
-        const text = await res.text();
-        setDraft(`[error: ${text}]`);
+        setDraft(`[error: ${await res.text()}]`);
         return;
       }
       const reader = res.body.getReader();
@@ -150,142 +149,64 @@ function StudioInner() {
       <div>
         <h1 className="text-3xl font-bold text-white mb-1">Studio</h1>
         <p className="text-dark-400">
-          Write once with Claude — then adapt it to every platform you post on.
+          Faceless by default. Idea to caption script, then a vertical cut with no face.
         </p>
       </div>
 
-      {/* Composer */}
       <div className="cai-card">
         <div className="flex items-center gap-2 mb-5">
           <Sparkles size={18} className="text-brand-400" />
           <h2 className="text-lg font-bold text-white">Compose</h2>
         </div>
-
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-dark-300 mb-1.5 block">
-              Title or topic
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 10 things I'd tell my younger creator self"
-              className="cai-input"
-            />
+            <label className="text-sm font-medium text-dark-300 mb-1.5 block">Title or topic</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. the 90-second rule for starting hard work" className="cai-input" />
           </div>
-
           <div>
-            <label className="text-sm font-medium text-dark-300 mb-2 block">
-              Primary platform
-            </label>
+            <label className="text-sm font-medium text-dark-300 mb-2 block">Primary platform</label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {PLATFORM_LIST.map((p) => {
                 const Icon = p.icon;
                 const active = p.id === platform;
                 return (
-                  <button
-                    key={p.id}
-                    onClick={() => setPlatform(p.id)}
-                    className={`p-3 rounded-xl text-left transition-all border ${
-                      active
-                        ? "bg-brand-500/15 border-brand-500/40"
-                        : "bg-dark-800/30 border-dark-700/40 hover:border-dark-600"
-                    }`}
-                  >
-                    <Icon
-                      size={18}
-                      className={active ? "text-brand-400" : "text-dark-400"}
-                    />
-                    <p className="text-xs font-medium text-white mt-1.5">
-                      {p.name}
-                    </p>
+                  <button key={p.id} onClick={() => setPlatform(p.id)} className={`p-3 rounded-xl text-left transition-all border ${active ? "bg-brand-500/15 border-brand-500/40" : "bg-dark-800/30 border-dark-700/40 hover:border-dark-600"}`}>
+                    <Icon size={18} className={active ? "text-brand-400" : "text-dark-400"} />
+                    <p className="text-xs font-medium text-white mt-1.5">{p.name}</p>
                   </button>
                 );
               })}
             </div>
           </div>
-
           <div>
-            <label className="text-sm font-medium text-dark-300 mb-1.5 block">
-              Context (optional)
-            </label>
-            <textarea
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              placeholder="Anything specific — references, sources, angles you want included, or examples to draw from"
-              className="cai-input min-h-[80px]"
-            />
+            <label className="text-sm font-medium text-dark-300 mb-1.5 block">Context</label>
+            <textarea value={context} onChange={(e) => setContext(e.target.value)} className="cai-input min-h-[80px]" />
           </div>
-
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-dark-500 max-w-md">
-              <span className="font-semibold text-dark-300">Tip:</span>{" "}
-              {pCfg.promptTips}
+              <span className="font-semibold text-dark-300">Tip:</span> {pCfg.promptTips}
             </div>
             <Button onClick={generate} disabled={!title || generating}>
-              {generating ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin mr-2" />
-                  Writing…
-                </>
-              ) : (
-                <>
-                  <Wand2 size={16} className="mr-2" />
-                  Generate script
-                </>
-              )}
+              {generating ? <><RefreshCw size={16} className="animate-spin mr-2" />Writing…</> : <><Wand2 size={16} className="mr-2" />Generate faceless script</>}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Draft */}
       {draft || generating ? (
         <div className="cai-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Master draft</h2>
             <div className="flex gap-2">
-              <button
-                onClick={() => copy(draft)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-dark-400 hover:text-white transition-all flex items-center gap-1"
-              >
-                {copied ? (
-                  <>
-                    <Check size={12} className="text-emerald-400" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={12} />
-                    Copy
-                  </>
-                )}
+              <button onClick={() => copy(draft)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-dark-400 hover:text-white transition-all flex items-center gap-1">
+                {copied ? <><Check size={12} className="text-emerald-400" />Copied</> : <><Copy size={12} />Copy</>}
               </button>
-              <button
-                onClick={saveDraft}
-                disabled={!draft}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 hover:bg-brand-500/25 transition-all flex items-center gap-1 disabled:opacity-50"
-              >
-                {saved ? (
-                  <>
-                    <Check size={12} /> Saved
-                  </>
-                ) : (
-                  <>
-                    <Save size={12} /> Save to planner
-                  </>
-                )}
+              <button onClick={saveDraft} disabled={!draft} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 hover:bg-brand-500/25 transition-all flex items-center gap-1 disabled:opacity-50">
+                {saved ? <><Check size={12} /> Saved</> : <><Save size={12} /> Save to planner</>}
               </button>
             </div>
           </div>
-
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="cai-input min-h-[400px] font-mono text-sm leading-relaxed"
-            placeholder="Your draft will stream here…"
-          />
-
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className="cai-input min-h-[400px] font-mono text-sm leading-relaxed" placeholder="Your draft will stream here…" />
           <div className="mt-3 text-xs text-dark-500 flex items-center gap-3">
             <span>{draft.length} chars</span>
             <span>{draft.split(/\s+/).filter(Boolean).length} words</span>
@@ -293,62 +214,28 @@ function StudioInner() {
         </div>
       ) : null}
 
-      {/* Adapter */}
       {draft ? (
         <div className="cai-card">
           <div className="flex items-center gap-2 mb-4">
             <Repeat size={18} className="text-brand-400" />
-            <h2 className="text-lg font-bold text-white">
-              Adapt to other platforms
-            </h2>
+            <h2 className="text-lg font-bold text-white">Adapt to other platforms</h2>
           </div>
-          <p className="text-sm text-dark-400 mb-4">
-            Claude rewrites the master draft for each platform's native format —
-            character limits, hashtags, hook style, all of it.
-          </p>
-
+          <p className="text-sm text-dark-400 mb-4">Rewrites the faceless script for each platform. Still no on-camera person.</p>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
             {PLATFORM_LIST.filter((p) => p.id !== platform).map((p) => {
               const Icon = p.icon;
               const active = adaptTargets.includes(p.id);
               return (
-                <button
-                  key={p.id}
-                  onClick={() => toggleAdapt(p.id)}
-                  className={`p-3 rounded-xl text-left transition-all border ${
-                    active
-                      ? "bg-brand-500/15 border-brand-500/40"
-                      : "bg-dark-800/30 border-dark-700/40 hover:border-dark-600"
-                  }`}
-                >
-                  <Icon
-                    size={16}
-                    className={active ? "text-brand-400" : "text-dark-400"}
-                  />
+                <button key={p.id} onClick={() => toggleAdapt(p.id)} className={`p-3 rounded-xl text-left transition-all border ${active ? "bg-brand-500/15 border-brand-500/40" : "bg-dark-800/30 border-dark-700/40 hover:border-dark-600"}`}>
+                  <Icon size={16} className={active ? "text-brand-400" : "text-dark-400"} />
                   <p className="text-xs font-medium text-white mt-1">{p.name}</p>
                 </button>
               );
             })}
           </div>
-
-          <Button
-            onClick={adapt}
-            disabled={adapting || adaptTargets.length === 0}
-            variant={adaptTargets.length === 0 ? "secondary" : "primary"}
-          >
-            {adapting ? (
-              <>
-                <Loader2 size={16} className="animate-spin mr-2" /> Adapting…
-              </>
-            ) : (
-              <>
-                <Wand2 size={16} className="mr-2" />
-                Adapt for {adaptTargets.length || "0"} platform
-                {adaptTargets.length === 1 ? "" : "s"}
-              </>
-            )}
+          <Button onClick={adapt} disabled={adapting || adaptTargets.length === 0} variant={adaptTargets.length === 0 ? "secondary" : "primary"}>
+            {adapting ? <><Loader2 size={16} className="animate-spin mr-2" />Adapting…</> : <><Wand2 size={16} className="mr-2" />Adapt for {adaptTargets.length || "0"} platform{adaptTargets.length === 1 ? "" : "s"}</>}
           </Button>
-
           {Object.keys(variants).length > 0 ? (
             <div className="mt-6 grid md:grid-cols-2 gap-4">
               {Object.entries(variants).map(([id, content]) => {
@@ -356,30 +243,16 @@ function StudioInner() {
                 if (!p) return null;
                 const Icon = p.icon;
                 return (
-                  <div
-                    key={id}
-                    className="rounded-xl bg-dark-800/30 border border-dark-700/40 p-4"
-                  >
+                  <div key={id} className="rounded-xl bg-dark-800/30 border border-dark-700/40 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Icon size={16} className="text-brand-400" />
-                        <span className="text-sm font-semibold text-white">
-                          {p.name}
-                        </span>
-                        <span className="text-[10px] text-dark-500">
-                          {(content ?? "").length}/{p.charLimit} chars
-                        </span>
+                        <span className="text-sm font-semibold text-white">{p.name}</span>
+                        <span className="text-[10px] text-dark-500">{(content ?? "").length}/{p.charLimit} chars</span>
                       </div>
-                      <button
-                        onClick={() => copy(content ?? "")}
-                        className="text-xs text-dark-400 hover:text-white"
-                      >
-                        Copy
-                      </button>
+                      <button onClick={() => copy(content ?? "")} className="text-xs text-dark-400 hover:text-white">Copy</button>
                     </div>
-                    <pre className="whitespace-pre-wrap text-xs text-dark-200 leading-relaxed font-sans">
-                      {content}
-                    </pre>
+                    <pre className="whitespace-pre-wrap text-xs text-dark-200 leading-relaxed font-sans">{content}</pre>
                   </div>
                 );
               })}
@@ -388,30 +261,16 @@ function StudioInner() {
         </div>
       ) : null}
 
-      {/* Video render */}
       {draft ? (
         <div className="cai-card">
           <div className="flex items-center gap-2 mb-4">
             <Film size={18} className="text-brand-400" />
-            <h2 className="text-lg font-bold text-white">Render avatar video</h2>
+            <h2 className="text-lg font-bold text-white">Faceless cut</h2>
           </div>
-          <p className="text-sm text-dark-400 mb-4">
-            Turn this script into a talking-head video using your cloned digital
-            twin and voice. Connect HeyGen in{" "}
-            <a href="/integrations" className="text-brand-400 hover:underline">
-              integrations
-            </a>{" "}
-            first.
-          </p>
-          <VideoRenderer
-            script={draft}
-            title={title}
-            contentId={savedId ?? undefined}
-          />
+          <FacelessCut script={draft} title={title} />
         </div>
       ) : null}
 
-      {/* Publish */}
       {draft ? (
         <div className="cai-card">
           <div className="flex items-center gap-2 mb-4">
@@ -419,18 +278,9 @@ function StudioInner() {
             <h2 className="text-lg font-bold text-white">Publish</h2>
           </div>
           {!savedId ? (
-            <p className="text-sm text-dark-400">
-              Save the draft first — then we&apos;ll route it to each platform&apos;s
-              composer with your text pre-filled.
-            </p>
+            <p className="text-sm text-dark-400">Save the draft first, then open each platform composer with the caption ready. Upload the faceless file there.</p>
           ) : (
-            <PublishPanel
-              contentId={savedId}
-              title={title}
-              body={draft}
-              variants={variants}
-              platforms={[platform, ...adaptTargets]}
-            />
+            <PublishPanel contentId={savedId} title={title} body={draft} variants={variants} platforms={[platform, ...adaptTargets]} />
           )}
         </div>
       ) : null}
