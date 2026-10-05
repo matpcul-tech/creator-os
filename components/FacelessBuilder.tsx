@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Play } from "lucide-react";
 
 type Scene = { line: string; media: CanvasImageSource | null; credit: string };
+type StockInfo = { url: string; thumburl?: string; size?: number; descriptionurl?: string };
 const STOP = new Set("the a an and or to for of in on your is it not then with this that from just".split(" "));
 
 function linesOf(script: string) {
@@ -13,11 +14,13 @@ function queryFor(line: string) {
   const words = line.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
   return (words.slice(0, 3).join(" ") || "city street") + " filemime:image/jpeg";
 }
-async function commons(q: string, video: boolean) {
+async function commons(q: string, video: boolean): Promise<StockInfo[]> {
   const search = video ? q.replace("filemime:image/jpeg", "filemime:video/webm") : q;
   const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=4&prop=imageinfo&iiprop=url|size&iiurlwidth=1080&gsrsearch=" + encodeURIComponent(search);
   const data = await fetch(url).then((r) => r.json());
-  return Object.values(data.query?.pages || {}).map((p) => (p as { imageinfo?: { url: string; thumburl?: string; size?: number; descriptionurl?: string }[] }).imageinfo?.[0]).filter(Boolean).filter((info) => !video || (info.size || 0) < 12000000);
+  const pages = Object.values(data.query?.pages || {}) as { imageinfo?: StockInfo[] }[];
+  const infos = pages.map((p) => p.imageinfo?.[0]).filter((info): info is StockInfo => Boolean(info));
+  return infos.filter((info) => !video || (info.size || 0) < 12000000);
 }
 function loadImage(url: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
@@ -96,7 +99,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
   }
 
   async function findStock() {
-    setStatus("Pulling free stock clips and photos…");
+    setStatus("Pulling free stock clips and photos\u2026");
     const built: Scene[] = [];
     for (const line of linesOf(text)) {
       const q = queryFor(line);
