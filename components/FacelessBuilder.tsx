@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Play } from "lucide-react";
 
-type Scene = { line: string; media: HTMLImageElement | HTMLVideoElement | null; credit: string };
+type Scene = { line: string; media: HTMLImageElement | null; credit: string };
 type StockInfo = { url: string; thumburl?: string; size?: number; descriptionurl?: string };
 const STOP = new Set("the a an and or to for of in on your is it not then with this that from just".split(" "));
 
@@ -71,8 +71,9 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     const scene = cards[idx] || { line: title || "Faceless", media: null, credit: "" };
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, 720, 1280);
-    if (scene.media && scene.media.tagName === "IMG") {
-      cover(ctx, scene.media, scene.media.naturalWidth || 720, scene.media.naturalHeight || 760, 0, 140, 720, 800, 1 + local * 0.06);
+    const img = scene.media;
+    if (img) {
+      cover(ctx, img, img.naturalWidth || 720, img.naturalHeight || 760, 0, 140, 720, 800, 1 + local * 0.06);
     } else {
       ctx.fillStyle = idx % 2 ? "#1e5c49" : "#e23d12";
       ctx.fillRect(0, 140, 720, 800);
@@ -91,7 +92,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
 
   async function findStock() {
     setBusy(true);
-    setStatus("Matching a photo to each line…");
+    setStatus("Matching a photo to each line\u2026");
     const built: Scene[] = [];
     for (const line of linesOf(text)) {
       const pics = await commons(queryFor(line)).catch(() => [] as StockInfo[]);
@@ -123,7 +124,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     const chunks: Blob[] = [];
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     const done = new Promise((resolve) => { rec.onstop = resolve; });
-    setStatus("Rendering the stock cut…");
+    setStatus("Rendering the stock cut\u2026");
     rec.start();
     const total = list.length * 3.2;
     const started = performance.now();
