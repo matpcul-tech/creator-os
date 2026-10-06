@@ -1,3 +1,4 @@
+import { edgeNarration } from "@/lib/cut/edge-voice";
 import { LAYOUTS, STILLS, VOICES, type Layout, type StillId } from "@/lib/cut/types";
 
 const voiceIds = new Set(VOICES.map((voice) => voice.id));
@@ -108,6 +109,9 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
   if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };
 
   const apiKey = process.env.XAI_API_KEY;
+  const chunks = pieces(clean, 420);
+  const neural = await edgeNarration(voice, chunks);
+  if (neural) return { ok: true, audioBase64: neural[0], parts: neural, duration: 0, chars: [], times: [] };
   if (!apiKey) return googleNarration(clean, voice);
 
   const voiced = await xaiNarration(apiKey, clean, voice);

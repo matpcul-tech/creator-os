@@ -63,7 +63,26 @@ export function FacelessCut({ script, title }: { script: string; title: string }
   const [note, setNote] = useState("No face. The script is spoken, not printed on the picture.");
 
   useEffect(() => {
-    setScenes(directScript(script));
+    const next = directScript(script);
+    setScenes(next);
+    let cancel = false;
+    fetch("/api/ai/clips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lines: next.map((scene) => scene.narration) }),
+    })
+      .then((res) => res.json())
+      .then((body: { clips?: (string | null)[] }) => {
+        if (cancel || !body.clips?.length) return;
+        setScenes(
+          next.map((scene, index) => (body.clips?.[index] ? { ...scene, clip: body.clips[index] as string } : scene)),
+        );
+        setNote("Clips follow the lines. The script is spoken, not printed.");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
   }, [script]);
 
   useEffect(() => {

@@ -67,14 +67,14 @@ function beats(script: string): string[] {
     .map((part) => part.trim())
     .filter(Boolean);
   let bits = paras.length >= 3 ? paras : sentences(script);
-  bits = bits.flatMap((bit) => (bit.split(/\s+/).length > 34 ? sentences(bit) : [bit]));
+  bits = bits.flatMap((bit) => (bit.split(/\s+/).length > 18 ? sentences(bit) : [bit]));
   const merged: string[] = [];
   for (const bit of bits) {
     const count = bit.split(/\s+/).length;
     if (merged.length && count < 6) merged[merged.length - 1] += " " + bit;
     else merged.push(bit);
   }
-  while (merged.length > 8) {
+  while (merged.length > 14) {
     let index = 0;
     let best = Infinity;
     for (let i = 0; i < merged.length - 1; i++) {
@@ -86,7 +86,7 @@ function beats(script: string): string[] {
     }
     merged.splice(index, 2, `${merged[index]} ${merged[index + 1]}`);
   }
-  return merged.filter(Boolean).slice(0, 8);
+  return merged.filter(Boolean).slice(0, 14);
 }
 
 function layoutFor(text: string, index: number, last: number): Layout {

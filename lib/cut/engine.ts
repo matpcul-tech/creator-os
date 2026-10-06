@@ -28,6 +28,7 @@ export class CutEngine {
   private master: GainNode | null = null;
   private bed: { setLevel: (level: number) => void } | null = null;
   private images = new Map<StillId, HTMLImageElement>();
+  private clips = new Map<string, HTMLImageElement>();
   private grain: HTMLCanvasElement | null = null;
   private cut: Cut = { scenes: [], brand: "CreatorAI", aspect: "16:9", music: true, words: [], duration: 1 };
   private voice: AudioBuffer | null = null;
@@ -103,6 +104,9 @@ export class CutEngine {
       };
     }
     this.voiceId = input.voiceId;
+    for (const scene of input.scenes) {
+      if (scene.clip) void this.rememberClip(scene.clip);
+    }
     this.resize();
     if (this.time > this.cut.duration) this.time = 0;
     this.applyMix();
@@ -314,6 +318,18 @@ export class CutEngine {
     }
   }
 
+  private async rememberClip(src: string): Promise<void> {
+    if (this.clips.has(src)) return;
+    try {
+      const image = await loadImage(src);
+      if (!this.alive) return;
+      this.clips.set(src, image);
+      this.draw();
+    } catch {
+      /* keep the local still */
+    }
+  }
+
   private resize(): void {
     const { width, height } = frameSize(this.cut.aspect);
     if (this.canvas.width !== width || this.canvas.height !== height) {
@@ -362,7 +378,7 @@ export class CutEngine {
     const local = clamp((this.time - span.start) / Math.max(0.001, span.end - span.start), 0, 1);
     const unit = Math.min(w, h) / 720;
 
-    const image = this.images.get(scene.still);
+    const image = (scene.clip && this.clips.get(scene.clip)) || this.images.get(scene.still);
     if (image) drawCover(ctx, image, w, h, local, scene.camera);
     else {
       ctx.fillStyle = "#17171a";

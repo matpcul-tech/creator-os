@@ -10,6 +10,7 @@ export type Scene = {
   layout: Layout;
   still: StillId;
   camera: Camera;
+  clip?: string;
 };
 
 export type Project = {
