@@ -21,6 +21,7 @@ import {
   Users,
   Plug,
   Home,
+  Clapperboard,
 } from "lucide-react";
 
 const navGroups = [
@@ -37,6 +38,7 @@ const navGroups = [
     label: "Make",
     items: [
       { label: "Studio", href: "/studio", icon: Wand2 },
+      { label: "Faceless builder", href: "/builder", icon: Clapperboard },
       { label: "Brand DNA", href: "/brand", icon: Brain },
     ],
   },

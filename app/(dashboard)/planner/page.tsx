@@ -13,7 +13,7 @@ import {
 import { PLATFORMS, type PlatformId, PLATFORM_LIST } from "@/lib/platforms";
 import { parseJSON, formatDate } from "@/lib/utils";
 import { PublishPanel } from "@/components/PublishPanel";
-import { VideoRenderer } from "@/components/VideoRenderer";
+import { FacelessCut } from "@/components/FacelessCut";
 
 type Piece = {
   id: number;
@@ -417,17 +417,10 @@ function PieceDrawer({
               <div className="flex items-center gap-2 mb-4">
                 <Film size={16} className="text-brand-400" />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Avatar video
+                  Faceless cut
                 </h3>
               </div>
-              <VideoRenderer
-                contentId={piece.id}
-                script={body}
-                title={title}
-                initialVideoId={piece.videoId}
-                initialVideoUrl={piece.videoUrl}
-                initialVideoStatus={piece.videoStatus}
-              />
+              <FacelessCut script={body} title={title} />
             </div>
           ) : null}
 

@@ -22,6 +22,7 @@ import {
 } from "@/lib/platforms";
 import { PublishPanel } from "@/components/PublishPanel";
 import { FacelessCut } from "@/components/FacelessCut";
+import { PictorySend } from "@/components/PictorySend";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -268,6 +269,16 @@ function StudioInner() {
             <h2 className="text-lg font-bold text-white">Video and voice</h2>
           </div>
           <FacelessCut script={draft} title={title} />
+        </div>
+      ) : null}
+
+      {draft ? (
+        <div className="cai-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Film size={18} className="text-brand-400" />
+            <h2 className="text-lg font-bold text-white">Pictory video</h2>
+          </div>
+          <PictorySend title={title} script={draft} />
         </div>
       ) : null}
 
