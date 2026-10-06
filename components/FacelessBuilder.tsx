@@ -116,13 +116,8 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     const scene = cards[idx];
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, 720, 1280);
-    if (scene?.media) cover(ctx, scene.media, scene.media.naturalWidth || 720, scene.media.naturalHeight || 800, 0, 100, 720, 840);
-    else { ctx.fillStyle = "#1c1b19"; ctx.fillRect(0, 100, 720, 840); }
-    ctx.fillStyle = "rgba(12,11,9,0.86)";
-    ctx.fillRect(0, 960, 720, 320);
-    ctx.fillStyle = "#f4eee4";
-    ctx.font = "700 40px Georgia, serif";
-    wrap(ctx, scene?.caption || title || "Faceless", 610).forEach((ln, i) => ctx.fillText(ln, 48, 1036 + i * 50));
+    if (scene?.media) cover(ctx, scene.media, scene.media.naturalWidth || 720, scene.media.naturalHeight || 800, 0, 0, 720, 1280);
+    else { ctx.fillStyle = "#1c1b19"; ctx.fillRect(0, 0, 720, 1280); }
   }
   async function findStock() {
     setBusy(true);
