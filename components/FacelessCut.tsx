@@ -9,13 +9,36 @@ import { ASPECTS, VOICE_LIMIT, VOICES, aspectRatio, type Aspect, type Scene } fr
 
 type VoicePayload =
   | { ok: false; error: string }
-  | { ok: true; audioBase64: string; duration: number; chars: string[]; times: { start: number; end: number }[] };
+  | {
+      ok: true;
+      audioBase64: string;
+      parts?: string[];
+      duration: number;
+      chars: string[];
+      times: { start: number; end: number }[];
+    };
 
 function decodeMp3(context: AudioContext, base64: string): Promise<AudioBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
   return context.decodeAudioData(bytes.buffer.slice(0));
+}
+
+function joinBuffers(context: AudioContext, buffers: AudioBuffer[]): AudioBuffer {
+  const channels = buffers[0]?.numberOfChannels ?? 1;
+  const rate = buffers[0]?.sampleRate ?? 24000;
+  const length = buffers.reduce((sum, buffer) => sum + buffer.length, 0);
+  const mixed = context.createBuffer(channels, Math.max(1, length), rate);
+  let offset = 0;
+  for (const buffer of buffers) {
+    const channelCount = Math.min(channels, buffer.numberOfChannels);
+    for (let channel = 0; channel < channelCount; channel += 1) {
+      mixed.getChannelData(channel).set(buffer.getChannelData(channel), offset);
+    }
+    offset += buffer.length;
+  }
+  return mixed;
 }
 
 export function FacelessCut({ script, title }: { script: string; title: string }) {
@@ -37,7 +60,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     recording: false,
     sceneIndex: 0,
   });
-  const [note, setNote] = useState("No face. Voice, captions, and a file.");
+  const [note, setNote] = useState("No face. The script is spoken, not printed on the picture.");
 
   useEffect(() => {
     setScenes(directScript(script));
@@ -48,7 +71,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       .then((res) => res.json())
       .then((body: { ready?: boolean }) => {
         setVoiceReady(Boolean(body.ready));
-        if (!body.ready) setNote("Picture and music play now. Add XAI_API_KEY to score a voice.");
+        if (!body.ready) setNote("Picture plays now. Voice will score when you hit Play.");
       })
       .catch(() => setVoiceReady(false));
   }, []);
@@ -115,7 +138,10 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       setNote(`${result.error}. Playing the picture cut.`);
       return;
     }
-    const buffer = await decodeMp3(engine.context(), result.audioBase64);
+    const clips = result.parts?.length ? result.parts : [result.audioBase64];
+    const buffers = [];
+    for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
+    const buffer = joinBuffers(engine.context(), buffers);
     const timed = marksFromVoice(scenes, spoken, ranges, result.chars, result.times, result.duration || buffer.duration);
     engine.setVoice(buffer, timed.words, timed.duration, key);
     failedVoice.current = "";
@@ -205,8 +231,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       </div>
       <div>
         <p className="text-sm text-dark-300 mb-3">
-          Faceless. {scenes.length} scenes from this script. Voice rides the picture, captions follow the words, and
-          export is one file. No avatar.
+          Faceless. {scenes.length} scenes from this script. The words stay off the picture. Play scores a voice with no key, and export is one file.
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           {ASPECTS.map((item) => (

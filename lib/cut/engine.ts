@@ -1,5 +1,5 @@
 import { voiceKey } from "@/lib/cut/direct";
-import { chunkAt, estimateTimeline, sceneWindows } from "@/lib/cut/timeline";
+import { estimateTimeline, sceneWindows } from "@/lib/cut/timeline";
 import { frameSize, STILLS, type Aspect, type Camera, type Scene, type StillId, type WordMark } from "@/lib/cut/types";
 
 export type EngineSnapshot = {
@@ -370,15 +370,11 @@ export class CutEngine {
     }
 
     const scrim = ctx.createLinearGradient(0, 0, 0, h);
-    scrim.addColorStop(0, "rgba(8,8,9,0.28)");
-    scrim.addColorStop(0.42, "rgba(8,8,9,0.08)");
-    scrim.addColorStop(1, "rgba(8,8,9,0.78)");
+    scrim.addColorStop(0, "rgba(8,8,9,0.12)");
+    scrim.addColorStop(0.5, "rgba(8,8,9,0)");
+    scrim.addColorStop(1, "rgba(8,8,9,0.22)");
     ctx.fillStyle = scrim;
     ctx.fillRect(0, 0, w, h);
-    if (scene.layout === "hook" || scene.layout === "close") {
-      ctx.fillStyle = "rgba(8,8,9,0.28)";
-      ctx.fillRect(0, 0, w, h);
-    }
 
     const vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.62);
     vignette.addColorStop(0, "rgba(0,0,0,0)");
@@ -392,23 +388,6 @@ export class CutEngine {
       ctx.drawImage(this.grain, 0, 0, w, h);
       ctx.restore();
     }
-
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.55)";
-    ctx.shadowBlur = 16 * unit;
-    drawBrand(ctx, this.cut.brand, unit);
-    if (scene.layout === "hook" || scene.layout === "statement") {
-      const chunk = chunkAt(this.cut.words, this.time, index);
-      const words = chunk.words.length
-        ? chunk.words
-        : scene.onscreen.split(/\s+/).filter(Boolean).map((word) => ({ word, start: 0, end: 0, scene: index }));
-      drawKaraoke(ctx, words, chunk.active, w / 2, h * 0.56, w - 96 * unit, Math.round((scene.layout === "hook" ? 58 : 48) * unit), unit);
-    } else {
-      drawLayout(ctx, scene, this.cut.brand, local, w, h, unit);
-      const chunk = chunkAt(this.cut.words, this.time, index);
-      drawCaption(ctx, chunk.words, chunk.active, w, h, unit);
-    }
-    ctx.restore();
 
     const edge = Math.min(span.end - span.start, 0.36);
     let veil = 0;

@@ -8,7 +8,7 @@ type VoiceStamp = { start: number; end: number };
 
 export type VoiceResult =
   | { ok: false; error: string }
-  | { ok: true; audioBase64: string; duration: number; chars: string[]; times: VoiceStamp[] };
+  | { ok: true; audioBase64: string; parts?: string[]; duration: number; chars: string[]; times: VoiceStamp[] };
 
 function stamps(times: unknown[] | undefined): VoiceStamp[] {
   if (!times) return [];
@@ -25,7 +25,75 @@ function stamps(times: unknown[] | undefined): VoiceStamp[] {
 }
 
 export function voiceConfigured(): boolean {
-  return Boolean(process.env.XAI_API_KEY);
+  return true;
+}
+
+function pieces(text: string, max = 180): string[] {
+  const sentences = text.match(/[^.!?\n]+[.!?]?/g) ?? [text];
+  const out: string[] = [];
+  let buf = "";
+  for (const raw of sentences) {
+    const piece = raw.trim();
+    if (!piece) continue;
+    if (piece.length > max) {
+      if (buf) out.push(buf);
+      buf = "";
+      const words = piece.split(/\s+/);
+      let line = "";
+      for (const word of words) {
+        const next = line ? `${line} ${word}` : word;
+        if (next.length > max && line) {
+          out.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      }
+      if (line) out.push(line);
+      continue;
+    }
+    const next = buf ? `${buf} ${piece}` : piece;
+    if (next.length > max && buf) {
+      out.push(buf);
+      buf = piece;
+    } else {
+      buf = next;
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
+}
+
+async function googlePart(text: string, voiceId: string): Promise<string> {
+  const tongue: Record<string, string> = {
+    ara: "en-GB",
+    eve: "en-AU",
+    leo: "en-IN",
+    sal: "en-GB",
+    lumen: "en-AU",
+  };
+  const tl = tongue[voiceId] ?? "en";
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=gtx&tl=${tl}&q=${encodeURIComponent(text)}`;
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    },
+  });
+  if (!response.ok) throw new Error("Voice didn't answer");
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 200) throw new Error("Voice came back empty");
+  return bytes.toString("base64");
+}
+
+async function googleNarration(text: string, voiceId: string): Promise<VoiceResult> {
+  try {
+    const parts = [];
+    for (const piece of pieces(text)) parts.push(await googlePart(piece, voiceId));
+    if (!parts.length) return { ok: false, error: "Nothing to say" };
+    return { ok: true, audioBase64: parts[0], parts, duration: 0, chars: [], times: [] };
+  } catch {
+    return { ok: false, error: "Voice didn't answer" };
+  }
 }
 
 export async function scoreNarration(text: string, voiceId: string): Promise<VoiceResult> {
@@ -36,7 +104,7 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
   if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };
 
   const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false, error: "Add XAI_API_KEY to voice this cut" };
+  if (!apiKey) return googleNarration(clean, voice);
 
   let response: Response;
   try {
@@ -56,10 +124,10 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
       }),
     });
   } catch {
-    return { ok: false, error: "Voice didn't answer" };
+    return googleNarration(clean, voice);
   }
 
-  if (!response.ok) return { ok: false, error: "Voice didn't answer" };
+  if (!response.ok) return googleNarration(clean, voice);
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
