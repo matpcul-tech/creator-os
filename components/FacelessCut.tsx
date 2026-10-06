@@ -1,177 +1,277 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, Play, Square } from "lucide-react";
+import { Download, Pause, Play, Sparkles } from "lucide-react";
+import { CutEngine, type EngineSnapshot } from "@/lib/cut/engine";
+import { directScript, spokenScript, voiceKey } from "@/lib/cut/direct";
+import { marksFromVoice } from "@/lib/cut/timeline";
+import { ASPECTS, VOICE_LIMIT, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
 
-type Card = { kicker: string; text: string };
+type VoicePayload =
+  | { ok: false; error: string }
+  | { ok: true; audioBase64: string; duration: number; chars: string[]; times: { start: number; end: number }[] };
 
-function toCards(script: string, title: string): Card[] {
-  const lines = script
-    .split(/\n+/)
-    .map((line) => line.replace(/^[#>*\-\d.\s]+/, "").trim())
-    .filter((line) => line.length > 8 && !line.endsWith(":"));
-  const source = lines.length ? lines : [title || script];
-  const cards = source.slice(0, 8).map((text, i) => ({
-    kicker: i === 0 ? "HOOK" : i === source.length - 1 ? "CTA" : String(i).padStart(2, "0"),
-    text: text.length > 140 ? text.slice(0, 137) + "…" : text,
-  }));
-  return cards.length ? cards : [{ kicker: "HOOK", text: title || "Untitled short" }];
-}
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const trial = line ? `${line} ${word}` : word;
-    if (ctx.measureText(trial).width > max && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = trial;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-
-function paint(
-  canvas: HTMLCanvasElement,
-  card: Card,
-  index: number,
-  total: number,
-  progress: number,
-) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.clearRect(0, 0, 720, 1280);
-  ctx.fillStyle = "#12110f";
-  ctx.fillRect(0, 0, 720, 1280);
-  ctx.fillStyle = "#f3ecdf";
-  ctx.beginPath();
-  ctx.roundRect(36, 48, 648, 1184, 28);
-  ctx.fill();
-  ctx.fillStyle = index % 2 ? "#1e5c49" : "#e23d12";
-  ctx.fillRect(36, 48, 648 * progress, 10);
-  ctx.font = "600 26px sans-serif";
-  ctx.fillText(card.kicker, 72, 150);
-  ctx.fillStyle = "#141310";
-  ctx.font = "700 54px Georgia, serif";
-  const lines = wrap(ctx, card.text, 560);
-  lines.forEach((line, i) => ctx.fillText(line, 72, 280 + i * 68));
-  ctx.fillStyle = "#6e665c";
-  ctx.font = "500 22px sans-serif";
-  ctx.fillText("FACELESS", 72, 1148);
-  ctx.fillText(`${index + 1} / ${total}`, 560, 1148);
+function decodeMp3(context: AudioContext, base64: string): Promise<AudioBuffer> {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return context.decodeAudioData(bytes.buffer.slice(0));
 }
 
 export function FacelessCut({ script, title }: { script: string; title: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [status, setStatus] = useState("No face. Captions only.");
-  const [playing, setPlaying] = useState(false);
-  const timer = useRef<number | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<CutEngine | null>(null);
+  const busy = useRef(false);
+  const failedVoice = useRef("");
+  const [scenes, setScenes] = useState<Scene[]>(() => directScript(script));
+  const [aspect, setAspect] = useState<Aspect>("9:16");
+  const [voiceId, setVoiceId] = useState("orion");
+  const [music, setMusic] = useState(true);
+  const [voiceReady, setVoiceReady] = useState(false);
+  const [box, setBox] = useState({ width: 220, height: 391 });
+  const [clock, setClock] = useState<EngineSnapshot>({
+    time: 0,
+    duration: 1,
+    playing: false,
+    recording: false,
+    sceneIndex: 0,
+  });
+  const [note, setNote] = useState("No face. Voice, captions, and a file.");
 
-  const cards = toCards(script, title);
+  useEffect(() => {
+    setScenes(directScript(script));
+  }, [script]);
+
+  useEffect(() => {
+    fetch("/api/ai/narrate")
+      .then((res) => res.json())
+      .then((body: { ready?: boolean }) => {
+        setVoiceReady(Boolean(body.ready));
+        if (!body.ready) setNote("Picture and music play now. Add XAI_API_KEY to score a voice.");
+      })
+      .catch(() => setVoiceReady(false));
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas) paint(canvas, cards[0], 0, cards.length, 0.15);
+    if (!canvas) return;
+    const engine = new CutEngine(canvas);
+    engineRef.current = engine;
+    engine.onChange = setClock;
+    void engine.load();
     return () => {
-      if (timer.current) window.clearInterval(timer.current);
+      engine.dispose();
+      engineRef.current = null;
     };
-  }, [script, title]);
+  }, []);
 
-  function stop() {
-    if (timer.current) window.clearInterval(timer.current);
-    timer.current = null;
-    setPlaying(false);
+  useEffect(() => {
+    engineRef.current?.setCut({
+      scenes,
+      brand: (title || "CreatorAI").slice(0, 28),
+      aspect,
+      music,
+      voiceId,
+    });
+  }, [scenes, title, aspect, music, voiceId]);
+
+  useEffect(() => {
+    const node = stageRef.current;
+    if (!node) return;
+    const ratio = aspectRatio(aspect);
+    const measure = () => {
+      const rect = node.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) return;
+      const width = Math.min(rect.width, 280);
+      setBox({ width, height: width / ratio });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [aspect]);
+
+  async function ensureVoice() {
+    const engine = engineRef.current;
+    if (!engine || !voiceReady || engine.hasVoice()) return;
+    const { spoken, ranges } = spokenScript(scenes);
+    const key = voiceKey(scenes, voiceId);
+    if (failedVoice.current === key) return;
+    if (spoken.length > VOICE_LIMIT) {
+      setNote("This cut is too long to voice in one pass. Shorten the script.");
+      failedVoice.current = key;
+      return;
+    }
+    setNote("Scoring the voice…");
+    const res = await fetch("/api/ai/narrate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: spoken, voiceId }),
+    });
+    const result = (await res.json()) as VoicePayload;
+    if (!result.ok) {
+      failedVoice.current = key;
+      setNote(`${result.error}. Playing the picture cut.`);
+      return;
+    }
+    const buffer = await decodeMp3(engine.context(), result.audioBase64);
+    const timed = marksFromVoice(scenes, spoken, ranges, result.chars, result.times, result.duration || buffer.duration);
+    engine.setVoice(buffer, timed.words, timed.duration, key);
+    failedVoice.current = "";
+    const voice = VOICES.find((item) => item.id === voiceId);
+    setNote(`Voiced with ${voice?.label ?? "the narrator"}. Export writes picture, voice, and music into one file.`);
   }
 
-  function play() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    stop();
-    setPlaying(true);
-    const started = performance.now();
-    timer.current = window.setInterval(() => {
-      const t = (performance.now() - started) / 1000;
-      const each = 3.2;
-      const idx = Math.min(cards.length - 1, Math.floor(t / each));
-      paint(canvas, cards[idx], idx, cards.length, (t - idx * each) / each);
-      if (t >= cards.length * each) stop();
-    }, 33);
+  async function onPlay() {
+    const engine = engineRef.current;
+    if (!engine || busy.current) return;
+    if (clock.playing && !clock.recording) {
+      engine.pause();
+      return;
+    }
+    busy.current = true;
+    try {
+      if (voiceReady && !engine.hasVoice()) await ensureVoice();
+      engine.play();
+    } catch {
+      setNote("Voice didn't come through. Playing the picture cut.");
+      engine.play();
+    } finally {
+      busy.current = false;
+    }
   }
 
-  async function render() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    stop();
-    const stream = canvas.captureStream(30);
-    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : "video/webm";
-    const rec = new MediaRecorder(stream, { mimeType: mime });
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size) chunks.push(e.data);
-    };
-    const done = new Promise((resolve) => {
-      rec.onstop = resolve;
-    });
-    setStatus("Rendering faceless cut…");
-    rec.start();
-    const started = performance.now();
-    const total = cards.length * 3.2;
-    await new Promise<void>((resolve) => {
-      const id = window.setInterval(() => {
-        const t = (performance.now() - started) / 1000;
-        const idx = Math.min(cards.length - 1, Math.floor(t / 3.2));
-        paint(canvas, cards[idx], idx, cards.length, (t - idx * 3.2) / 3.2);
-        if (t >= total) {
-          window.clearInterval(id);
-          resolve();
-        }
-      }, 33);
-    });
-    rec.stop();
-    await done;
-    const blob = new Blob(chunks, { type: "video/webm" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${(title || "faceless-short").slice(0, 40).replace(/\s+/g, "-")}.webm`;
-    a.click();
-    setStatus("Downloaded. No face in the file. Upload it from Publish.");
+  async function onExport() {
+    const engine = engineRef.current;
+    if (!engine || busy.current || clock.recording) return;
+    busy.current = true;
+    setNote("Playing through once to write the file.");
+    try {
+      await ensureVoice();
+      const blob = await engine.record();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(title || "faceless-cut").slice(0, 40).replace(/\s+/g, "-")}.webm`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setNote("Downloaded. No face in the file. Upload it from Publish.");
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : "Export failed");
+    } finally {
+      busy.current = false;
+    }
+  }
+
+  async function onSharpen() {
+    engineRef.current?.pause();
+    setNote("Sharpening the on-screen lines…");
+    try {
+      const res = await fetch("/api/ai/sharpen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ narrations: scenes.map((scene) => scene.narration) }),
+      });
+      const result = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        cards?: { onscreen: string; layout: Scene["layout"]; still: Scene["still"] }[];
+      };
+      if (!result.ok || !result.cards) {
+        setNote(result.error || "Sharpen didn't answer.");
+        return;
+      }
+      setScenes((current) =>
+        current.map((scene, index) => ({
+          ...scene,
+          onscreen: result.cards?.[index]?.onscreen || scene.onscreen,
+          layout: result.cards?.[index]?.layout || scene.layout,
+          still: result.cards?.[index]?.still || scene.still,
+        })),
+      );
+      setNote("Lines sharpened. What is spoken stayed the same.");
+    } catch {
+      setNote("Sharpen didn't answer.");
+    }
   }
 
   return (
-    <div className="grid md:grid-cols-[220px_1fr] gap-6 items-start">
-      <canvas
-        ref={canvasRef}
-        width={720}
-        height={1280}
-        className="w-full max-w-[220px] rounded-2xl bg-[#f3ecdf]"
-      />
+    <div className="grid md:grid-cols-[280px_1fr] gap-6 items-start">
+      <div ref={stageRef} className="w-full max-w-[280px]">
+        <div className="overflow-hidden rounded-2xl bg-dark-950" style={{ width: box.width, height: box.height }}>
+          <canvas ref={canvasRef} className="block h-full w-full" aria-label="Faceless video preview" />
+        </div>
+      </div>
       <div>
         <p className="text-sm text-dark-300 mb-3">
-          Faceless only. The cut is type on a card — no avatar, no cloned face,
-          no HeyGen. {cards.length} cards from this script.
+          Faceless. {scenes.length} scenes from this script. Voice rides the picture, captions follow the words, and
+          export is one file. No avatar.
         </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={play}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-white flex items-center gap-1"
+        <div className="flex flex-wrap gap-2 mb-3">
+          {ASPECTS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setAspect(item)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                aspect === item
+                  ? "bg-brand-500/15 border-brand-500/40 text-brand-300"
+                  : "bg-dark-800/40 border-dark-700/40 text-dark-300"
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+          <select
+            value={voiceId}
+            onChange={(event) => setVoiceId(event.target.value)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 border border-dark-700/40 text-white"
+            aria-label="Voice"
           >
-            {playing ? <Square size={12} /> : <Play size={12} />}
-            {playing ? "Playing" : "Preview"}
-          </button>
+            {VOICES.map((voice) => (
+              <option key={voice.id} value={voice.id}>
+                {voice.label} · {voice.note}
+              </option>
+            ))}
+          </select>
           <button
-            onClick={render}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 flex items-center gap-1"
+            type="button"
+            onClick={() => setMusic((on) => !on)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+              music ? "bg-brand-500/15 border-brand-500/40 text-brand-300" : "bg-dark-800/40 border-dark-700/40 text-dark-400"
+            }`}
+            aria-pressed={music}
           >
-            <Download size={12} /> Render faceless video
+            Music
           </button>
         </div>
-        <p className="text-xs text-dark-500 mt-3">{status}</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void onPlay()}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-white flex items-center gap-1"
+          >
+            {clock.playing && !clock.recording ? <Pause size={12} /> : <Play size={12} />}
+            {clock.playing && !clock.recording ? "Pause" : "Play"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void onSharpen()}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-white flex items-center gap-1"
+          >
+            <Sparkles size={12} /> Sharpen lines
+          </button>
+          <button
+            type="button"
+            onClick={() => void onExport()}
+            disabled={clock.recording}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 flex items-center gap-1 disabled:opacity-40"
+          >
+            <Download size={12} /> {clock.recording ? "Writing" : "Export video"}
+          </button>
+        </div>
+        <p className="text-xs text-dark-500 mt-3">{note}</p>
       </div>
     </div>
   );
