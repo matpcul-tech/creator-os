@@ -21,13 +21,14 @@ function speakableLine(line: string): string {
     .replace(/^#{1,6}\s+/, "")
     .replace(/^>\s*/, "")
     .replace(/^[-*+]\s+/, "")
-    .replace(/[*_#>`~]/g, " ")
+    .replace(/[#＃*_>`~|]+/g, " ")
+    .replace(/^(?:captions?|hashes?|hashing|hashtags?|on[- ]?screen(?: text)?|voice ?over|b-roll|visual)\s*:\s*/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function isLabel(line: string): boolean {
-  return /^(hook|setup|cta|beats?|main(\s+content)?|payoff|outro|intro|on-screen(\s+text)?|voiceover|b-roll|caption|visual|scene\s*\d*)\b[:\s-]*$/i.test(line);
+  return /^(hook|setup|cta|beats?|main(\s+content)?|payoff|outro|intro|on-screen(\s+text)?|voiceover|b-roll|captions?|hashes?|hashing|hashtags?|visual|scene\s*\d*)\b[:\s-]*$/i.test(line);
 }
 
 function spokenSource(script: string): string {

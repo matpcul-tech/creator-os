@@ -70,7 +70,7 @@ function StudioInner() {
         body: JSON.stringify({
           title,
           platform,
-          context: `${context}\n\nHard rule: faceless video. Do not write a talking-head script, do not mention a host, face, or avatar. Short caption cards a viewer can read with the sound off.`,
+          context: `${context}\n\nHard rule: faceless video. Write only the words to be spoken, as plain sentences. No markdown, no # headings, no asterisks, no captions, and no labels such as Caption, Hook, or Voiceover.`,
         }),
       });
       if (!res.ok || !res.body) {

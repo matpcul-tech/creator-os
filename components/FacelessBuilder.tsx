@@ -26,7 +26,7 @@ function clean(value: string) {
     .replace(/^#+\s*/, "")
     .replace(/^>\s*/, "")
     .replace(/^[-*+]\s+/, "")
-    .replace(/[*_#>`~]/g, " ")
+    .replace(/[#＃*_>`~|]+/g, " ")
     .replace(/^["\u201c]|["\u201d]$/g, "")
     .replace(/^\d+[.)]\s*/, "")
     .replace(/\s+/g, " ")
@@ -39,7 +39,7 @@ function visualFrom(line: string) {
   return (words.slice(0, 3).join(" ") || "daylight landscape") + " photograph";
 }
 function isHeading(line: string) {
-  return /^(hook|setup|cta|beat|main|payoff|outro|intro|on-screen|voiceover|b-roll)\b/i.test(line) || (/\d+:\d+/.test(line) && line.length < 48);
+  return /^(hook|setup|cta|beat|main|payoff|outro|intro|on-screen|voiceover|b-roll|captions?|hashes?|hashing|hashtags?)\b[:\s-]*$/i.test(line) || (/\d+:\d+/.test(line) && line.length < 48);
 }
 function parseScript(script: string): Scene[] {
   const chunks = script.split(/\n---\n|\n##+\s+/).map((c) => c.trim()).filter(Boolean);

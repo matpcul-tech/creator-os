@@ -84,10 +84,21 @@ async function googleNarration(text: string, voiceId: string): Promise<VoiceResu
 
 function forSpeech(text: string): string {
   return text
-    .replace(/\[[^\]]*\]/g, " ")
-    .replace(/[*_#>`~]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .split(/\n+/)
+    .map((line) =>
+      line
+        .replace(/\[[^\]]*\]/g, " ")
+        .replace(/[#＃*_>`~|]+/g, " ")
+        .replace(/^(?:captions?|hashes?|hashing|hashtags?|on[- ]?screen(?: text)?|voice ?over|b-roll|visual)\b[:\s-]*/i, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(
+      (line) =>
+        line.length > 1 &&
+        !/^(hook|setup|cta|beats?|main(\s+content)?|payoff|outro|intro|captions?|hashes?|hashing|hashtags?|on[- ]?screen(?: text)?|voice ?over|b-roll)\b[:\s-]*$/i.test(line),
+    )
+    .join(" ");
 }
 
 export async function scoreNarration(text: string, voiceId: string): Promise<VoiceResult> {
