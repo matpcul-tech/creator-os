@@ -13,6 +13,33 @@ const STILL_WORDS: Record<StillId, string[]> = {
   phone: ["video", "export", "scroll", "watch", "tab", "screen", "phone", "file"],
 };
 
+function speakableLine(line: string): string {
+  return line
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\*\*(?:on-screen text|voiceover|b-roll):\*\*/gi, " ")
+    .replace(/^(?:on-screen text|voiceover|b-roll|caption|visual)\s*:\s*/i, "")
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^>\s*/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/[*_#>`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLabel(line: string): boolean {
+  return /^(hook|setup|cta|beats?|main(\s+content)?|payoff|outro|intro|on-screen(\s+text)?|voiceover|b-roll|caption|visual|scene\s*\d*)\b[:\s-]*$/i.test(line);
+}
+
+function spokenSource(script: string): string {
+  const blocks = [...script.matchAll(/\*\*VOICEOVER:\*\*([\s\S]*?)(?=\*\*(?:ON-SCREEN TEXT|B-ROLL|VOICEOVER):\*\*|$)/gi)];
+  const source = blocks.length ? blocks.map((match) => match[1]).join("\n") : script;
+  return source
+    .split(/\n+/)
+    .map(speakableLine)
+    .filter((line) => line.length > 1 && !isLabel(line))
+    .join("\n");
+}
+
 export const SAMPLE_SCRIPT = `Most creators do not have a posting problem. They have a finishing problem.
 
 You open a doc, write a decent idea, then lose the afternoon hunting for clips, a voice, and captions.
@@ -113,7 +140,7 @@ function pickStill(text: string, previous: StillId | null): StillId {
 }
 
 export function directScript(script: string): Scene[] {
-  const parts = beats(script.trim() || SAMPLE_SCRIPT);
+  const parts = beats(spokenSource(script.trim() || SAMPLE_SCRIPT));
   const last = parts.length - 1;
   let previous: StillId | null = null;
   return parts.map((narration, index) => {
@@ -136,7 +163,6 @@ export function voiceKey(scenes: Scene[], voiceId: string): string {
 }
 
 export function spokenScript(scenes: Scene[]): { spoken: string; ranges: { start: number; end: number }[] } {
-  const gap = " [long-pause] ";
   const ranges: { start: number; end: number }[] = [];
   let spoken = "";
   scenes.forEach((scene, index) => {
@@ -144,7 +170,7 @@ export function spokenScript(scenes: Scene[]): { spoken: string; ranges: { start
     const start = spoken.length;
     spoken += text;
     ranges.push({ start, end: spoken.length });
-    if (index < scenes.length - 1) spoken += gap;
+    if (index < scenes.length - 1) spoken += " ";
   });
   return { spoken, ranges };
 }

@@ -82,8 +82,16 @@ async function googleNarration(text: string, voiceId: string): Promise<VoiceResu
   }
 }
 
+function forSpeech(text: string): string {
+  return text
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/[*_#>`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function scoreNarration(text: string, voiceId: string): Promise<VoiceResult> {
-  const clean = text.trim();
+  const clean = forSpeech(text);
   const voice = voiceId.trim().toLowerCase();
   if (!clean) return { ok: false, error: "Nothing to say" };
   if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };

@@ -19,7 +19,18 @@ const VISUAL: [RegExp, string][] = [
 ];
 
 function clean(value: string) {
-  return value.replace(/^#+\s*/, "").replace(/^>\s*/, "").replace(/^[*_]+|[*_]+$/g, "").replace(/^["\u201c]|["\u201d]$/g, "").replace(/^\d+[.)]\s*/, "").trim();
+  return value
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\*\*(?:ON-SCREEN TEXT|VOICEOVER|B-ROLL):\*\*/gi, " ")
+    .replace(/^(?:on-screen text|voiceover|b-roll|caption|visual)\s*:\s*/i, "")
+    .replace(/^#+\s*/, "")
+    .replace(/^>\s*/, "")
+    .replace(/^[-*+]\s+/, "")
+    .replace(/[*_#>`~]/g, " ")
+    .replace(/^["\u201c]|["\u201d]$/g, "")
+    .replace(/^\d+[.)]\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 function visualFrom(line: string) {
   const lower = line.toLowerCase();
