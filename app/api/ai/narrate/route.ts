@@ -8,7 +8,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const limit = rateLimit(`voice:${clientIp(req)}`, 12, 60);
+  const limit = rateLimit(`voice:${clientIp(req)}`, 40, 60);
   if (!limit.ok) return rateLimitResponse(limit);
 
   const body = (await req.json().catch(() => null)) as { text?: unknown; voiceId?: unknown } | null;

@@ -63,8 +63,6 @@ export const VOICES: { id: string; label: string; note: string }[] = [
   { id: "rex", label: "Rex", note: "Clear" },
 ];
 
-export const VOICE_LIMIT = 1800;
-
 export function frameSize(aspect: Aspect): { width: number; height: number } {
   if (aspect === "9:16") return { width: 720, height: 1280 };
   if (aspect === "1:1") return { width: 1080, height: 1080 };

@@ -18,6 +18,38 @@ type VoicePayload =
       times: { start: number; end: number }[];
     };
 
+function voiceChunks(text: string): string[] {
+  const parts = text.match(/[^.!?]+[.!?]?/g) ?? [text];
+  const out: string[] = [];
+  let buf = "";
+  for (const raw of parts) {
+    const piece = raw.trim();
+    if (!piece) continue;
+    const next = buf ? `${buf} ${piece}` : piece;
+    if (next.length > 700 && buf) {
+      out.push(buf);
+      buf = piece;
+    } else {
+      buf = next;
+    }
+  }
+  if (buf) out.push(buf);
+  return out.length ? out : [text];
+}
+
+async function fetchVoice(text: string, voiceId: string): Promise<VoicePayload> {
+  try {
+    const res = await fetch("/api/ai/narrate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voiceId }),
+    });
+    return (await res.json()) as VoicePayload;
+  } catch {
+    return { ok: false, error: "Voice didn't answer" };
+  }
+}
+
 function decodeMp3(context: AudioContext, base64: string): Promise<AudioBuffer> {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -142,22 +174,35 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     const key = voiceKey(scenes, voiceId);
     if (failedVoice.current === key) return;
     setNote("Scoring the voice…");
-    const res = await fetch("/api/ai/narrate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: spoken, voiceId }),
-    });
-    const result = (await res.json()) as VoicePayload;
-    if (!result.ok) {
+    const chunks = voiceChunks(spoken);
+    const buffers = [];
+    for (const chunk of chunks) {
+      let result = await fetchVoice(chunk, voiceId);
+      if (!result.ok && chunk.length > 160) {
+        const halves = [chunk.slice(0, Math.ceil(chunk.length / 2)), chunk.slice(Math.ceil(chunk.length / 2))];
+        for (const half of halves) {
+          result = await fetchVoice(half, voiceId);
+          if (!result.ok) continue;
+          const clips = result.parts?.length ? result.parts : [result.audioBase64];
+          for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
+        }
+        continue;
+      }
+      if (!result.ok) {
+        failedVoice.current = key;
+        setNote("Voice missed a line. Playing the rest of the cut.");
+        continue;
+      }
+      const clips = result.parts?.length ? result.parts : [result.audioBase64];
+      for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
+    }
+    if (!buffers.length) {
       failedVoice.current = key;
-      setNote(`${result.error}. Playing the picture cut.`);
+      setNote("Voice didn't come through. Playing the picture cut.");
       return;
     }
-    const clips = result.parts?.length ? result.parts : [result.audioBase64];
-    const buffers = [];
-    for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
     const buffer = joinBuffers(engine.context(), buffers);
-    const timed = marksFromVoice(scenes, spoken, ranges, result.chars, result.times, result.duration || buffer.duration);
+    const timed = marksFromVoice(scenes, spoken, ranges, [], [], buffer.duration);
     engine.setVoice(buffer, timed.words, timed.duration, key);
     failedVoice.current = "";
     const voice = VOICES.find((item) => item.id === voiceId);
