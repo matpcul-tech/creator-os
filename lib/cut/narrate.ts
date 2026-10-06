@@ -1,4 +1,4 @@
-import { LAYOUTS, STILLS, VOICE_LIMIT, VOICES, type Layout, type StillId } from "@/lib/cut/types";
+import { LAYOUTS, STILLS, VOICES, type Layout, type StillId } from "@/lib/cut/types";
 
 const voiceIds = new Set(VOICES.map((voice) => voice.id));
 const layouts = new Set(LAYOUTS.map((layout) => layout.id));
@@ -9,20 +9,6 @@ type VoiceStamp = { start: number; end: number };
 export type VoiceResult =
   | { ok: false; error: string }
   | { ok: true; audioBase64: string; parts?: string[]; duration: number; chars: string[]; times: VoiceStamp[] };
-
-function stamps(times: unknown[] | undefined): VoiceStamp[] {
-  if (!times) return [];
-  return times.map((value) => {
-    if (Array.isArray(value) && value.length >= 2) {
-      return { start: Number(value[0]) || 0, end: Number(value[1]) || 0 };
-    }
-    if (value && typeof value === "object" && "start" in value && "end" in value) {
-      const item = value as { start: unknown; end: unknown };
-      return { start: Number(item.start) || 0, end: Number(item.end) || 0 };
-    }
-    return { start: 0, end: 0 };
-  });
-}
 
 export function voiceConfigured(): boolean {
   return true;
@@ -100,59 +86,61 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
   const clean = text.trim();
   const voice = voiceId.trim().toLowerCase();
   if (!clean) return { ok: false, error: "Nothing to say" };
-  if (clean.length > VOICE_LIMIT) return { ok: false, error: "This cut is too long to voice in one pass" };
   if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };
 
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return googleNarration(clean, voice);
 
-  let response: Response;
+  const voiced = await xaiNarration(apiKey, clean, voice);
+  if (voiced) return voiced;
+  return googleNarration(clean, voice);
+}
+
+async function xaiNarration(apiKey: string, text: string, voice: string): Promise<VoiceResult | null> {
   try {
-    response = await fetch("https://api.x.ai/v1/tts", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: clean,
-        voice_id: voice,
-        language: "en",
-        with_timestamps: true,
-        text_normalization: true,
-        output_format: { codec: "mp3", sample_rate: 24000, bit_rate: 128000 },
-      }),
-    });
+    const parts: string[] = [];
+    for (const piece of pieces(text, 1200)) {
+      const audio = await xaiPart(apiKey, piece, voice);
+      if (!audio) return null;
+      parts.push(audio);
+    }
+    if (!parts.length) return null;
+    return { ok: true, audioBase64: parts[0], parts, duration: 0, chars: [], times: [] };
   } catch {
-    return googleNarration(clean, voice);
+    return null;
   }
+}
 
-  if (!response.ok) return googleNarration(clean, voice);
-
+async function xaiPart(apiKey: string, text: string, voice: string): Promise<string | null> {
+  const response = await fetch("https://api.x.ai/v1/tts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      voice_id: voice,
+      language: "en",
+      with_timestamps: true,
+      text_normalization: true,
+      output_format: { codec: "mp3", sample_rate: 24000, bit_rate: 128000 },
+    }),
+  });
+  if (!response.ok) return null;
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const json = (await response.json()) as {
-      audio?: string;
-      duration?: number;
-      audio_timestamps?: { graph_chars?: string[]; graph_times?: unknown[] };
-    };
-    if (!json.audio) return { ok: false, error: "Voice came back empty" };
-    return {
-      ok: true,
-      audioBase64: json.audio,
-      duration: Number(json.duration) || 0,
-      chars: json.audio_timestamps?.graph_chars ?? [],
-      times: stamps(json.audio_timestamps?.graph_times),
-    };
+    const json = (await response.json()) as { audio?: string };
+    return json.audio || null;
   }
-
   const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.length) return null;
   let binary = "";
   const chunk = 4096;
   for (let index = 0; index < bytes.length; index += chunk) {
     binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
   }
-  return { ok: true, audioBase64: btoa(binary), duration: 0, chars: [], times: [] };
+  return btoa(binary);
 }
 
 export async function sharpenCards(narrations: string[]) {

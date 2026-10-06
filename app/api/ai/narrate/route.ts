@@ -1,6 +1,8 @@
 import { scoreNarration, voiceConfigured } from "@/lib/cut/narrate";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
+export const maxDuration = 60;
+
 export async function GET() {
   return Response.json({ ready: voiceConfigured() });
 }

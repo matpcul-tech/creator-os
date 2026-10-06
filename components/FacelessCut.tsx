@@ -5,7 +5,7 @@ import { Download, Pause, Play, Sparkles } from "lucide-react";
 import { CutEngine, type EngineSnapshot } from "@/lib/cut/engine";
 import { directScript, spokenScript, voiceKey } from "@/lib/cut/direct";
 import { marksFromVoice } from "@/lib/cut/timeline";
-import { ASPECTS, VOICE_LIMIT, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
+import { ASPECTS, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
 
 type VoicePayload =
   | { ok: false; error: string }
@@ -121,11 +121,6 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     const { spoken, ranges } = spokenScript(scenes);
     const key = voiceKey(scenes, voiceId);
     if (failedVoice.current === key) return;
-    if (spoken.length > VOICE_LIMIT) {
-      setNote("This cut is too long to voice in one pass. Shorten the script.");
-      failedVoice.current = key;
-      return;
-    }
     setNote("Scoring the voice…");
     const res = await fetch("/api/ai/narrate", {
       method: "POST",
