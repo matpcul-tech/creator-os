@@ -50,10 +50,10 @@ export function scriptPrompt(opts: {
 }) {
   const p = PLATFORMS[opts.platform];
   const formatHints: Record<string, string> = {
-    long_video: `Long-form YouTube video script. Include sections: HOOK (first ${p.hookSeconds}s, on screen + spoken), SETUP, MAIN CONTENT (3–5 beats), PAYOFF, CTA. Format with clear section headers.`,
-    short_video: `Short-form vertical script (TikTok/Reels/Shorts). Include: HOOK (first 3s, both visual and verbal), 3 BEATS, OUTRO. Aim for 30–60 seconds total. Format with clear headers.`,
+    long_video: `Long-form YouTube video script. One short sentence per line. No labels and no dashes.`,
+    short_video: `Short-form vertical script. One short sentence per line. A blank line between lines. About 8 to 14 lines. No labels and no dashes.`,
     image_post: `Caption + carousel slide outline. Format: CAPTION (first line is the hook), then 6–8 SLIDE OUTLINES each 1–2 lines.`,
-    text_post: `Native ${p.name} post. Lead with the strongest hook. ${p.charLimit} char ceiling — stay under it. Use line breaks every 1–2 sentences for readability.`,
+    text_post: `Native ${p.name} post. Lead with the strongest hook. Stay under ${p.charLimit} characters. One or two sentences per line. No dashes.`,
     newsletter: `Newsletter draft. Format: SUBJECT LINE (test 3 versions), OPENING (hook), BODY (3 main sections with H2 headers), CTA, P.S.`,
     podcast: `Podcast script outline. Format: COLD OPEN (most interesting quote/moment), INTRO, 4–6 SEGMENTS with talking points, OUTRO with question for next ep.`,
     blog: `Blog post draft. Format: H1, INTRO (answer the query in para 1), 4–6 H2 SECTIONS with supporting paragraphs, CONCLUSION with takeaway.`,
@@ -67,7 +67,7 @@ Platform tips: ${p.promptTips}
 Format: ${formatHints[p.format]}
 ${opts.context ? `\nAdditional context from the creator:\n${opts.context}` : ""}
 
-Write the script directly — no preamble, no meta-commentary.`;
+Write the script directly. No preamble. No em dashes. No en dashes.`;
 }
 
 export function adaptPrompt(opts: { master: string; targets: PlatformId[] }) {

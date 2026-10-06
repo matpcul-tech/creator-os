@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   const limit = rateLimit(`clips:${clientIp(req)}`, 20, 60);
   if (!limit.ok) return rateLimitResponse(limit);
   const body = (await req.json().catch(() => null)) as { lines?: unknown } | null;
-  const lines = Array.isArray(body?.lines) ? body.lines.filter((line): line is string => typeof line === "string").slice(0, 16) : [];
+  const lines = Array.isArray(body?.lines) ? body.lines.filter((line): line is string => typeof line === "string").slice(0, 20) : [];
   if (!lines.length) return Response.json({ clips: [] });
   const clips = await matchClips(lines.map((line) => line.slice(0, 280)));
   return Response.json({ clips });

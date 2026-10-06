@@ -89,6 +89,9 @@ function forSpeech(text: string): string {
     .map((line) =>
       line
         .replace(/\[[^\]]*\]/g, " ")
+        .replace(/[\u2012\u2013\u2014\u2015]/g, ". ")
+        .replace(/\s+--\s+/g, ". ")
+        .replace(/\s+-\s+/g, ". ")
         .replace(/[#＃*_>`~|]+/g, " ")
         .replace(/^(?:captions?|hashes?|hashing|hashtags?|on[- ]?screen(?: text)?|voice ?over|b-roll|visual)\b[:\s-]*/i, "")
         .replace(/\s+/g, " ")
@@ -109,7 +112,7 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
   if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };
 
   const apiKey = process.env.XAI_API_KEY;
-  const chunks = pieces(clean, 420);
+  const chunks = pieces(clean, 90);
   const neural = await edgeNarration(voice, chunks);
   if (neural) return { ok: true, audioBase64: neural[0], parts: neural, duration: 0, chars: [], times: [] };
   if (!apiKey) return googleNarration(clean, voice);

@@ -13,6 +13,46 @@ const STILL_WORDS: Record<StillId, string[]> = {
   phone: ["video", "export", "scroll", "watch", "tab", "screen", "phone", "file"],
 };
 
+function tidy(text: string): string {
+  return text
+    .replace(/[\u2012\u2013\u2014\u2015]/g, ". ")
+    .replace(/\s+--\s+/g, ". ")
+    .replace(/\s+-\s+/g, ". ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.!?])/g, "$1")
+    .replace(/([.!?])\s*([a-z])/g, (_, mark: string, letter: string) => `${mark} ${letter.toUpperCase()}`)
+    .replace(/(?:\. ){2,}/g, ". ")
+    .trim();
+}
+
+export function shapeScript(script: string): string {
+  const lines: string[] = [];
+  for (const raw of script.split(/\n+/)) {
+    const chunk = tidy(raw);
+    if (!chunk) continue;
+    const parts = chunk.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter(Boolean);
+    for (const sentence of parts.length ? parts : [chunk]) {
+      const words = sentence.split(/\s+/);
+      if (words.length <= 12) {
+        lines.push(sentence);
+        continue;
+      }
+      const clauses = sentence.split(/,\s+/);
+      const bits = clauses.length > 1 ? clauses : [];
+      if (!bits.length) {
+        for (let index = 0; index < words.length; index += 10) bits.push(words.slice(index, index + 10).join(" "));
+      }
+      for (const bit of bits) {
+        let line = bit.trim();
+        if (!line) continue;
+        if (!/[.!?]$/.test(line)) line += ".";
+        lines.push(line.charAt(0).toUpperCase() + line.slice(1));
+      }
+    }
+  }
+  return lines.join("\n\n");
+}
+
 function speakableLine(line: string): string {
   return line
     .replace(/\[[^\]]*\]/g, " ")
@@ -34,11 +74,12 @@ function isLabel(line: string): boolean {
 function spokenSource(script: string): string {
   const blocks = [...script.matchAll(/\*\*VOICEOVER:\*\*([\s\S]*?)(?=\*\*(?:ON-SCREEN TEXT|B-ROLL|VOICEOVER):\*\*|$)/gi)];
   const source = blocks.length ? blocks.map((match) => match[1]).join("\n") : script;
-  return source
+  const spoken = source
     .split(/\n+/)
     .map(speakableLine)
     .filter((line) => line.length > 1 && !isLabel(line))
     .join("\n");
+  return shapeScript(spoken);
 }
 
 export const SAMPLE_SCRIPT = `Most creators do not have a posting problem. They have a finishing problem.
@@ -53,40 +94,12 @@ Then make the middle prove it. A number, a picture, a sentence someone could rep
 
 When the cut is done, export it. Do not wait on another tab to finish your video.`;
 
-function sentences(text: string): string[] {
-  return text
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9“"])/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
 function beats(script: string): string[] {
-  const paras = script
+  return script
     .split(/\n+/)
     .map((part) => part.trim())
-    .filter(Boolean);
-  let bits = paras.length >= 3 ? paras : sentences(script);
-  bits = bits.flatMap((bit) => (bit.split(/\s+/).length > 18 ? sentences(bit) : [bit]));
-  const merged: string[] = [];
-  for (const bit of bits) {
-    const count = bit.split(/\s+/).length;
-    if (merged.length && count < 6) merged[merged.length - 1] += " " + bit;
-    else merged.push(bit);
-  }
-  while (merged.length > 14) {
-    let index = 0;
-    let best = Infinity;
-    for (let i = 0; i < merged.length - 1; i++) {
-      const weight = merged[i].length + merged[i + 1].length;
-      if (weight < best) {
-        best = weight;
-        index = i;
-      }
-    }
-    merged.splice(index, 2, `${merged[index]} ${merged[index + 1]}`);
-  }
-  return merged.filter(Boolean).slice(0, 14);
+    .filter(Boolean)
+    .slice(0, 20);
 }
 
 function layoutFor(text: string, index: number, last: number): Layout {

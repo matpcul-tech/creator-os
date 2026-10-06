@@ -23,6 +23,7 @@ import {
 import { PublishPanel } from "@/components/PublishPanel";
 import { FacelessCut } from "@/components/FacelessCut";
 import { PictorySend } from "@/components/PictorySend";
+import { shapeScript } from "@/lib/cut/direct";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -42,7 +43,7 @@ function StudioInner() {
 
   const [title, setTitle] = useState(initialTitle);
   const [platform, setPlatform] = useState<PlatformId>(initialPlatform);
-  const [context, setContext] = useState("Faceless. No on-camera person. Write for burned-in captions.");
+  const [context, setContext] = useState("Faceless. No on-camera person. Short spoken lines only.");
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -57,6 +58,15 @@ function StudioInner() {
     if (initialTitle) setTitle(initialTitle);
   }, [initialTitle]);
 
+  useEffect(() => {
+    if (generating || !draft) return;
+    const long = draft.split(/\n+/).some((line) => line.trim().split(/\s+/).length > 16);
+    const dashed = /[\u2012\u2013\u2014\u2015]|--|\s-\s/.test(draft);
+    if (!long && !dashed) return;
+    const shaped = shapeScript(draft);
+    if (shaped !== draft) setDraft(shaped);
+  }, [draft, generating]);
+
   async function generate() {
     if (!title || generating) return;
     setGenerating(true);
@@ -70,7 +80,7 @@ function StudioInner() {
         body: JSON.stringify({
           title,
           platform,
-          context: `${context}\n\nHard rule: faceless video. Write only the words to be spoken, as plain sentences. No markdown, no # headings, no asterisks, no captions, and no labels such as Caption, Hook, or Voiceover.`,
+          context: `${context}\n\nHard rule: faceless video. One short sentence per line. A blank line between lines. No em dashes, no en dashes, and no hyphens used as dashes. Use a period. No markdown, no headings, no asterisks, no captions.`,
         }),
       });
       if (!res.ok || !res.body) {
@@ -84,8 +94,8 @@ function StudioInner() {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        setDraft(buf);
       }
+      setDraft(shapeScript(buf));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setDraft((prev) => prev + `\n[error: ${msg}]`);

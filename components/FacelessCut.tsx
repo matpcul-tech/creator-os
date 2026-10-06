@@ -29,14 +29,15 @@ function joinBuffers(context: AudioContext, buffers: AudioBuffer[]): AudioBuffer
   const channels = buffers[0]?.numberOfChannels ?? 1;
   const rate = buffers[0]?.sampleRate ?? 24000;
   const length = buffers.reduce((sum, buffer) => sum + buffer.length, 0);
-  const mixed = context.createBuffer(channels, Math.max(1, length), rate);
+  const gap = Math.round(rate * 0.18);
+  const mixed = context.createBuffer(channels, Math.max(1, length + gap * Math.max(0, buffers.length - 1)), rate);
   let offset = 0;
   for (const buffer of buffers) {
     const channelCount = Math.min(channels, buffer.numberOfChannels);
     for (let channel = 0; channel < channelCount; channel += 1) {
       mixed.getChannelData(channel).set(buffer.getChannelData(channel), offset);
     }
-    offset += buffer.length;
+    offset += buffer.length + gap;
   }
   return mixed;
 }
