@@ -32,12 +32,26 @@ function escapeXml(value: string): string {
   return value.split("&").join(amp).split("<").join(lt).split(">").join(gt).split('"').join(quot);
 }
 
-function speakOne(text: string, voice: string): Promise<Buffer> {
+function speakOne(text: string, voice: string, timeoutMs = 12000): Promise<Buffer> {
   const id = randomUUID().replace(/-/g, "");
   const url =
     `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1` +
     `?TrustedClientToken=${TOKEN}&Sec-MS-GEC=${gec()}&Sec-MS-GEC-Version=1-${CHROMIUM}&ConnectionId=${id}`;
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const chunks: Buffer[] = [];
+    const finish = (error: Error | null, audio?: Buffer) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        ws.terminate();
+      } catch {
+        /* already closed */
+      }
+      if (error) reject(error);
+      else resolve(audio as Buffer);
+    };
     const ws = new WebSocket(url, {
       headers: {
         "User-Agent":
@@ -47,32 +61,30 @@ function speakOne(text: string, voice: string): Promise<Buffer> {
         "Cache-Control": "no-cache",
       },
     });
-    const chunks: Buffer[] = [];
-    const timer = setTimeout(() => {
-      ws.terminate();
-      reject(new Error("voice timed out"));
-    }, 20000);
+    const timer = setTimeout(() => finish(new Error("voice timed out")), timeoutMs);
     ws.on("open", () => {
-      const stamp = new Date().toString();
-      ws.send(
-        `X-Timestamp:${stamp}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-          `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`,
-      );
-      const ssml =
-        `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>` +
-        `<voice name='${voice}'><prosody rate='-6%'>${escapeXml(text)}</prosody></voice></speak>`;
-      ws.send(
-        `X-RequestId:${randomUUID()}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${stamp}\r\nPath:ssml\r\n\r\n${ssml}`,
-      );
+      try {
+        const stamp = new Date().toString();
+        ws.send(
+          `X-Timestamp:${stamp}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
+            `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`,
+        );
+        const ssml =
+          `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>` +
+          `<voice name='${voice}'><prosody rate='-6%'>${escapeXml(text)}</prosody></voice></speak>`;
+        ws.send(
+          `X-RequestId:${randomUUID().replace(/-/g, "")}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${stamp}\r\nPath:ssml\r\n\r\n${ssml}`,
+        );
+      } catch (error) {
+        finish(error instanceof Error ? error : new Error("voice send failed"));
+      }
     });
     ws.on("message", (data, isBinary) => {
       if (!isBinary) {
         if (data.toString().includes("Path:turn.end")) {
-          clearTimeout(timer);
-          ws.close();
           const audio = Buffer.concat(chunks);
-          if (audio.length < 400) reject(new Error("voice came back empty"));
-          else resolve(audio);
+          if (audio.length < 400) finish(new Error("voice came back empty"));
+          else finish(null, audio);
         }
         return;
       }
@@ -80,23 +92,39 @@ function speakOne(text: string, voice: string): Promise<Buffer> {
       const marker = buf.indexOf("Path:audio\r\n");
       chunks.push(marker >= 0 ? buf.subarray(marker + "Path:audio\r\n".length) : buf);
     });
-    ws.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
+    ws.on("unexpected-response", (_req, res) => finish(new Error(`voice refused (${res.statusCode})`)));
+    // The service sometimes drops the socket (1006) before turn.end. Fail fast instead of hanging.
+    ws.on("close", (code) => finish(new Error(`voice closed early (${code})`)));
+    ws.on("error", (error) => finish(error));
   });
+}
+
+async function speakWithRetry(text: string, voice: string): Promise<Buffer> {
+  try {
+    return await speakOne(text, voice);
+  } catch {
+    return speakOne(text, voice);
+  }
 }
 
 export async function edgeNarration(voiceId: string, pieces: string[]): Promise<string[] | null> {
   const voice = NEURAL[voiceId] ?? NEURAL.orion;
-  try {
-    const parts: string[] = [];
-    for (const piece of pieces) {
-      const audio = await speakOne(piece, voice);
-      parts.push(audio.toString("base64"));
+  if (!pieces.length) return null;
+  const parts: string[] = new Array(pieces.length);
+  let next = 0;
+  let failed = false;
+  const worker = async () => {
+    while (!failed && next < pieces.length) {
+      const index = next++;
+      try {
+        const audio = await speakWithRetry(pieces[index], voice);
+        parts[index] = audio.toString("base64");
+      } catch (error) {
+        failed = true;
+        console.warn("edge voice failed:", error instanceof Error ? error.message : error);
+      }
     }
-    return parts.length ? parts : null;
-  } catch {
-    return null;
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, pieces.length) }, worker));
+  return failed ? null : parts;
 }

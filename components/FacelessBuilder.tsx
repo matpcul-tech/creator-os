@@ -96,13 +96,19 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scenesRef = useRef<Scene[]>([]);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
+  const voiceFromFile = useRef(false);
+  const mixRef = useRef<{ el: HTMLAudioElement; ctx: AudioContext; dest: MediaStreamAudioDestinationNode } | null>(null);
   const [text, setText] = useState(script);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [status, setStatus] = useState("No B-roll needed. Photos come from the spoken lines.");
   const [fileUrl, setFileUrl] = useState("");
   const [voiceName, setVoiceName] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => setText(script), [script]);
+  useEffect(() => {
+    setText(script);
+    scenesRef.current = [];
+    if (!voiceFromFile.current) voiceRef.current = null;
+  }, [script]);
 
   function read() {
     const parsed = parseScript(text);
@@ -151,30 +157,84 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     setStatus(built.filter((s) => s.media).length + " of " + built.length + " cards have a photo. No B-roll block required.");
     return built;
   }
-  function speak() {
+  async function narrated(list: Scene[]): Promise<HTMLAudioElement | null> {
+    const text = Array.from(new Set(list.map((s) => s.voice))).join(" ");
+    if (!text.trim()) return null;
+    try {
+      const res = await fetch("/api/ai/narrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voiceId: "orion" }),
+      });
+      const body = (await res.json()) as { ok: boolean; audioBase64?: string; parts?: string[] };
+      const parts = body.ok ? (body.parts?.length ? body.parts : body.audioBase64 ? [body.audioBase64] : []) : [];
+      if (!parts.length) return null;
+      const bytes = parts.map((part) => Uint8Array.from(atob(part), (c) => c.charCodeAt(0)));
+      const audio = new Audio(URL.createObjectURL(new Blob(bytes, { type: "audio/mpeg" })));
+      await new Promise<void>((resolve, reject) => {
+        audio.onloadedmetadata = () => resolve();
+        audio.onerror = () => reject(new Error("voice unreadable"));
+      });
+      return audio;
+    } catch {
+      return null;
+    }
+  }
+  async function ensureVoice(list: Scene[]): Promise<HTMLAudioElement | null> {
+    if (voiceRef.current?.src) return voiceRef.current;
+    setStatus("Scoring the voice…");
+    const audio = await narrated(list);
+    if (audio) voiceRef.current = audio;
+    return audio;
+  }
+  async function speak() {
     const parsed = scenesRef.current.length ? scenesRef.current : read();
+    const audio = await ensureVoice(parsed);
+    if (audio) {
+      setStatus(voiceFromFile.current ? "Playing your voice file." : "Playing the narrator voice. Make video records it into the file.");
+      audio.currentTime = 0;
+      await audio.play().catch(() => undefined);
+      return;
+    }
+    setStatus("Narrator voice did not answer. Previewing with the browser voice, which is not recorded into the file.");
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(Array.from(new Set(parsed.map((s) => s.voice))).join(" ")));
   }
   async function render() {
     if (busy) return;
-    const list = scenesRef.current.some((s) => s.media) ? scenesRef.current : await findStock();
+    const found = scenesRef.current.some((s) => s.media) ? scenesRef.current : await findStock();
     const canvas = canvasRef.current;
-    if (!canvas || !list.length) return;
+    if (!canvas || !found.length) return;
+    setBusy(true);
+    const voice = await ensureVoice(found);
+    setBusy(false);
+    let list = found;
+    if (voice && Number.isFinite(voice.duration) && voice.duration > 0.5) {
+      // Stretch the cards so the picture lasts as long as the voice.
+      const planned = found.reduce((n, s) => n + s.seconds, 0) || 1;
+      const scale = (voice.duration + 0.4) / planned;
+      list = found.map((s) => ({ ...s, seconds: s.seconds * scale }));
+      scenesRef.current = list;
+    }
+    setStatus(voice ? "Recording picture and voice…" : "Voice did not answer. Recording the picture only.");
     const canvasStream = canvas.captureStream(30);
     let mixed: MediaStream = canvasStream;
-    const voice = voiceRef.current;
     if (voice?.src) {
-      const audioCtx = new AudioContext();
-      const dest = audioCtx.createMediaStreamDestination();
-      const source = audioCtx.createMediaElementSource(voice);
-      source.connect(dest);
-      source.connect(audioCtx.destination);
-      mixed = new MediaStream([...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+      if (!mixRef.current || mixRef.current.el !== voice) {
+        // A media element can only be wired to one source node, so build this once per voice.
+        const ctx = new AudioContext();
+        const dest = ctx.createMediaStreamDestination();
+        const source = ctx.createMediaElementSource(voice);
+        source.connect(dest);
+        source.connect(ctx.destination);
+        mixRef.current = { el: voice, ctx, dest };
+      }
+      await mixRef.current.ctx.resume();
+      mixed = new MediaStream([...canvasStream.getVideoTracks(), ...mixRef.current.dest.stream.getAudioTracks()]);
       voice.currentTime = 0;
       await voice.play();
     }
-    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+    const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type)) || "video/webm";
     const rec = new MediaRecorder(mixed, { mimeType: mime });
     const chunks: Blob[] = [];
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
@@ -211,14 +271,14 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     <div className="grid md:grid-cols-[220px_1fr] gap-6">
       <canvas ref={canvasRef} width={720} height={1280} className="w-full max-w-[220px] rounded-2xl bg-black" />
       <div>
-        <textarea value={text} onChange={(e) => { setText(e.target.value); scenesRef.current = []; }} className="cai-input min-h-[160px] text-sm" />
+        <textarea value={text} onChange={(e) => { setText(e.target.value); scenesRef.current = []; if (!voiceFromFile.current) voiceRef.current = null; }} className="cai-input min-h-[160px] text-sm" />
         <label className="mt-3 flex items-center gap-2 text-xs text-dark-300">
           <Mic size={12} /> Voice file
           <input type="file" accept="audio/*" onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            if (!voiceRef.current) voiceRef.current = new Audio();
-            voiceRef.current.src = URL.createObjectURL(file);
+            voiceRef.current = new Audio(URL.createObjectURL(file));
+            voiceFromFile.current = true;
             setVoiceName(file.name);
           }} />
           {voiceName}
@@ -226,7 +286,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
         <div className="flex flex-wrap gap-2 mt-3">
           <button onClick={read} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white">Read script</button>
           <button onClick={findStock} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><ImageIcon size={12} /> Find photos</button>
-          <button onClick={speak} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><Mic size={12} /> Play voice</button>
+          <button onClick={() => void speak()} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><Mic size={12} /> Play voice</button>
           <button onClick={render} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-brand-500/15 text-brand-400 flex items-center gap-1"><Download size={12} /> Make video</button>
         </div>
         <p className="text-xs text-dark-500 mt-3">{status}</p>
