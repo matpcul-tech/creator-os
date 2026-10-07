@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -63,6 +63,12 @@ export function Sidebar({ creatorName }: { creatorName?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  // On a phone the full sidebar is 256px wide and leaves about 70px for the page.
+  // Start collapsed below the md breakpoint so Studio and the builder are usable.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setCollapsed(true);
+  }, []);
   const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
@@ -78,7 +84,7 @@ export function Sidebar({ creatorName }: { creatorName?: string }) {
 
   return (
     <aside
-      className={`${collapsed ? "w-[72px]" : "w-64"} h-screen sticky top-0 flex flex-col transition-all duration-300 border-r border-dark-800/50 bg-dark-950`}
+      className={`${collapsed ? "w-[72px]" : "w-64"} shrink-0 h-screen sticky top-0 flex flex-col transition-all duration-300 border-r border-dark-800/50 bg-dark-950`}
     >
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 h-16 border-b border-dark-800/50">

@@ -13,8 +13,8 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-dark-950">
       <Sidebar creatorName={profile?.name || undefined} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="p-4 md:p-8">
           {!onboarded ? <OnboardingBanner /> : null}
           {children}
         </div>
