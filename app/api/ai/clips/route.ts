@@ -1,4 +1,4 @@
-import { allowedImage, matchClips } from "@/lib/cut/clips";
+import { allowedImage, matchClips, WIKI_UA } from "@/lib/cut/clips";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const target = allowedImage(raw);
   if (!target) return new Response("no", { status: 400 });
   const image = await fetch(target, {
-    headers: { "User-Agent": "CreatorAI/1.0 (faceless studio; contact creator)" },
+    headers: { "User-Agent": WIKI_UA },
     redirect: "follow",
   });
   if (!image.ok) return new Response("miss", { status: 404 });

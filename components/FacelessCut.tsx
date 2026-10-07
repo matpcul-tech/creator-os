@@ -80,6 +80,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
   const engineRef = useRef<CutEngine | null>(null);
   const busy = useRef(false);
   const failedVoice = useRef("");
+  const scoring = useRef(false);
   const [scenes, setScenes] = useState<Scene[]>(() => directScript(script));
   const [aspect, setAspect] = useState<Aspect>("9:16");
   const [voiceId, setVoiceId] = useState("orion");
@@ -110,7 +111,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
         setScenes(
           next.map((scene, index) => (body.clips?.[index] ? { ...scene, clip: body.clips[index] as string } : scene)),
         );
-        setNote("Clips follow the lines. The script is spoken, not printed.");
+        if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
       })
       .catch(() => undefined);
     return () => {
@@ -167,46 +168,64 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     return () => observer.disconnect();
   }, [aspect]);
 
+  async function voiceChunk(context: AudioContext, chunk: string): Promise<AudioBuffer[] | null> {
+    const result = await fetchVoice(chunk, voiceId);
+    if (!result.ok && chunk.length > 160) {
+      const middle = Math.ceil(chunk.length / 2);
+      const halves = await Promise.all([fetchVoice(chunk.slice(0, middle), voiceId), fetchVoice(chunk.slice(middle), voiceId)]);
+      const out: AudioBuffer[] = [];
+      for (const half of halves) {
+        if (!half.ok) continue;
+        for (const clip of half.parts?.length ? half.parts : [half.audioBase64]) out.push(await decodeMp3(context, clip));
+      }
+      return out.length ? out : null;
+    }
+    if (!result.ok) return null;
+    const out: AudioBuffer[] = [];
+    for (const clip of result.parts?.length ? result.parts : [result.audioBase64]) out.push(await decodeMp3(context, clip));
+    return out;
+  }
+
   async function ensureVoice() {
     const engine = engineRef.current;
     if (!engine || !voiceReady || engine.hasVoice()) return;
     const { spoken, ranges } = spokenScript(scenes);
     const key = voiceKey(scenes, voiceId);
     if (failedVoice.current === key) return;
-    setNote("Scoring the voice…");
+    scoring.current = true;
     const chunks = voiceChunks(spoken);
-    const buffers = [];
-    for (const chunk of chunks) {
-      let result = await fetchVoice(chunk, voiceId);
-      if (!result.ok && chunk.length > 160) {
-        const halves = [chunk.slice(0, Math.ceil(chunk.length / 2)), chunk.slice(Math.ceil(chunk.length / 2))];
-        for (const half of halves) {
-          result = await fetchVoice(half, voiceId);
-          if (!result.ok) continue;
-          const clips = result.parts?.length ? result.parts : [result.audioBase64];
-          for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
-        }
-        continue;
-      }
-      if (!result.ok) {
+    let done = 0;
+    setNote(chunks.length > 1 ? `Scoring the voice (0 of ${chunks.length})…` : "Scoring the voice…");
+    try {
+      const context = engine.context();
+      const results = await Promise.all(
+        chunks.map(async (chunk) => {
+          const buffers = await voiceChunk(context, chunk).catch(() => null);
+          done += 1;
+          if (chunks.length > 1) setNote(`Scoring the voice (${done} of ${chunks.length})…`);
+          return buffers;
+        }),
+      );
+      const missed = results.some((item) => !item);
+      const buffers = results.flatMap((item) => item ?? []);
+      if (!buffers.length) {
         failedVoice.current = key;
-        setNote("Voice missed a line. Playing the rest of the cut.");
-        continue;
+        setNote("Voice didn't come through. Playing the picture cut.");
+        return;
       }
-      const clips = result.parts?.length ? result.parts : [result.audioBase64];
-      for (const clip of clips) buffers.push(await decodeMp3(engine.context(), clip));
+      const buffer = joinBuffers(context, buffers);
+      const timed = marksFromVoice(scenes, spoken, ranges, [], [], buffer.duration);
+      engine.setVoice(buffer, timed.words, timed.duration, key);
+      failedVoice.current = missed ? key : "";
+      const voice = VOICES.find((item) => item.id === voiceId);
+      setNote(
+        missed
+          ? "Voice missed a line. Playing the rest of the cut."
+          : `Voiced with ${voice?.label ?? "the narrator"}. Export writes picture, voice, and music into one file.`,
+      );
+    } finally {
+      scoring.current = false;
     }
-    if (!buffers.length) {
-      failedVoice.current = key;
-      setNote("Voice didn't come through. Playing the picture cut.");
-      return;
-    }
-    const buffer = joinBuffers(engine.context(), buffers);
-    const timed = marksFromVoice(scenes, spoken, ranges, [], [], buffer.duration);
-    engine.setVoice(buffer, timed.words, timed.duration, key);
-    failedVoice.current = "";
-    const voice = VOICES.find((item) => item.id === voiceId);
-    setNote(`Voiced with ${voice?.label ?? "the narrator"}. Export writes picture, voice, and music into one file.`);
   }
 
   async function onPlay() {
@@ -230,7 +249,11 @@ export function FacelessCut({ script, title }: { script: string; title: string }
 
   async function onExport() {
     const engine = engineRef.current;
-    if (!engine || busy.current || clock.recording) return;
+    if (!engine || clock.recording) return;
+    if (busy.current) {
+      setNote("Still scoring the voice. Export will be ready in a moment.");
+      return;
+    }
     busy.current = true;
     setNote("Playing through once to write the file.");
     try {

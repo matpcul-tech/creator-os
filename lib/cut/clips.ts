@@ -27,6 +27,11 @@ const VISUAL: [RegExp, string][] = [
 
 type Stock = { url: string; title: string };
 
+// Wikimedia rate-limits (HTTP 429) any client whose User-Agent has no real contact URL or email.
+// See https://meta.wikimedia.org/wiki/User-Agent_policy
+export const WIKI_UA =
+  "CreatorAI/1.0 (https://creatorai-os.vercel.app; https://github.com/matpcul-tech/creator-os) node-fetch";
+
 export function clipQuery(line: string): string {
   const lower = line.toLowerCase();
   for (const [pattern, query] of VISUAL) if (pattern.test(lower)) return query;
@@ -50,7 +55,8 @@ async function search(query: string): Promise<Stock[]> {
   const url =
     "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url&iiurlwidth=960&gsrsearch=" +
     encodeURIComponent(`${query} filemime:image/jpeg`);
-  const response = await fetch(url, { headers: { "User-Agent": "CreatorAI/1.0 (faceless studio; contact creator)" } });
+  const response = await fetch(url, { headers: { "User-Agent": WIKI_UA, "Api-User-Agent": WIKI_UA } });
+  if (!response.ok) console.warn("clip search", response.status, query);
   if (!response.ok) return [];
   const data = (await response.json()) as {
     query?: { pages?: Record<string, { title?: string; imageinfo?: { thumburl?: string; url?: string }[] }> };
