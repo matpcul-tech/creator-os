@@ -128,3 +128,24 @@ export function fmtTime(time: number): string {
   const whole = Math.max(0, Math.floor(time));
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
+
+/**
+ * Word marks from measured narration spans, one span per scene. Each scene's words share its span
+ * by length, so scene changes land exactly where the voice moves to the next scene.
+ */
+export function marksFromSpans(scenes: Scene[], spans: { start: number; end: number }[], total: number): { words: WordMark[]; duration: number } {
+  const words: WordMark[] = [];
+  scenes.forEach((scene, sceneIndex) => {
+    const span = spans[sceneIndex] ?? { start: total, end: total };
+    const parts = scene.narration.trim().split(/\s+/).filter(Boolean);
+    const weight = parts.reduce((sum, word) => sum + word.length + 1, 0) || 1;
+    const length = Math.max(0, span.end - span.start);
+    let at = span.start;
+    parts.forEach((word) => {
+      const size = (length * (word.length + 1)) / weight;
+      words.push({ word, start: at, end: at + size, scene: sceneIndex });
+      at += size;
+    });
+  });
+  return { words, duration: Math.max(1.2, total + 0.45) };
+}

@@ -228,6 +228,8 @@ export async function pickPhotos(opts: {
   extra?: number;
   queries?: SceneQueries | null;
   ask?: (prompt: string, maxTokens: number) => Promise<string>;
+  /** Lines just before these ones in the script (a long script is searched in batches). Only used so a subject carries over. */
+  context?: string[];
 }): Promise<{ picks: (StockPhoto | null)[]; pool: StockPhoto[]; queries: SceneQueries; querySource: string }> {
   const offset = Math.max(0, Math.min(500, Math.floor(opts.offset ?? 0)));
   const topic = (opts.topic ?? "").trim();
@@ -243,7 +245,14 @@ export async function pickPhotos(opts: {
     sq = fallbackQueries(opts.lines, topic);
   }
   // Every scene stays on the topic: vague lines inherit the current subject or the title.
-  sq = anchorQueries(opts.lines, topic, sq, querySource === "ai" || querySource === "cache" || querySource === "client");
+  const context = (opts.context ?? []).slice(-6);
+  const anchored = anchorQueries(
+    [...context, ...opts.lines],
+    topic,
+    { scenes: [...context.map(() => [] as string[]), ...sq.scenes], topic: sq.topic },
+    querySource === "ai" || querySource === "cache" || querySource === "client",
+  );
+  sq = { scenes: anchored.scenes.slice(context.length), topic: anchored.topic };
   const topicQueries = sq.topic.length ? sq.topic : sq.scenes[0] ?? [];
 
   // Unique queries: the topic first so a fallback pool exists, then every

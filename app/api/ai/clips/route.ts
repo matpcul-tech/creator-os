@@ -5,6 +5,8 @@ import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
+// Lines per request. Long scripts are sent in batches by the browser (lib/cut/place-photos.ts), so
+// this bounds one request, not a video. Anything over it is refused out loud, never dropped.
 const MAX_LINES = 60;
 
 function strings(value: unknown, max: number, len: number): string[] {
@@ -12,15 +14,21 @@ function strings(value: unknown, max: number, len: number): string[] {
 }
 
 export async function POST(req: Request) {
-  const limit = rateLimit(`clips:${clientIp(req)}`, 20, 60);
+  // A long script searches in several batches, so this allows a few videos' worth a minute.
+  const limit = rateLimit(`clips:${clientIp(req)}`, 40, 60);
   if (!limit.ok) return rateLimitResponse(limit);
   const body = (await req.json().catch(() => null)) as
-    | { lines?: unknown; topic?: unknown; exclude?: unknown; offset?: unknown; extra?: unknown; queries?: unknown }
+    | { lines?: unknown; topic?: unknown; exclude?: unknown; offset?: unknown; extra?: unknown; queries?: unknown; context?: unknown }
     | null;
+  if (Array.isArray(body?.lines) && body.lines.length > MAX_LINES) {
+    return Response.json({ error: `One photo request takes up to ${MAX_LINES} lines. Send the script in batches.`, code: "too_many_lines" }, { status: 413 });
+  }
   const lines = strings(body?.lines, MAX_LINES, 280);
   if (!lines.length) return Response.json({ clips: [], items: [], pool: [] });
+  const context = strings(body?.context, 6, 280);
   const topic = typeof body?.topic === "string" ? body.topic.slice(0, 300) : "";
-  const exclude = strings(body?.exclude, 500, 1000);
+  // Every photo the video already uses, so a later batch never repeats an earlier one.
+  const exclude = strings(body?.exclude, 2000, 1000);
   const offset = typeof body?.offset === "number" ? body.offset : 0;
   const extra = typeof body?.extra === "number" ? Math.max(0, Math.min(40, Math.floor(body.extra))) : 0;
   // Queries from an earlier call for the same script skip the AI step.
@@ -32,6 +40,7 @@ export async function POST(req: Request) {
     offset,
     extra,
     queries,
+    context,
     // One small call for the whole script. It counts against the daily cap, and
     // any failure (cap reached, no key, bad answer) falls back to keyword queries.
     ask: (prompt, maxTokens) =>
