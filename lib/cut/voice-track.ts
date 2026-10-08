@@ -11,6 +11,12 @@ export type VoiceTrack =
 
 type Answer = { ok?: boolean; error?: string; code?: string; parts?: string[]; audioBase64?: string; counts?: number[] };
 
+// Batches that were already voiced, so a retry after a failure only asks for the missing scenes and
+// does not use today's voice limit again for the rest.
+const done = new Map<string, { buffers: AudioBuffer[]; counts: number[] }>();
+const DONE_MAX = 64;
+const batchKey = (voiceId: string, texts: string[]) => `${voiceId}::${texts.join("\n")}`;
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function decodeMp3(context: BaseAudioContext, base64: string): Promise<AudioBuffer> {
@@ -48,11 +54,13 @@ export async function voiceTrack(opts: {
   const { segments, voiceId, context } = opts;
   const batches = voiceBatches(segments);
   if (!batches.length) return { ok: false, error: "Nothing to say" };
+  const keys = batches.map((batch) => batchKey(voiceId, batch.map((i) => segments[i])));
+  const needed = keys.filter((key) => !done.has(key)).length;
 
   // Say up front when today's limit cannot cover the whole script, instead of stopping part way.
   try {
     const status = (await fetch("/api/ai/narrate").then((res) => res.json())) as { left?: number | null; limit?: number };
-    const note = voiceLimitNote(batches.length, typeof status.left === "number" ? status.left : null, status.limit ?? 0);
+    const note = voiceLimitNote(needed, typeof status.left === "number" ? status.left : null, status.limit ?? 0);
     if (note) return { ok: false, error: note, code: "budget_exceeded" };
   } catch {
     /* the requests below still enforce the limit */
@@ -63,11 +71,16 @@ export async function voiceTrack(opts: {
   // Set from inside the workers, so the type is spelled out to keep it from narrowing to null.
   let failure = null as Failure | null;
   let next = 0;
-  let done = 0;
+  let finished = 0;
   opts.onProgress?.(0, batches.length);
 
   const runBatch = async (index: number) => {
     const texts = batches[index].map((i) => segments[i]);
+    const saved = done.get(keys[index]);
+    if (saved) {
+      results[index] = saved;
+      return;
+    }
     for (let attempt = 0; attempt < 2; attempt++) {
       if (failure) return;
       const { answer, status, retryAfter } = await ask(texts, voiceId);
@@ -78,6 +91,8 @@ export async function voiceTrack(opts: {
           const buffers: AudioBuffer[] = [];
           for (const part of parts) buffers.push(await decodeMp3(context, part));
           results[index] = { buffers, counts };
+          if (done.size >= DONE_MAX) done.delete(done.keys().next().value as string);
+          done.set(keys[index], results[index]);
           return;
         } catch {
           /* unreadable audio, try once more */
@@ -99,8 +114,8 @@ export async function voiceTrack(opts: {
         const index = next++;
         await runBatch(index);
         if (results[index]) {
-          done += 1;
-          opts.onProgress?.(done, batches.length);
+          finished += 1;
+          opts.onProgress?.(finished, batches.length);
         }
       }
     }),

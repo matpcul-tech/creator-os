@@ -125,6 +125,11 @@ export class CutEngine {
     this.emit(true);
   }
 
+  /** Length of the cut in seconds: the measured voice when there is one, else the estimate. */
+  length(): number {
+    return this.cut.duration;
+  }
+
   hasVoice(): boolean {
     return Boolean(this.voice) && this.scoredKey === voiceKey(this.cut.scenes, this.voiceId);
   }
