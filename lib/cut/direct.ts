@@ -2,7 +2,7 @@ import type { Camera, Layout, Scene, StillId } from "@/lib/cut/types";
 
 const CAMERAS: Camera[] = ["push", "driftL", "rise", "driftR", "hold"];
 
-const STILL_WORDS: Record<StillId, string[]> = {
+export const STILL_WORDS: Record<StillId, string[]> = {
   desk: ["desk", "write", "draft", "doc", "morning", "habit", "post", "open"],
   city: ["city", "night", "world", "grow", "online", "skyline"],
   mic: ["voice", "say", "speak", "talk", "podcast", "story", "sound"],

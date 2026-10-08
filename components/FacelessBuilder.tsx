@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Mic } from "lucide-react";
+import { fileNameFor, photoPlan, scorePhoto, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
+import { STILLS } from "@/lib/cut/types";
 
-type Scene = { caption: string; voice: string; visual: string; media: HTMLImageElement | null; credit: string; seconds: number };
-type StockInfo = { url: string; thumburl?: string; size?: number; descriptionurl?: string };
-const STOP = new Set("the a an and or to for of in on your is it not then with this that from just does have will here what".split(" "));
-const VISUAL: [RegExp, string][] = [
-  [/sleep|bed|night/, "person sleeping dark bedroom"],
-  [/walk|run|cardio|vo2|treadmill|fitness/, "person running on treadmill"],
-  [/lift|muscle|strength|grip|deadlift/, "person lifting weights"],
-  [/food|eat|meal|diet/, "healthy meal on a plate"],
-  [/supplement|pill|bottle/, "supplement bottles on a table"],
-  [/friend|social|lonely|people/, "friends eating together"],
-  [/study|trial|research|paper|data/, "scientific research papers"],
-  [/clock|year|time|stopwatch/, "stopwatch close up"],
-  [/city|street/, "city street daylight"],
-];
+type Scene = {
+  caption: string;
+  voice: string;
+  plan: PhotoPlan;
+  media: HTMLImageElement | null;
+  credit: string;
+  source: string;
+  seconds: number;
+};
+type StockInfo = { url: string; thumburl?: string; descriptionurl?: string; title: string };
 
 function clean(value: string) {
   return value
@@ -31,12 +29,6 @@ function clean(value: string) {
     .replace(/^\d+[.)]\s*/, "")
     .replace(/\s+/g, " ")
     .trim();
-}
-function visualFrom(line: string) {
-  const lower = line.toLowerCase();
-  for (const [re, q] of VISUAL) if (re.test(lower)) return q;
-  const words = lower.replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w));
-  return (words.slice(0, 3).join(" ") || "daylight landscape") + " photograph";
 }
 function isHeading(line: string) {
   return /^(hook|setup|cta|beat|main|payoff|outro|intro|on-screen|voiceover|b-roll|captions?|hashes?|hashing|hashtags?)\b[:\s-]*$/i.test(line) || (/\d+:\d+/.test(line) && line.length < 48);
@@ -53,18 +45,30 @@ function parseScript(script: string): Scene[] {
     if (!captions.length && !spoken) continue;
     const lines = captions.length ? captions : [spoken];
     const seconds = Math.max(4, (spoken || lines.join(" ")).split(/\s+/).filter(Boolean).length / 2.3);
-    const visual = clean((roll?.[1] || "").split(/[.,]/)[0] || "") || visualFrom(spoken || lines[0]);
-    lines.forEach((caption) => labeled.push({ caption, voice: spoken || caption, visual, media: null, credit: "", seconds: seconds / lines.length }));
+    const roll0 = clean((roll?.[1] || "").split(/[.,]/)[0] || "");
+    const base = photoPlan(spoken || lines[0]);
+    const plan = roll0 ? { ...base, queries: [roll0, ...base.queries], tags: [...new Set([...roll0.toLowerCase().split(/\s+/), ...base.tags])] } : base;
+    lines.forEach((caption) => labeled.push({ caption, voice: spoken || caption, plan, media: null, credit: "", source: "", seconds: seconds / lines.length }));
   }
   if (labeled.length) return labeled.slice(0, 24);
-  const lines = script.split(/\n+/).map(clean).filter((line) => line.length > 12 && !isHeading(line)).slice(0, 16);
-  return lines.map((caption) => ({ caption, voice: caption, visual: visualFrom(caption), media: null, credit: "", seconds: Math.max(4.5, caption.split(/\s+/).length / 2.3) }));
+  const lines = script.split(/\n+/).map(clean).filter((line) => line.length > 1 && !isHeading(line));
+  return splitCards(lines).map((caption) => ({
+    caption,
+    voice: caption,
+    plan: photoPlan(caption),
+    media: null,
+    credit: "",
+    source: "",
+    seconds: Math.max(2.8, caption.split(/\s+/).length / 2.3),
+  }));
 }
 async function commons(q: string): Promise<StockInfo[]> {
-  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=3&prop=imageinfo&iiprop=url&iiurlwidth=1080&gsrsearch=" + encodeURIComponent(q + " filemime:image/jpeg");
+  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=1080&gsrsearch=" + encodeURIComponent(q + " filemime:image/jpeg");
   const data = await fetch(url).then((r) => r.json());
-  const pages = Object.values(data.query?.pages || {}) as { imageinfo?: StockInfo[] }[];
-  return pages.map((p) => p.imageinfo?.[0]).filter((info): info is StockInfo => Boolean(info));
+  const pages = Object.values(data.query?.pages || {}) as { title?: string; imageinfo?: Omit<StockInfo, "title">[] }[];
+  return pages
+    .map((p) => (p.imageinfo?.[0] && p.title ? { ...p.imageinfo[0], title: p.title } : null))
+    .filter((info): info is StockInfo => Boolean(info));
 }
 function loadImage(url: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
@@ -92,7 +96,17 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
   return out.slice(0, 4);
 }
 
-export function FacelessBuilder({ script, title, contentId }: { script: string; title: string; contentId?: number }) {
+export function FacelessBuilder({
+  script,
+  title,
+  contentId,
+  onScriptChange,
+}: {
+  script: string;
+  title: string;
+  contentId?: number;
+  onScriptChange?: (value: string) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scenesRef = useRef<Scene[]>([]);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
@@ -104,6 +118,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
   const [fileUrl, setFileUrl] = useState("");
   const [voiceName, setVoiceName] = useState("");
   const [busy, setBusy] = useState(false);
+  const previewCount = useMemo(() => parseScript(text).length, [text]);
   useEffect(() => {
     setText(script);
     scenesRef.current = [];
@@ -115,7 +130,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     scenesRef.current = parsed;
     setScenes(parsed);
     const total = parsed.reduce((n, s) => n + s.seconds, 0);
-    setStatus(parsed.length + " cards. Photos will be searched from the lines. About " + Math.round(total) + " seconds.");
+    setStatus(`${parsed.length} card${parsed.length === 1 ? "" : "s"}, about ${Math.round(total)} seconds. Find photos matches one photo per card.`);
     return parsed;
   }
   function paint(elapsed: number, list = scenesRef.current) {
@@ -136,25 +151,50 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     if (scene?.media) cover(ctx, scene.media, scene.media.naturalWidth || 720, scene.media.naturalHeight || 800, 0, 0, 720, 1280);
     else { ctx.fillStyle = "#1c1b19"; ctx.fillRect(0, 0, 720, 1280); }
   }
+  async function photoFor(scene: Scene, used: Set<string>): Promise<Scene> {
+    let best: { pic: StockInfo; score: number } | null = null;
+    for (const query of scene.plan.queries.slice(0, 2)) {
+      const pics = await commons(query).catch(() => [] as StockInfo[]);
+      for (const pic of pics) {
+        if (used.has(pic.url)) continue;
+        const score = scorePhoto(pic.title, scene.plan);
+        if (!best || score > best.score) best = { pic, score };
+      }
+      if (best && best.score >= 4) break;
+    }
+    // Only take a stock photo that actually mentions what the card is about. Otherwise use a built-in still.
+    if (best && best.score >= 2) {
+      used.add(best.pic.url);
+      const media = await loadImage(best.pic.thumburl || best.pic.url);
+      if (media) {
+        const name = best.pic.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "").replace(/_/g, " ");
+        return { ...scene, media, credit: best.pic.descriptionurl || "Wikimedia Commons", source: name };
+      }
+    }
+    const still = STILLS.find((item) => item.id === scene.plan.still) ?? STILLS[0];
+    const media = await loadImage(still.src);
+    return { ...scene, media, credit: "Built-in still", source: `${still.label} (built-in)` };
+  }
   async function findStock() {
     setBusy(true);
+    setStatus("Finding a photo for each card…");
     const parsed = read();
-    const built: Scene[] = [];
-    for (const scene of parsed) {
-      const pics = await commons(scene.visual).catch(() => [] as StockInfo[]);
-      let media: HTMLImageElement | null = null;
-      let credit = "Wikimedia Commons";
-      for (const pic of pics) {
-        media = await loadImage(pic.thumburl || pic.url);
-        if (media) { credit = pic.descriptionurl || credit; break; }
+    const used = new Set<string>();
+    const built: Scene[] = new Array(parsed.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < parsed.length) {
+        const index = next++;
+        built[index] = await photoFor(parsed[index], used);
       }
-      built.push({ ...scene, media, credit });
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, parsed.length) }, worker));
     scenesRef.current = built;
     setScenes(built);
     paint(0.2, built);
     setBusy(false);
-    setStatus(built.filter((s) => s.media).length + " of " + built.length + " cards have a photo. No B-roll block required.");
+    const stock = built.filter((s) => s.credit !== "Built-in still").length;
+    setStatus(`${built.length} cards. ${stock} matched a stock photo, ${built.length - stock} use a built-in still.`);
     return built;
   }
   async function narrated(list: Scene[]): Promise<HTMLAudioElement | null> {
@@ -257,7 +297,7 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
     setFileUrl(url);
     const a = document.createElement("a");
     a.href = url;
-    a.download = (title || "faceless").slice(0, 40).replace(/\s+/g, "-") + ".webm";
+    a.download = fileNameFor(title, text);
     a.click();
     if (contentId) {
       const req = indexedDB.open("faceless-builder", 1);
@@ -268,13 +308,30 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
   }
 
   return (
-    <div className="grid md:grid-cols-[220px_1fr] gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
       <canvas ref={canvasRef} width={720} height={1280} className="w-full max-w-[220px] rounded-2xl bg-black" />
-      <div>
-        <textarea value={text} onChange={(e) => { setText(e.target.value); scenesRef.current = []; if (!voiceFromFile.current) voiceRef.current = null; }} className="cai-input min-h-[160px] text-sm" />
-        <label className="mt-3 flex items-center gap-2 text-xs text-dark-300">
+      <div className="min-w-0">
+        <label htmlFor="builder-script" className="text-xs font-medium text-dark-300 mb-1.5 block">
+          Script. Paste it here. Each line becomes a card, and a paragraph is split by sentence.
+        </label>
+        <textarea
+          id="builder-script"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            onScriptChange?.(e.target.value);
+            scenesRef.current = [];
+            setScenes([]);
+            if (!voiceFromFile.current) voiceRef.current = null;
+          }}
+          className="cai-input min-h-[160px] text-sm"
+        />
+        <p className="text-[11px] text-dark-500 mt-1">
+          {previewCount} card{previewCount === 1 ? "" : "s"} from this script.
+        </p>
+        <label className="mt-3 flex flex-wrap items-center gap-2 text-xs text-dark-300">
           <Mic size={12} /> Voice file
-          <input type="file" accept="audio/*" onChange={(e) => {
+          <input type="file" accept="audio/*" className="max-w-full text-[11px]" onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
             voiceRef.current = new Audio(URL.createObjectURL(file));
@@ -290,7 +347,12 @@ export function FacelessBuilder({ script, title, contentId }: { script: string; 
           <button onClick={render} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-brand-500/15 text-brand-400 flex items-center gap-1"><Download size={12} /> Make video</button>
         </div>
         <p className="text-xs text-dark-500 mt-3">{status}</p>
-        {scenes.slice(0, 8).map((s, i) => <p key={i} className="text-[10px] text-dark-500 truncate">{i + 1}. {s.caption} — {s.visual}</p>)}
+        {scenes.slice(0, 12).map((s, i) => (
+          <p key={i} className="text-[10px] text-dark-500 truncate">
+            {i + 1}. {s.caption}
+            {s.source ? ` · ${s.source}` : ""}
+          </p>
+        ))}
         {fileUrl ? <video src={fileUrl} controls className="mt-3 w-full max-w-[220px] rounded-xl" /> : null}
       </div>
     </div>
