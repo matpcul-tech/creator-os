@@ -12,12 +12,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PLATFORM_LIST } from "@/lib/platforms";
+import { cleanHandle, cleanVoice } from "@/lib/validation";
+import Link from "next/link";
 
 const STEPS = [
   { id: "identity", title: "Who are you?", desc: "Name, handle, and what you make." },
   { id: "audience", title: "Who's it for?", desc: "Pick your niche and ideal viewer." },
   { id: "platforms", title: "Where do you post?", desc: "Choose your active platforms." },
-  { id: "voice", title: "How do you sound?", desc: "Optional — paste samples to extract your voice." },
+  { id: "voice", title: "How do you sound?", desc: "Optional. Paste samples to extract your voice." },
   { id: "goals", title: "What's the goal?", desc: "Cadence and what 'winning' looks like." },
 ] as const;
 
@@ -26,6 +28,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [fieldError, setFieldError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -68,8 +71,35 @@ export default function OnboardingPage() {
       .catch(() => {});
   }, []);
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const prev = () => setStep((s) => Math.max(s - 1, 0));
+  // Check the current step before moving on. Returns false and shows a
+  // message when something needs fixing.
+  function validateStep(id: string): boolean {
+    if (id === "identity") {
+      const h = cleanHandle(form.handle);
+      if (h.error) {
+        setFieldError(h.error);
+        return false;
+      }
+      if (h.value !== form.handle) setForm((f) => ({ ...f, handle: h.value }));
+    }
+    if (id === "voice") {
+      const v = cleanVoice(form.voice);
+      if (v.error) {
+        setFieldError(v.error);
+        return false;
+      }
+    }
+    setFieldError("");
+    return true;
+  }
+  const next = () => {
+    if (!validateStep(STEPS[step].id)) return;
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+  const prev = () => {
+    setFieldError("");
+    setStep((s) => Math.max(s - 1, 0));
+  };
   const togglePlatform = (id: string) =>
     setForm((f) => ({
       ...f,
@@ -97,24 +127,31 @@ export default function OnboardingPage() {
   }
 
   async function finish() {
+    if (!validateStep("identity") || !validateStep("voice")) return;
     setSaving(true);
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          handle: form.handle,
+          handle: cleanHandle(form.handle).value,
           bio: form.bio,
           niche: form.niche,
           audience: form.audience,
           platforms: form.platforms,
-          voice: form.voice,
+          voice: form.voice.trim(),
           weeklyCadence: form.weeklyCadence,
           goals: form.goals,
           complete: true,
         }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setFieldError(json.error || "Couldn't save your profile. Please try again.");
+        setSaving(false);
+        return;
+      }
       router.push("/dashboard");
     } catch (e) {
       setSaving(false);
@@ -132,6 +169,14 @@ export default function OnboardingPage() {
       }}
     >
       <div className="w-full max-w-2xl">
+        <div className="mb-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-dark-400 hover:text-white hover:bg-dark-800/50 transition-colors"
+          >
+            <ArrowLeft size={16} /> Back to app
+          </Link>
+        </div>
         <div className="flex items-center justify-center gap-2 mb-6">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-blue-500 flex items-center justify-center">
             <Sparkles size={20} className="text-white" />
@@ -181,7 +226,11 @@ export default function OnboardingPage() {
                   <Field label="Handle (without @)">
                     <input
                       value={form.handle}
-                      onChange={(e) => setForm({ ...form, handle: e.target.value })}
+                      onChange={(e) => { setForm({ ...form, handle: e.target.value }); setFieldError(""); }}
+                      onBlur={() => setForm((f) => ({ ...f, handle: f.handle.trim().replace(/^@+/, "") }))}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       placeholder="alexrivera"
                       className="cai-input"
                     />
@@ -277,23 +326,14 @@ export default function OnboardingPage() {
                       </>
                     )}
                   </button>
-                  {form.voice ? (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                      <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">
-                        <Check size={14} /> Voice extracted
-                      </div>
-                      <p className="text-sm text-dark-200">{form.voice}</p>
-                    </div>
-                  ) : (
-                    <Field label="Or describe your voice in your own words">
-                      <textarea
-                        value={form.voice}
-                        onChange={(e) => setForm({ ...form, voice: e.target.value })}
-                        placeholder="Conversational, data-driven, slightly contrarian. No hype words."
-                        className="cai-input min-h-[80px]"
-                      />
-                    </Field>
-                  )}
+                  <Field label="Your voice, in your own words (or edit what the AI found)">
+                    <textarea
+                      value={form.voice}
+                      onChange={(e) => { setForm({ ...form, voice: e.target.value }); setFieldError(""); }}
+                      placeholder="Conversational, data-driven, slightly contrarian. No hype words."
+                      className="cai-input min-h-[80px]"
+                    />
+                  </Field>
                 </div>
               )}
 
@@ -329,6 +369,12 @@ export default function OnboardingPage() {
               )}
             </motion.div>
           </AnimatePresence>
+
+          {fieldError ? (
+            <p role="alert" className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {fieldError}
+            </p>
+          ) : null}
 
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-dark-800/50">
             <button

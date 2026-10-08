@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
+import { cleanHandle, cleanVoice } from "@/lib/validation";
 
 export async function GET() {
   const profile = await prisma.profile.findFirst();
@@ -20,6 +21,20 @@ export async function POST(req: Request) {
     goals: body.goals ?? undefined,
     weeklyCadence: body.weeklyCadence ?? undefined,
   };
+
+  // Only validate fields that are actually changing, so re-saving older
+  // profile values never fails and existing data is left as it is.
+  const existingProfile = await prisma.profile.findFirst();
+  if (typeof body.handle === "string" && body.handle !== existingProfile?.handle) {
+    const h = cleanHandle(body.handle);
+    if (h.error) return NextResponse.json({ error: h.error, field: "handle" }, { status: 400 });
+    data.handle = h.value;
+  }
+  if (typeof body.voice === "string" && body.voice !== existingProfile?.voice) {
+    const v = cleanVoice(body.voice);
+    if (v.error) return NextResponse.json({ error: v.error, field: "voice" }, { status: 400 });
+    data.voice = v.value;
+  }
 
   if (Array.isArray(body.platforms)) {
     data.platforms = stringifyJSON(body.platforms);

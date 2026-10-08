@@ -242,7 +242,7 @@ function PieceCard({
         ) : null}
       </div>
       <div
-        className="grid grid-cols-4 gap-1 mt-2 pt-2 border-t border-dark-700/30"
+        className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-dark-700/30"
         onClick={(e) => e.stopPropagation()}
       >
         {COLUMNS.map((c) => {
@@ -252,14 +252,14 @@ function PieceCard({
               key={c.id}
               onClick={() => !active && onMove(c.id)}
               disabled={active}
-              className={`text-[10px] py-1 rounded transition-colors ${
+              className={`text-[11px] leading-tight px-1 py-1.5 rounded whitespace-nowrap transition-colors ${
                 active
                   ? "bg-brand-500/20 text-brand-400 cursor-default"
                   : "text-dark-500 hover:text-white hover:bg-dark-700/40"
               }`}
               title={`Move to ${c.label}`}
             >
-              {c.label.slice(0, 4)}
+              {c.label}
             </button>
           );
         })}

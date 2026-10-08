@@ -7,6 +7,7 @@ import {
   Linkedin,
   Mail,
   Mic,
+  Music2,
   FileText,
   Globe,
 } from "lucide-react";
@@ -76,7 +77,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
   tiktok: {
     id: "tiktok",
     name: "TikTok",
-    icon: Mic,
+    icon: Music2,
     color: "from-fuchsia-500 to-pink-500",
     dotColor: "bg-fuchsia-500",
     format: "short_video",
