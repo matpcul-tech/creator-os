@@ -118,7 +118,7 @@ function punch(narration: string, layout: Layout): string {
     if (match) {
       const rest = clean
         .replace(match[1], "")
-        .replace(/^[\s,:\-—]+/, "")
+        .replace(/^[\s,:\-\u2014]+/, "")
         .split(/\s+/)
         .slice(0, 7)
         .join(" ");
@@ -135,7 +135,7 @@ function punch(narration: string, layout: Layout): string {
   }
   const words = clean.split(/\s+/);
   const cap = layout === "hook" ? 8 : layout === "close" ? 10 : 12;
-  const clause = clean.split(/,|—| - /)[0]?.trim() ?? clean;
+  const clause = clean.split(/,|\u2014| - /)[0]?.trim() ?? clean;
   const clauseWords = clause.split(/\s+/);
   const chosen = clauseWords.length <= cap ? clauseWords : words.slice(0, cap);
   return chosen.join(" ");

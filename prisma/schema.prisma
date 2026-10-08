@@ -1,4 +1,4 @@
-// Creator OS — single-user Postgres schema.
+// Creator OS, single-user Postgres schema.
 // Models are intentionally flat; we'll add relations only where they pull weight.
 
 generator client {
@@ -29,7 +29,7 @@ model Profile {
   updatedAt       DateTime @updatedAt
 }
 
-// Brand kit — colors, fonts, logo URL, voice guidelines, taglines.
+// Brand kit, colors, fonts, logo URL, voice guidelines, taglines.
 model Brand {
   id             Int      @id @default(autoincrement())
   primaryColor   String   @default("#0EA5E9")
@@ -101,7 +101,7 @@ model Sponsor {
   updatedAt     DateTime @updatedAt
 }
 
-// Revenue events — sponsorships, affiliate payouts, product sales.
+// Revenue events, sponsorships, affiliate payouts, product sales.
 model RevenueEntry {
   id          Int      @id @default(autoincrement())
   source      String   // sponsor | affiliate | product | platform
@@ -113,7 +113,7 @@ model RevenueEntry {
   createdAt   DateTime @default(now())
 }
 
-// Audience contacts — top fans, collab partners, sponsor reps, journalists.
+// Audience contacts, top fans, collab partners, sponsor reps, journalists.
 model Contact {
   id           Int      @id @default(autoincrement())
   name         String

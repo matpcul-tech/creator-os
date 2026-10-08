@@ -9,12 +9,12 @@ export function ideaBatchPrompt(opts: { count: number; topic?: string }) {
   }.
 
 For each idea, return:
-- title: a concrete, specific title (no clickbait — accurate)
+- title: a concrete, specific title (no clickbait, accurate)
 - hook: the first line a viewer/reader would see (≤ 100 chars)
 - angle: one sentence on why this is worth making
 - platform: which single platform suits it best (youtube | youtube_shorts | tiktok | instagram | instagram_reels | x | linkedin | threads | substack | podcast | blog | any)
-- tags: 2–5 short topical tags
-- score: integer 1–10 (your honest rating of how strong this idea is for this creator)
+- tags: 2 to 5 short topical tags
+- score: integer 1 to 10 (your honest rating of how strong this idea is for this creator)
 
 Return strict JSON: { "ideas": [ { "title": "...", "hook": "...", "angle": "...", "platform": "...", "tags": ["..."], "score": 8 } ] }`;
 }
@@ -52,11 +52,11 @@ export function scriptPrompt(opts: {
   const formatHints: Record<string, string> = {
     long_video: `Long-form YouTube video script. One short sentence per line. No labels and no dashes.`,
     short_video: `Short-form vertical script. One short sentence per line. A blank line between lines. About 8 to 14 lines. No labels and no dashes.`,
-    image_post: `Caption + carousel slide outline. Format: CAPTION (first line is the hook), then 6–8 SLIDE OUTLINES each 1–2 lines.`,
+    image_post: `Caption + carousel slide outline. Format: CAPTION (first line is the hook), then 6 to 8 SLIDE OUTLINES each 1 to 2 lines.`,
     text_post: `Native ${p.name} post. Lead with the strongest hook. Stay under ${p.charLimit} characters. One or two sentences per line. No dashes.`,
     newsletter: `Newsletter draft. Format: SUBJECT LINE (test 3 versions), OPENING (hook), BODY (3 main sections with H2 headers), CTA, P.S.`,
-    podcast: `Podcast script outline. Format: COLD OPEN (most interesting quote/moment), INTRO, 4–6 SEGMENTS with talking points, OUTRO with question for next ep.`,
-    blog: `Blog post draft. Format: H1, INTRO (answer the query in para 1), 4–6 H2 SECTIONS with supporting paragraphs, CONCLUSION with takeaway.`,
+    podcast: `Podcast script outline. Format: COLD OPEN (most interesting quote/moment), INTRO, 4 to 6 SEGMENTS with talking points, OUTRO with question for next ep.`,
+    blog: `Blog post draft. Format: H1, INTRO (answer the query in para 1), 4 to 6 H2 SECTIONS with supporting paragraphs, CONCLUSION with takeaway.`,
   };
 
   return `Write a ${p.name} script for the following idea.
@@ -78,7 +78,7 @@ export function adaptPrompt(opts: { master: string; targets: PlatformId[] }) {
     })
     .join("\n");
 
-  return `Adapt this master content into platform-native versions for each target. Each variant must respect the platform's character limit, format, and conventions exactly. Don't paste the same text across platforms — rewrite for the medium.
+  return `Adapt this master content into platform-native versions for each target. Each variant must respect the platform's character limit, format, and conventions exactly. Don't paste the same text across platforms, rewrite for the medium.
 
 Target platforms:
 ${lines}
@@ -142,11 +142,11 @@ ${opts.samples}
 """
 
 Return strict JSON with:
-- traits: array of 5 voice traits with strength 0–100. Trait labels should be one or two words (e.g., "Conversational", "Data-Driven", "Witty", "Direct", "Warm", "Analytical").
-- keywords: array of 8–12 short signature words/phrases this creator uses (1–4 words each).
-- voice_description: 1–2 sentences describing the voice in plain language.
-- do_not_use: array of 4–8 words/phrases that would NOT sound like this creator (especially generic AI cliches).
-- example_good: a single 2–3 sentence example written in this voice on the topic of "starting out as a creator".
+- traits: array of 5 voice traits with strength 0 to 100. Trait labels should be one or two words (e.g., "Conversational", "Data-Driven", "Witty", "Direct", "Warm", "Analytical").
+- keywords: array of 8 to 12 short signature words/phrases this creator uses (1 to 4 words each).
+- voice_description: 1 to 2 sentences describing the voice in plain language.
+- do_not_use: array of 4 to 8 words/phrases that would NOT sound like this creator (especially generic AI cliches).
+- example_good: a single 2 to 3 sentence example written in this voice on the topic of "starting out as a creator".
 - example_bad: the same topic written in generic AI voice (for comparison).
 
 Return strict JSON: { "traits": [...], "keywords": [...], "voice_description": "...", "do_not_use": [...], "example_good": "...", "example_bad": "..." }`;
@@ -182,7 +182,7 @@ export function thumbnailPrompt(opts: { title: string }) {
 
 For each concept, describe:
 - visual: the main image/scene
-- text_overlay: 2–6 words of bold text on the thumbnail
+- text_overlay: 2 to 6 words of bold text on the thumbnail
 - style: color palette, expression, composition
 
 Return strict JSON: { "concepts": [ { "visual": "...", "text_overlay": "...", "style": "..." } ] }`;

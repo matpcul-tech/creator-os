@@ -260,7 +260,7 @@ export default function OnboardingPage() {
                     <textarea
                       value={form.audience}
                       onChange={(e) => setForm({ ...form, audience: e.target.value })}
-                      placeholder="22–35 year-olds who already make some content but aren't yet making money from it."
+                      placeholder="22 to 35 year-olds who already make some content but aren't yet making money from it."
                       className="cai-input min-h-[100px]"
                     />
                   </Field>
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
               {current.id === "voice" && (
                 <div className="space-y-4">
                   <Field
-                    label="Paste 3–5 samples of your existing writing (tweets, captions, posts)"
+                    label="Paste 3 to 5 samples of your existing writing (tweets, captions, posts)"
                     hint="Optional. The AI will study these samples so it writes more like you."
                   >
                     <textarea

@@ -1,6 +1,6 @@
 // Web intents: platform-native compose URLs that pre-fill content.
 // For platforms that don't accept text via URL, we fall back to
-// "copy to clipboard + open the platform's compose page" — the standard
+// "copy to clipboard + open the platform's compose page", the standard
 // pattern used by Buffer / Tweet Hunter / Hypefury, etc.
 
 import type { PlatformId } from "./platforms";
@@ -28,13 +28,13 @@ export function buildIntent(
 ): Intent {
   switch (platform) {
     case "x":
-      // X accepts text via the intent URL — true one-click pre-fill.
+      // X accepts text via the intent URL, true one-click pre-fill.
       return {
         mode: "intent",
         url: `https://twitter.com/intent/tweet?text=${enc(text)}`,
         text,
         label: "Open in X",
-        hint: "One-click — text pre-fills in the X composer.",
+        hint: "One click. The text pre-fills in the X composer.",
       };
 
     case "threads":
@@ -69,7 +69,7 @@ export function buildIntent(
 
     case "instagram":
     case "instagram_reels":
-      // Instagram has no web composer for posts/reels — copy is the only option.
+      // Instagram has no web composer for posts/reels, copy is the only option.
       return {
         mode: "copy_open",
         url: "https://www.instagram.com/",

@@ -182,7 +182,7 @@ export default function IdeasPage() {
           </button>
         </div>
         <p className="text-xs text-dark-500 mt-3">
-          Uses your profile + voice to generate niche-aware ideas. Each gets a quality score 1–10.
+          Uses your profile + voice to generate niche-aware ideas. Each gets a quality score 1 to 10.
         </p>
       </div>
 

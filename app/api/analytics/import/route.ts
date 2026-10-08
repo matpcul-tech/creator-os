@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 // Accepts CSV pasted from YouTube Studio, X analytics, or any tool that
 // exports columns including views/likes/comments/shares/followers.
 //
-// Heuristic header detection — case-insensitive, handles common synonyms.
+// Heuristic header detection, case-insensitive, handles common synonyms.
 
 const HEADER_MAP: Record<string, string> = {
   views: "views",
