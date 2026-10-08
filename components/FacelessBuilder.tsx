@@ -109,19 +109,6 @@ function cover(ctx: CanvasRenderingContext2D, media: CanvasImageSource, w: numbe
   const scale = Math.max(dw / w, dh / h);
   ctx.drawImage(media, dx + (dw - w * scale) / 2, dy + (dh - h * scale) / 2, w * scale, h * scale);
 }
-function wrap(ctx: CanvasRenderingContext2D, text: string, max: number) {
-  const words = text.split(" ");
-  const out: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const trial = line ? line + " " + word : word;
-    if (ctx.measureText(trial).width > max && line) { out.push(line); line = word; }
-    else line = trial;
-  }
-  if (line) out.push(line);
-  return out.slice(0, 4);
-}
-
 export function FacelessBuilder({
   script,
   title,
