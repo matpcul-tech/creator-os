@@ -50,6 +50,11 @@ export async function voiceTrack(opts: {
   voiceId: string;
   context: BaseAudioContext;
   onProgress?: (done: number, total: number) => void;
+  /** What the UI calls a segment ("scene" or "card"), and how many it shows in all. */
+  unit?: string;
+  count?: number;
+  /** 1-based first and last numbers the UI shows for a segment, when they differ from its index. */
+  numbersOf?: (segment: number) => [number, number];
 }): Promise<VoiceTrack> {
   const { segments, voiceId, context } = opts;
   const batches = voiceBatches(segments);
@@ -123,14 +128,16 @@ export async function voiceTrack(opts: {
 
   if (failure) {
     const lost = batches[failure.batch];
-    const from = lost[0] + 1;
-    const to = lost[lost.length - 1] + 1;
-    const where = from === to ? `scene ${from}` : `scenes ${from} to ${to}`;
+    const numbers = opts.numbersOf ?? ((segment: number) => [segment + 1, segment + 1] as [number, number]);
+    const from = numbers(lost[0])[0];
+    const to = numbers(lost[lost.length - 1])[1];
+    const unit = opts.unit ?? "scene";
+    const where = from === to ? `${unit} ${from}` : `${unit}s ${from} to ${to}`;
     const reason = failure.error.replace(/\.?$/, ".");
     return {
       ok: false,
       code: failure.code,
-      error: `The voice could not read ${where} of ${segments.length}, so the voice is not added yet. ${reason}`,
+      error: `The voice could not read ${where} of ${opts.count ?? segments.length}, so the voice is not added yet. ${reason}`,
     };
   }
 

@@ -67,15 +67,30 @@ function isLabel(line: string): boolean {
   return /^(hook|setup|cta|beats?|main(\s+content)?|payoff|outro|intro|on-screen(\s+text)?|voiceover|b-roll|captions?|hashes?|hashing|hashtags?|visual|scene\s*\d*)\b[:\s-]*$/i.test(line);
 }
 
-function spokenSource(script: string): string {
+function spokenLines(script: string): string[] {
   const blocks = [...script.matchAll(/\*\*VOICEOVER:\*\*([\s\S]*?)(?=\*\*(?:ON-SCREEN TEXT|B-ROLL|VOICEOVER):\*\*|$)/gi)];
   const source = blocks.length ? blocks.map((match) => match[1]).join("\n") : script;
-  const spoken = source
+  return source
     .split(/\n+/)
     .map(speakableLine)
-    .filter((line) => line.length > 1 && !isLabel(line))
-    .join("\n");
-  return shapeScript(spoken);
+    .filter((line) => line.length > 1 && !isLabel(line));
+}
+
+/**
+ * Shaped lines for the voice and the cut, plus which script line each came from, so counts shown
+ * to the user match the lines they wrote.
+ */
+function spokenParts(script: string): { lines: string[]; origin: number[]; scriptLines: number } {
+  const raw = spokenLines(script);
+  const lines: string[] = [];
+  const origin: number[] = [];
+  raw.forEach((line, index) => {
+    for (const part of beats(shapeScript(line))) {
+      lines.push(part);
+      origin.push(index);
+    }
+  });
+  return { lines, origin, scriptLines: new Set(origin).size };
 }
 
 export const SAMPLE_SCRIPT = `Most creators do not have a posting problem. They have a finishing problem.
@@ -154,7 +169,12 @@ export type DirectPlan = { scenes: Scene[] } & Omit<ScenePlan, "scenes">;
  * MAX_SCENES leaves lines out, and `omittedLines` says how many so the UI can show it.
  */
 export function directPlan(script: string): DirectPlan {
-  const plan = planScenes(beats(spokenSource(script.trim() || SAMPLE_SCRIPT)));
+  const spoken = spokenParts(script.trim() || SAMPLE_SCRIPT);
+  const shaped = planScenes(spoken.lines);
+  // Counts in the script's own lines. A line split across the limit counts as left out.
+  const kept = shaped.groups.reduce((sum, group) => sum + group.lines.length, 0);
+  const keptLines = kept < spoken.lines.length ? new Set(spoken.origin.slice(0, kept)).size - (spoken.origin[kept] === spoken.origin[kept - 1] ? 1 : 0) : spoken.scriptLines;
+  const plan = { ...shaped, lineCount: spoken.scriptLines, omittedLines: spoken.scriptLines - keptLines };
   const parts = plan.scenes;
   const last = parts.length - 1;
   // Spread the built-in stills evenly instead of bouncing between the top two.
