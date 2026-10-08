@@ -1,5 +1,6 @@
 import { spreadStills } from "@/lib/cut/photo-pool";
 import { splitClauses, splitSentences } from "@/lib/cut/sentences";
+import { planScenes, type ScenePlan } from "@/lib/cut/scenes";
 import type { Camera, Layout, Scene, StillId } from "@/lib/cut/types";
 
 const CAMERAS: Camera[] = ["push", "driftL", "rise", "driftR", "hold"];
@@ -89,16 +90,12 @@ Then make the middle prove it. A number, a picture, a sentence someone could rep
 
 When the cut is done, export it. Do not wait on another tab to finish your video.`;
 
-// A spoken script is one short sentence per line, so a 60 to 90 second script
-// runs 25 to 40 lines. The old cap of 20 cut longer scripts off mid way.
-export const MAX_BEATS = 60;
-
+/** Every spoken line of the script, in order. Nothing is capped here. */
 export function beats(script: string): string[] {
   return script
     .split(/\n+/)
     .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, MAX_BEATS);
+    .filter(Boolean);
 }
 
 function layoutFor(text: string, index: number, last: number): Layout {
@@ -149,12 +146,20 @@ function stillScores(text: string): Record<StillId, number> {
   return out;
 }
 
-export function directScript(script: string): Scene[] {
-  const parts = beats(spokenSource(script.trim() || SAMPLE_SCRIPT));
+export type DirectPlan = { scenes: Scene[] } & Omit<ScenePlan, "scenes">;
+
+/**
+ * The whole script as scenes. Consecutive short lines share a scene (a sentence or two, about 4 to 8
+ * seconds), and every spoken line lands in exactly one scene, in order. Only a script past
+ * MAX_SCENES leaves lines out, and `omittedLines` says how many so the UI can show it.
+ */
+export function directPlan(script: string): DirectPlan {
+  const plan = planScenes(beats(spokenSource(script.trim() || SAMPLE_SCRIPT)));
+  const parts = plan.scenes;
   const last = parts.length - 1;
   // Spread the built-in stills evenly instead of bouncing between the top two.
   const stills = spreadStills(parts.map(stillScores), Object.keys(STILL_WORDS) as StillId[]);
-  return parts.map((narration, index) => {
+  const scenes = parts.map((narration, index) => {
     const layout = layoutFor(narration, index, last);
     return {
       id: `s${index + 1}-${narration.length}`,
@@ -165,6 +170,11 @@ export function directScript(script: string): Scene[] {
       camera: CAMERAS[index % CAMERAS.length],
     };
   });
+  return { ...plan, scenes };
+}
+
+export function directScript(script: string): Scene[] {
+  return directPlan(script).scenes;
 }
 
 export function voiceKey(scenes: Scene[], voiceId: string): string {
