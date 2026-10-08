@@ -53,6 +53,8 @@ function StudioInner() {
   const [variants, setVariants] = useState<Variants>({});
   const [adapting, setAdapting] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [aiError, setAiError] = useState("");
+  const [thinWarn, setThinWarn] = useState(false);
 
   useEffect(() => {
     if (initialTitle) setTitle(initialTitle);
@@ -67,8 +69,19 @@ function StudioInner() {
     if (shaped !== draft) setDraft(shaped);
   }, [draft, generating]);
 
-  async function generate() {
-    if (!title || generating) return;
+  // A one or two word title ("Tech") gives the model nothing to go on and it
+  // tends to drift off topic. Ask for more detail first.
+  const titleWords = title.trim().split(/\s+/).filter(Boolean).length;
+  const thinTitle = title.trim().length > 0 && (titleWords < 3 || title.trim().length < 12);
+
+  async function generate(force = false) {
+    if (!title.trim() || generating) return;
+    setAiError("");
+    if (thinTitle && !force) {
+      setThinWarn(true);
+      return;
+    }
+    setThinWarn(false);
     setGenerating(true);
     setDraft("");
     setVariants({});
@@ -84,7 +97,15 @@ function StudioInner() {
         }),
       });
       if (!res.ok || !res.body) {
-        setDraft(`[error: ${await res.text()}]`);
+        const raw = await res.text();
+        let msg = "Something went wrong writing the script. Please try again.";
+        try {
+          const parsed = JSON.parse(raw) as { error?: string };
+          if (parsed.error) msg = parsed.error;
+        } catch {
+          // keep the generic message
+        }
+        setAiError(msg);
         return;
       }
       const reader = res.body.getReader();
@@ -98,7 +119,7 @@ function StudioInner() {
       setDraft(shapeScript(buf));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setDraft((prev) => prev + `\n[error: ${msg}]`);
+      setAiError(msg || "Something went wrong writing the script. Please try again.");
     } finally {
       setGenerating(false);
     }
@@ -172,7 +193,7 @@ function StudioInner() {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-dark-300 mb-1.5 block">Title or topic</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. the 90-second rule for starting hard work" className="cai-input" />
+            <input value={title} onChange={(e) => { setTitle(e.target.value); setThinWarn(false); }} placeholder="e.g. the 90-second rule for starting hard work" className="cai-input" />
           </div>
           <div>
             <label className="text-sm font-medium text-dark-300 mb-2 block">Primary platform</label>
@@ -197,12 +218,32 @@ function StudioInner() {
             <div className="text-xs text-dark-500 max-w-md">
               <span className="font-semibold text-dark-300">Tip:</span> {pCfg.promptTips}
             </div>
-            <Button onClick={generate} disabled={!title || generating}>
+            <Button onClick={() => generate()} disabled={!title.trim() || generating}>
               {generating ? <><RefreshCw size={16} className="animate-spin mr-2" />Writing…</> : <><Wand2 size={16} className="mr-2" />Generate faceless script</>}
             </Button>
           </div>
         </div>
       </div>
+
+      {thinWarn ? (
+        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+          <p className="font-semibold text-amber-200 mb-1">Can you add a bit more detail?</p>
+          <p className="text-dark-300 mb-3">
+            &quot;{title.trim()}&quot; is very short, so the script may wander off topic. Try a full idea, like
+            &quot;3 phone settings that save battery&quot;, or add details in Context.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setThinWarn(false)}>I&apos;ll add more</Button>
+            <Button size="sm" variant="ghost" onClick={() => generate(true)}>Write it anyway</Button>
+          </div>
+        </div>
+      ) : null}
+
+      {aiError ? (
+        <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+          {aiError}
+        </div>
+      ) : null}
 
       {draft || generating ? (
         <div className="cai-card">

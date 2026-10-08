@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/anthropic";
+import { BudgetExceededError, budgetErrorResponse } from "@/lib/ai-budget";
 import { hookBatchPrompt, hookBatchSchema } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -21,12 +22,13 @@ export async function POST(req: Request) {
     const raw = await complete({
       user: hookBatchPrompt({ topic, count, platform }),
       jsonSchema: hookBatchSchema as unknown as Record<string, unknown>,
-      effort: "high",
+      feature: "hooks",
       maxTokens: 2000,
     });
     const parsed = JSON.parse(raw) as { hooks: string[] };
     return NextResponse.json(parsed);
   } catch (e) {
+    if (e instanceof BudgetExceededError) return budgetErrorResponse(e);
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

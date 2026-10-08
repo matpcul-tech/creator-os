@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/anthropic";
+import { BudgetExceededError, budgetErrorResponse } from "@/lib/ai-budget";
 import { adaptPrompt, adaptSchema } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const raw = await complete({
       user: adaptPrompt({ master, targets }),
       jsonSchema: adaptSchema(targets) as unknown as Record<string, unknown>,
-      effort: "high",
+      feature: "adapt",
       maxTokens: 6000,
     });
 
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(parsed);
   } catch (e) {
+    if (e instanceof BudgetExceededError) return budgetErrorResponse(e);
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

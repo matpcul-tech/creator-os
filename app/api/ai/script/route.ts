@@ -1,4 +1,5 @@
 import { streamCompletion } from "@/lib/anthropic";
+import { BudgetExceededError, budgetErrorResponse } from "@/lib/ai-budget";
 import { scriptPrompt } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -18,11 +19,18 @@ export async function POST(req: Request) {
     });
   }
 
-  const stream = await streamCompletion({
-    user: scriptPrompt({ title, platform, context }),
-    effort: "xhigh",
-    maxTokens: 8000,
-  });
+  let stream: ReadableStream<Uint8Array>;
+  try {
+    stream = await streamCompletion({
+      user: scriptPrompt({ title, platform, context: thinTitleNote(title, context) }),
+      feature: "script",
+      maxTokens: 8000,
+    });
+  } catch (e) {
+    if (e instanceof BudgetExceededError) return budgetErrorResponse(e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ error: msg }), { status: 500 });
+  }
 
   return new Response(stream, {
     headers: {
@@ -30,4 +38,13 @@ export async function POST(req: Request) {
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+// Short titles make the model drift. Pin it to the literal topic.
+function thinTitleNote(title: string, context?: string): string | undefined {
+  const words = title.trim().split(/\s+/).filter(Boolean).length;
+  if (words >= 3) return context;
+  const note =
+    "The title is very short. Stay strictly on the literal topic of the title. Do not switch to a different or broader subject.";
+  return context ? `${context}\n\n${note}` : note;
 }
