@@ -105,12 +105,16 @@ export async function assertWithinBudget(): Promise<void> {
   }
 }
 
+export async function voicesUsedToday(): Promise<number> {
+  return prisma.aiUsage.count({
+    where: { feature: "voice", createdAt: { gte: startOfTodayUtc() } },
+  });
+}
+
 // Throws BudgetExceededError when today's voice request count has reached the cap.
 export async function assertWithinVoiceLimit(): Promise<void> {
   const limit = dailyVoiceLimit();
-  const used = await prisma.aiUsage.count({
-    where: { feature: "voice", createdAt: { gte: startOfTodayUtc() } },
-  });
+  const used = await voicesUsedToday();
   if (used >= limit) {
     throw new BudgetExceededError(
       `You've used today's ${limit} voiceovers. The limit resets at midnight UTC.`,

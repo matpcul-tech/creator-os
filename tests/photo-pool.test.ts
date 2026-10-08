@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { assignUnique, spreadStills } from "../lib/cut/photo-pool";
 import { isLikelyPhoto } from "../lib/cut/photo-filter";
-import { directScript, MAX_BEATS } from "../lib/cut/direct";
+import { directScript } from "../lib/cut/direct";
 
 const p = (src: string) => ({ src });
 
@@ -60,7 +60,8 @@ test("the photo filter keeps files that say photograph or Wiki Loves", () => {
 test("long scripts are not cut at 20 lines", () => {
   const script = Array.from({ length: 35 }, (_, i) => `Line number ${i + 1} says one thing.`).join("\n\n");
   const scenes = directScript(script);
-  assert.equal(scenes.length, 35);
-  assert.ok(MAX_BEATS >= 60);
-  assert.match(scenes[34].narration, /35/);
+  // Short lines share scenes now, and every line is still spoken.
+  assert.ok(scenes.length < 35 && scenes.length >= 12, `${scenes.length} scenes`);
+  assert.match(scenes[scenes.length - 1].narration, /35/);
+  for (let i = 1; i <= 35; i++) assert.equal(scenes.filter((scene) => scene.narration.includes(`number ${i} `)).length, 1);
 });

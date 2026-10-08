@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Pause, Play, Sparkles } from "lucide-react";
 import { CutEngine, type EngineSnapshot } from "@/lib/cut/engine";
-import { directScript, spokenScript, voiceKey } from "@/lib/cut/direct";
-import { marksFromVoice } from "@/lib/cut/timeline";
+import { directPlan, voiceKey } from "@/lib/cut/direct";
+import { fmtTime, marksFromSpans } from "@/lib/cut/timeline";
+import { overLimitNote } from "@/lib/cut/scenes";
+import { voiceTrack } from "@/lib/cut/voice-track";
 import { ASPECTS, STILLS, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
 import { planGaps } from "@/lib/cut/fill";
 import { placePhotos } from "@/lib/cut/place-photos";
@@ -26,71 +28,19 @@ function loadOk(url: string): Promise<boolean> {
   });
 }
 
-type VoicePayload =
-  | { ok: false; error: string }
-  | {
-      ok: true;
-      audioBase64: string;
-      parts?: string[];
-      duration: number;
-      chars: string[];
-      times: { start: number; end: number }[];
-    };
+// Sharpen rewrites the on-picture lines for up to 8 scenes per request.
+const SHARPEN_BATCH = 8;
 
-function voiceChunks(text: string): string[] {
-  const parts = text.match(/[^.!?]+[.!?]?/g) ?? [text];
-  const out: string[] = [];
-  let buf = "";
-  for (const raw of parts) {
-    const piece = raw.trim();
-    if (!piece) continue;
-    const next = buf ? `${buf} ${piece}` : piece;
-    if (next.length > 700 && buf) {
-      out.push(buf);
-      buf = piece;
-    } else {
-      buf = next;
+// One photo request. A busy server (429) is waited out once, as it asks.
+async function clipsRequest(body: Record<string, unknown>) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.status === 429 && attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(10, Number(res.headers.get("retry-after")) || 3) * 1000));
+      continue;
     }
+    return res.json();
   }
-  if (buf) out.push(buf);
-  return out.length ? out : [text];
-}
-
-async function fetchVoice(text: string, voiceId: string): Promise<VoicePayload> {
-  try {
-    const res = await fetch("/api/ai/narrate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voiceId }),
-    });
-    return (await res.json()) as VoicePayload;
-  } catch {
-    return { ok: false, error: "Voice didn't answer" };
-  }
-}
-
-function decodeMp3(context: AudioContext, base64: string): Promise<AudioBuffer> {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return context.decodeAudioData(bytes.buffer.slice(0));
-}
-
-function joinBuffers(context: AudioContext, buffers: AudioBuffer[]): AudioBuffer {
-  const channels = buffers[0]?.numberOfChannels ?? 1;
-  const rate = buffers[0]?.sampleRate ?? 24000;
-  const length = buffers.reduce((sum, buffer) => sum + buffer.length, 0);
-  const gap = Math.round(rate * 0.18);
-  const mixed = context.createBuffer(channels, Math.max(1, length + gap * Math.max(0, buffers.length - 1)), rate);
-  let offset = 0;
-  for (const buffer of buffers) {
-    const channelCount = Math.min(channels, buffer.numberOfChannels);
-    for (let channel = 0; channel < channelCount; channel += 1) {
-      mixed.getChannelData(channel).set(buffer.getChannelData(channel), offset);
-    }
-    offset += buffer.length + gap;
-  }
-  return mixed;
 }
 
 export function FacelessCut({ script, title }: { script: string; title: string }) {
@@ -100,7 +50,13 @@ export function FacelessCut({ script, title }: { script: string; title: string }
   const busy = useRef(false);
   const failedVoice = useRef("");
   const scoring = useRef(false);
-  const [scenes, setScenes] = useState<Scene[]>(() => directScript(script));
+  const [scenes, setScenes] = useState<Scene[]>(() => directPlan(script).scenes);
+  // Lines in the script, and a plain note if a script is too long for one video (never silent).
+  const [coverage, setCoverage] = useState(() => {
+    const plan = directPlan(script);
+    return { lines: plan.lineCount, limit: overLimitNote(plan) };
+  });
+  const [photoNote, setPhotoNote] = useState("");
   const [aspect, setAspect] = useState<Aspect>("9:16");
   const [voiceId, setVoiceId] = useState("orion");
   const [music, setMusic] = useState(true);
@@ -116,17 +72,35 @@ export function FacelessCut({ script, title }: { script: string; title: string }
   const [note, setNote] = useState("No face. The script is spoken, not printed on the picture.");
 
   useEffect(() => {
-    const next = directScript(script);
+    const plan = directPlan(script);
+    const next = plan.scenes;
     setScenes(next);
+    setCoverage({ lines: plan.lineCount, limit: overLimitNote(plan) });
+    setPhotoNote(next.length > 1 ? `Finding photos (0 of ${next.length} scenes)…` : "Finding photos…");
     let cancel = false;
+    const stop = new AbortController();
+    const found = new Map<number, string>();
+    let shown = 0;
+    // Photos show up batch by batch, so a long script is watchable before every photo is in.
+    const showFound = () => {
+      if (cancel || found.size === shown) return;
+      shown = found.size;
+      setScenes((current) => (current.length === next.length ? current.map((scene, index) => (found.has(index) ? { ...scene, clip: found.get(index) } : scene)) : current));
+    };
     // Same picker as the Faceless builder. No photo repeats anywhere in the video: failed loads take
-    // unused spares, then a deeper search, then each built-in still once.
-    placePhotos<{ src: string; url: string; key?: string }>({
+    // unused spares, then a deeper search, then each built-in still once. Long scripts go in batches.
+    const search = () => placePhotos<{ src: string; url: string; key?: string }>({
       lines: next.map((scene) => scene.narration),
       topic: title,
-      fetchItems: (body) =>
-        fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((res) => res.json()),
+      signal: stop.signal,
+      fetchItems: (body) => clipsRequest(body),
       load: loadOk,
+      onPick: (index, item) => found.set(index, item.url),
+      onProgress: (done, total) => {
+        if (cancel) return;
+        showFound();
+        if (done < total) setPhotoNote(`Finding photos (${done} of ${total} scenes)…`);
+      },
     })
       .then(({ picks }) => {
         if (cancel) return;
@@ -141,11 +115,17 @@ export function FacelessCut({ script, title }: { script: string; title: string }
           else placed.push(scene);
         });
         setScenes(placed);
+        const photos = picks.filter(Boolean).length;
+        setPhotoNote(photos === next.length ? `Every scene has its own photo.` : `${photos} of ${next.length} scenes have a stock photo. The rest use a built-in still.`);
         if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
       })
-      .catch(() => undefined);
+      .catch(() => setPhotoNote(""));
+    // Typing in the draft changes the script on every key, so the search waits for a pause.
+    const timer = setTimeout(() => void search(), 600);
     return () => {
       cancel = true;
+      clearTimeout(timer);
+      stop.abort();
     };
     // The title only sharpens the photo search, so a title edit alone does not refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -200,61 +180,42 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     return () => observer.disconnect();
   }, [aspect]);
 
-  async function voiceChunk(context: AudioContext, chunk: string): Promise<AudioBuffer[] | null> {
-    const result = await fetchVoice(chunk, voiceId);
-    if (!result.ok && chunk.length > 160) {
-      const middle = Math.ceil(chunk.length / 2);
-      const halves = await Promise.all([fetchVoice(chunk.slice(0, middle), voiceId), fetchVoice(chunk.slice(middle), voiceId)]);
-      const out: AudioBuffer[] = [];
-      for (const half of halves) {
-        if (!half.ok) continue;
-        for (const clip of half.parts?.length ? half.parts : [half.audioBase64]) out.push(await decodeMp3(context, clip));
-      }
-      return out.length ? out : null;
-    }
-    if (!result.ok) return null;
-    const out: AudioBuffer[] = [];
-    for (const clip of result.parts?.length ? result.parts : [result.audioBase64]) out.push(await decodeMp3(context, clip));
-    return out;
-  }
-
-  async function ensureVoice() {
+  // True when the whole script is voiced. Any scene the voice cannot read stops it with a plain note,
+  // so the cut never plays or exports with part of the narration missing.
+  async function ensureVoice(retry = false): Promise<boolean> {
     const engine = engineRef.current;
-    if (!engine || !voiceReady || engine.hasVoice()) return;
-    const { spoken, ranges } = spokenScript(scenes);
+    if (!engine || !voiceReady) return false;
+    if (engine.hasVoice()) return true;
     const key = voiceKey(scenes, voiceId);
-    if (failedVoice.current === key) return;
+    if (failedVoice.current === key && !retry) return false;
     scoring.current = true;
-    const chunks = voiceChunks(spoken);
-    let done = 0;
-    setNote(chunks.length > 1 ? `Scoring the voice (0 of ${chunks.length})…` : "Scoring the voice…");
+    setNote("Scoring the voice…");
     try {
-      const context = engine.context();
-      const results = await Promise.all(
-        chunks.map(async (chunk) => {
-          const buffers = await voiceChunk(context, chunk).catch(() => null);
-          done += 1;
-          if (chunks.length > 1) setNote(`Scoring the voice (${done} of ${chunks.length})…`);
-          return buffers;
-        }),
-      );
-      const missed = results.some((item) => !item);
-      const buffers = results.flatMap((item) => item ?? []);
-      if (!buffers.length) {
+      const track = await voiceTrack({
+        segments: scenes.map((scene) => scene.narration),
+        voiceId,
+        context: engine.context(),
+        onProgress: (done, total) => {
+          if (total > 1) setNote(`Scoring the voice (${done} of ${total} parts)…`);
+        },
+      });
+      if (!track.ok) {
         failedVoice.current = key;
-        setNote("Voice didn't come through. Playing the picture cut.");
-        return;
+        setNote(`${track.error} Press Play or Export to try again.`);
+        return false;
       }
-      const buffer = joinBuffers(context, buffers);
-      const timed = marksFromVoice(scenes, spoken, ranges, [], [], buffer.duration);
-      engine.setVoice(buffer, timed.words, timed.duration, key);
-      failedVoice.current = missed ? key : "";
+      const timed = marksFromSpans(scenes, track.spans, track.total);
+      engine.setVoice(track.buffer, timed.words, timed.duration, key);
+      failedVoice.current = "";
       const voice = VOICES.find((item) => item.id === voiceId);
       setNote(
-        missed
-          ? "Voice missed a line. Playing the rest of the cut."
-          : `Voiced with ${voice?.label ?? "the narrator"}. Export writes picture, voice, and music into one file.`,
+        `Voiced all ${scenes.length} scenes with ${voice?.label ?? "the narrator"} (${fmtTime(timed.duration)}). Export writes picture, voice, and music into one file.`,
       );
+      return true;
+    } catch {
+      failedVoice.current = key;
+      setNote("Voice didn't come through. Press Play or Export to try again.");
+      return false;
     } finally {
       scoring.current = false;
     }
@@ -269,7 +230,8 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     }
     busy.current = true;
     try {
-      if (voiceReady && !engine.hasVoice()) await ensureVoice();
+      // Without the full voice the picture still previews, and the note says why there is no voice.
+      if (voiceReady && !engine.hasVoice()) await ensureVoice(failedVoice.current !== "");
       engine.play();
     } catch {
       setNote("Voice didn't come through. Playing the picture cut.");
@@ -287,9 +249,10 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       return;
     }
     busy.current = true;
-    setNote("Playing through once to write the file.");
     try {
-      await ensureVoice();
+      // The file always carries the whole script. If any scene could not be voiced, stop and say so.
+      if (voiceReady && !(await ensureVoice(true))) return;
+      setNote(`Playing through once to write the file (${fmtTime(engine.length())}).`);
       const blob = await engine.record();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -307,34 +270,52 @@ export function FacelessCut({ script, title }: { script: string; title: string }
 
   async function onSharpen() {
     engineRef.current?.pause();
-    setNote("Sharpening the on-screen lines…");
-    try {
-      const res = await fetch("/api/ai/sharpen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ narrations: scenes.map((scene) => scene.narration) }),
-      });
-      const result = (await res.json()) as {
-        ok: boolean;
-        error?: string;
-        cards?: { onscreen: string; layout: Scene["layout"]; still: Scene["still"] }[];
-      };
-      if (!result.ok || !result.cards) {
-        setNote(result.error || "Sharpen didn't answer.");
-        return;
+    const narrations = scenes.map((scene) => scene.narration);
+    const total = Math.ceil(narrations.length / SHARPEN_BATCH);
+    const cards: ({ onscreen: string; layout: Scene["layout"]; still: Scene["still"] } | undefined)[] = [];
+    let stopped = "";
+    for (let batch = 0; batch < total; batch++) {
+      setNote(total > 1 ? `Sharpening the on-screen lines (${batch} of ${total} parts)…` : "Sharpening the on-screen lines…");
+      try {
+        const res = await fetch("/api/ai/sharpen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ narrations: narrations.slice(batch * SHARPEN_BATCH, (batch + 1) * SHARPEN_BATCH) }),
+        });
+        const result = (await res.json()) as {
+          ok: boolean;
+          error?: string;
+          cards?: { onscreen: string; layout: Scene["layout"]; still: Scene["still"] }[];
+        };
+        if (!result.ok || !result.cards) {
+          stopped = result.error || "Sharpen didn't answer.";
+          break;
+        }
+        cards.push(...result.cards);
+      } catch {
+        stopped = "Sharpen didn't answer.";
+        break;
       }
-      setScenes((current) =>
-        current.map((scene, index) => ({
-          ...scene,
-          onscreen: result.cards?.[index]?.onscreen || scene.onscreen,
-          layout: result.cards?.[index]?.layout || scene.layout,
-          still: result.cards?.[index]?.still || scene.still,
-        })),
-      );
-      setNote("Lines sharpened. What is spoken stayed the same.");
-    } catch {
-      setNote("Sharpen didn't answer.");
     }
+    if (!cards.length) {
+      setNote(stopped || "Sharpen didn't answer.");
+      return;
+    }
+    const last = scenes.length - 1;
+    setScenes((current) =>
+      current.map((scene, index) => {
+        const card = cards[index];
+        if (!card) return scene;
+        // Each part marks its own first and last card; only the video's first and last keep those looks.
+        const layout = index === 0 ? "hook" : index === last ? "close" : card.layout === "hook" || card.layout === "close" ? "statement" : card.layout;
+        return { ...scene, onscreen: card.onscreen || scene.onscreen, layout: layout || scene.layout, still: card.still || scene.still };
+      }),
+    );
+    setNote(
+      stopped
+        ? `Sharpened scenes 1 to ${cards.length} of ${scenes.length}. The rest kept their lines: ${stopped}`
+        : "Lines sharpened. What is spoken stayed the same.",
+    );
   }
 
   return (
@@ -346,8 +327,13 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       </div>
       <div>
         <p className="text-sm text-dark-300 mb-3">
-          Faceless. {scenes.length} scenes from this script. The words stay off the picture. Play scores a voice with no key, and export is one file.
+          Faceless. {scenes.length} scenes from {coverage.limit ? "this script" : `all ${coverage.lines} lines of this script`}, about {fmtTime(clock.duration)}. The words stay off the picture. Play scores a voice with no key, and export is one file.
         </p>
+        {coverage.limit ? (
+          <p role="alert" className="text-xs text-amber-300 mb-3">
+            {coverage.limit}
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2 mb-3">
           {ASPECTS.map((item) => (
             <button
@@ -411,7 +397,8 @@ export function FacelessCut({ script, title }: { script: string; title: string }
             <Download size={12} /> {clock.recording ? "Writing" : "Export video"}
           </button>
         </div>
-        <p className="text-xs text-dark-500 mt-3">{note}</p>
+        <p role="status" className="text-xs text-dark-500 mt-3">{note}</p>
+        {photoNote ? <p className="text-xs text-dark-500 mt-1">{photoNote}</p> : null}
       </div>
     </div>
   );

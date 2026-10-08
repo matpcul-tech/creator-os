@@ -10,7 +10,20 @@ type VoiceStamp = { start: number; end: number };
 
 export type VoiceResult =
   | { ok: false; error: string }
-  | { ok: true; audioBase64: string; parts?: string[]; duration: number; chars: string[]; times: VoiceStamp[] };
+  | {
+      ok: true;
+      audioBase64: string;
+      parts?: string[];
+      /** With segments: how many of `parts` belong to each segment, in order. */
+      counts?: number[];
+      duration: number;
+      chars: string[];
+      times: VoiceStamp[];
+    };
+
+/** Most text one voice request reads. Longer scripts are sent in several requests by the browser. */
+export const MAX_VOICE_CHARS = 2000;
+export const MAX_VOICE_SEGMENTS = 60;
 
 export function voiceConfigured(): boolean {
   return true;
@@ -121,6 +134,43 @@ export async function scoreNarration(text: string, voiceId: string): Promise<Voi
   const voiced = await xaiNarration(apiKey, clean, voice);
   if (voiced) return voiced;
   return googleNarration(clean, voice);
+}
+
+/**
+ * Voices a list of segments (one per scene) in order. Audio pieces never cross a segment, and
+ * `counts` says how many pieces each segment has, so the browser knows exactly when every scene's
+ * narration starts and ends. All or nothing: a failed piece fails the request, so a scene is never
+ * left silent without the browser knowing.
+ */
+export async function scoreSegments(segments: string[], voiceId: string): Promise<VoiceResult> {
+  const voice = voiceId.trim().toLowerCase();
+  if (!voiceIds.has(voice)) return { ok: false, error: "Unknown voice" };
+  const cleaned = segments.map((segment) => forSpeech(segment));
+  if (!cleaned.some(Boolean)) return { ok: false, error: "Nothing to say" };
+
+  const run = async (max: number, speak: (piece: string) => Promise<string | null>): Promise<VoiceResult | null> => {
+    const perSegment = cleaned.map((text) => (text ? pieces(text, max) : []));
+    const parts: string[] = [];
+    for (const piece of perSegment.flat()) {
+      const audio = await speak(piece).catch(() => null);
+      if (!audio) return null;
+      parts.push(audio);
+    }
+    return { ok: true, audioBase64: parts[0], parts, counts: perSegment.map((list) => list.length), duration: 0, chars: [], times: [] };
+  };
+
+  const edgePieces = cleaned.map((text) => (text ? pieces(text, 90) : []));
+  const neural = await edgeNarration(voice, edgePieces.flat());
+  if (neural) {
+    return { ok: true, audioBase64: neural[0], parts: neural, counts: edgePieces.map((list) => list.length), duration: 0, chars: [], times: [] };
+  }
+  const apiKey = process.env.XAI_API_KEY;
+  if (apiKey) {
+    const voiced = await run(1200, (piece) => xaiPart(apiKey, piece, voice));
+    if (voiced) return voiced;
+  }
+  const google = await run(180, (piece) => googlePart(piece, voice));
+  return google ?? { ok: false, error: "Voice didn't answer" };
 }
 
 async function xaiNarration(apiKey: string, text: string, voice: string): Promise<VoiceResult | null> {

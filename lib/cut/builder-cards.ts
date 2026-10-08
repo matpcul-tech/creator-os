@@ -1,5 +1,6 @@
 import { STILL_WORDS } from "@/lib/cut/direct";
 import { splitClauses, splitSentences } from "@/lib/cut/sentences";
+import { groupLines, planScenes, type ScenePlan } from "@/lib/cut/scenes";
 import type { StillId } from "@/lib/cut/types";
 
 // Splitting a pasted script into cards, matching a photo to each card, and naming the file.
@@ -8,7 +9,6 @@ import type { StillId } from "@/lib/cut/types";
 const MIN_WORDS = 6;
 const MAX_WORDS = 18;
 const LONG_SENTENCE = 24;
-const MAX_CARDS = 60;
 
 function words(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
@@ -21,10 +21,10 @@ function sentences(line: string): string[] {
 }
 
 /**
- * One card per line when the script has line breaks. A line with several sentences, or a pasted
- * paragraph, is split by sentence, and short sentences are grouped so each card is a few seconds long.
+ * Pieces of the script in order: a line with several sentences, or a pasted paragraph, is split by
+ * sentence, and short sentences in one line are grouped.
  */
-export function splitCards(lines: string[]): string[] {
+export function cardPieces(lines: string[]): string[] {
   const cards: string[] = [];
   for (const line of lines) {
     const start = cards.length;
@@ -49,7 +49,20 @@ export function splitCards(lines: string[]): string[] {
       }
     }
   }
-  return cards.slice(0, MAX_CARDS);
+  return cards;
+}
+
+/**
+ * Cards for the whole script. Consecutive short lines share a card (a sentence or two, about 4 to 8
+ * seconds), so a 150 line script makes a sensible number of cards and every line is used once.
+ */
+export function splitCards(lines: string[]): string[] {
+  return groupLines(cardPieces(lines)).map((group) => group.text);
+}
+
+/** The same cards with the one-video limit applied, and a count of anything left out. */
+export function planCards(lines: string[]): ScenePlan {
+  return planScenes(cardPieces(lines));
 }
 
 const STOP = new Set(

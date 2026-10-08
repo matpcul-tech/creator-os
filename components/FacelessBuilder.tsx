@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Loader2, Mic, RefreshCw } from "lucide-react";
-import { fileNameFor, photoPlan, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
+import { fileNameFor, photoPlan, planCards, type PhotoPlan } from "@/lib/cut/builder-cards";
 import { creditFor, fitsCard } from "@/lib/cut/credit";
-import { inBatches, planGaps } from "@/lib/cut/fill";
+import { planGaps } from "@/lib/cut/fill";
+import { placePhotos } from "@/lib/cut/place-photos";
+import { MAX_SCENES, overLimitNote } from "@/lib/cut/scenes";
+import { fmtTime } from "@/lib/cut/timeline";
 import { STILLS, type StillId } from "@/lib/cut/types";
+import { voiceTrack, wavBlob } from "@/lib/cut/voice-track";
 
 type Scene = {
   caption: string;
@@ -15,6 +19,8 @@ type Scene = {
   credit: string;
   source: string;
   seconds: number;
+  /** Cards that share one spoken voiceover have the same group. Each group is voiced once. */
+  group: number;
   // Photo bookkeeping for the cards: loading skeleton, dedupe keys, and a friendly credit.
   loading?: boolean;
   photoSrc?: string;
@@ -43,9 +49,12 @@ function clean(value: string) {
 function isHeading(line: string) {
   return /^(hook|setup|cta|beat|main|payoff|outro|intro|on-screen|voiceover|b-roll|captions?|hashes?|hashing|hashtags?)\b[:\s-]*$/i.test(line) || (/\d+:\d+/.test(line) && line.length < 48);
 }
-function parseScript(script: string): Scene[] {
+type CardPlan = { cards: Scene[]; lineCount: number; note: string };
+
+function parseScript(script: string): CardPlan {
   const chunks = script.split(/\n---\n|\n##+\s+/).map((c) => c.trim()).filter(Boolean);
   const labeled: Scene[] = [];
+  let group = 0;
   for (const chunk of chunks) {
     const on = chunk.match(/\*\*ON-SCREEN TEXT:\*\*([\s\S]*?)(\*\*VOICEOVER:\*\*|\*\*B-ROLL:\*\*|$)/i);
     const voice = chunk.match(/\*\*VOICEOVER:\*\*([\s\S]*?)(\*\*ON-SCREEN TEXT:\*\*|\*\*B-ROLL:\*\*|$)/i);
@@ -58,20 +67,50 @@ function parseScript(script: string): Scene[] {
     const roll0 = clean((roll?.[1] || "").split(/[.,]/)[0] || "");
     const base = photoPlan(spoken || lines[0]);
     const plan = roll0 ? { ...base, queries: [roll0, ...base.queries], tags: [...new Set([...roll0.toLowerCase().split(/\s+/), ...base.tags])] } : base;
-    lines.forEach((caption) => labeled.push({ caption, voice: spoken || caption, plan, media: null, credit: "", source: "", seconds: seconds / lines.length }));
+    group += 1;
+    for (const caption of lines) {
+      labeled.push({ caption, voice: spoken || caption, plan, media: null, credit: "", source: "", seconds: seconds / lines.length, group });
+    }
   }
-  if (labeled.length) return labeled.slice(0, 60);
+  if (labeled.length) {
+    // A labeled script keeps its own cards. Past the one-video limit the UI says what was left out.
+    const kept = labeled.slice(0, MAX_SCENES);
+    const left = labeled.length - kept.length;
+    return {
+      cards: kept,
+      lineCount: labeled.length,
+      note: left ? `This script has ${labeled.length} cards and one video holds ${MAX_SCENES}. The last ${left} cards are not in this video. Split the script into two videos.` : "",
+    };
+  }
   const lines = script.split(/\n+/).map(clean).filter((line) => line.length > 1 && !isHeading(line));
-  return splitCards(lines).map((caption) => ({
-    caption,
-    voice: caption,
-    plan: photoPlan(caption),
-    media: null,
-    credit: "",
-    source: "",
-    seconds: Math.max(2.8, caption.split(/\s+/).length / 2.3),
-  }));
+  const plan = planCards(lines);
+  return {
+    cards: plan.scenes.map((caption, index) => ({
+      caption,
+      voice: caption,
+      plan: photoPlan(caption),
+      media: null,
+      credit: "",
+      source: "",
+      seconds: Math.max(2.8, caption.split(/\s+/).length / 2.3),
+      group: index + 1,
+    })),
+    lineCount: plan.lineCount,
+    note: overLimitNote(plan, "cards"),
+  };
 }
+
+/** The spoken text once per group, in order, with the cards each one covers. */
+function voiceGroups(list: Scene[]): { text: string; cards: number[] }[] {
+  const out: { text: string; cards: number[]; group: number }[] = [];
+  list.forEach((scene, index) => {
+    const last = out[out.length - 1];
+    if (last && last.group === scene.group) last.cards.push(index);
+    else out.push({ text: scene.voice, cards: [index], group: scene.group });
+  });
+  return out;
+}
+
 // A photo that takes longer than this is skipped, so one slow image never holds up the rest.
 const IMAGE_TIMEOUT_MS = 10000;
 
@@ -96,6 +135,18 @@ function cover(ctx: CanvasRenderingContext2D, media: CanvasImageSource, w: numbe
   const scale = Math.max(dw / w, dh / h);
   ctx.drawImage(media, dx + (dw - w * scale) / 2, dy + (dh - h * scale) / 2, w * scale, h * scale);
 }
+// One photo request. A busy server (429) is waited out once, as it asks.
+async function clipsRequest(body: Record<string, unknown>) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.status === 429 && attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, Math.min(10, Number(res.headers.get("retry-after")) || 3) * 1000));
+      continue;
+    }
+    return res.json();
+  }
+}
+
 export function FacelessBuilder({
   script,
   title,
@@ -111,6 +162,8 @@ export function FacelessBuilder({
   const scenesRef = useRef<Scene[]>([]);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
   const voiceFromFile = useRef(false);
+  // Measured seconds per card from the narrator voice, for the cards it was made from.
+  const timingRef = useRef<{ sig: string; seconds: number[] } | null>(null);
   const mixRef = useRef<{ el: HTMLAudioElement; ctx: AudioContext; dest: MediaStreamAudioDestinationNode } | null>(null);
   const [text, setText] = useState(script);
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -125,7 +178,8 @@ export function FacelessBuilder({
   const [finding, setFinding] = useState(false);
   // Spare photos per card from its last swap, so the next swap is instant.
   const spareRef = useRef<Map<number, StockItem[]>>(new Map());
-  const previewCount = useMemo(() => parseScript(text).length, [text]);
+  const preview = useMemo(() => parseScript(text), [text]);
+  const previewCount = preview.cards.length;
   useEffect(() => {
     setText(script);
     scenesRef.current = [];
@@ -133,11 +187,11 @@ export function FacelessBuilder({
   }, [script]);
 
   function read() {
-    const parsed = parseScript(text);
+    const { cards: parsed, note } = parseScript(text);
     scenesRef.current = parsed;
     setScenes(parsed);
     const total = parsed.reduce((n, s) => n + s.seconds, 0);
-    setStatus(`${parsed.length} card${parsed.length === 1 ? "" : "s"}, about ${Math.round(total)} seconds. Find photos matches one photo per card.`);
+    setStatus(`${parsed.length} card${parsed.length === 1 ? "" : "s"}, about ${fmtTime(total)}. Find photos matches one photo per card.${note ? ` ${note}` : ""}`);
     return parsed;
   }
   function paint(elapsed: number, list = scenesRef.current) {
@@ -205,91 +259,37 @@ export function FacelessBuilder({
     setScenes(scenesRef.current);
     // Photos shown by an earlier Find photos press are skipped, so pressing it again reshuffles to new ones.
     const shown = shownRef.current;
-    let items: (StockItem | null)[] = [];
-    // Topic photos nobody uses yet, to stand in for any photo that fails to load.
-    let spares: StockItem[] = [];
     const lines = parsed.map((s) => s.voice);
     const sig = JSON.stringify([title, lines]);
     const known = queriesRef.current?.sig === sig ? queriesRef.current.queries : undefined;
-    try {
-      const res = await fetch("/api/ai/clips", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines, topic: title, exclude: [...shown].slice(-400), extra: Math.min(12, lines.length), ...(known ? { queries: known } : {}) }),
-      });
-      const body = (await res.json()) as { items?: (StockItem | null)[]; pool?: StockItem[]; queries?: SceneQueries };
-      items = body.items ?? [];
-      spares = body.pool ?? [];
-      if (body.queries) queriesRef.current = { sig, queries: body.queries };
-    } catch {
-      items = [];
-    }
-    setStatus("Loading photos…");
-    const sceneQueries = queriesRef.current?.sig === sig ? queriesRef.current.queries.scenes : [];
-    const missing: number[] = [];
-    await inBatches(parsed, 3, async (scene, index) => {
-      const own = items[index];
-      // Try the card's own photo twice (a busy image host often answers the second time),
-      // then a spare that fits this card's words, then a built-in still.
-      const tries: StockItem[] = own ? [own, own] : [];
-      for (let attempt = 0; attempt < tries.length + 2; attempt++) {
-        let item: StockItem | undefined = tries[attempt];
-        if (!item) {
-          const at = spares.findIndex((spare) => fitsCard(spare, sceneQueries[index] ?? [scene.voice]));
-          if (at < 0) break;
-          item = spares.splice(at, 1)[0]; // taken synchronously, so two cards never get the same spare
-        }
-        if (attempt === 1 && item === own) await new Promise((resolve) => setTimeout(resolve, 1000));
-        const media = await loadImage(item.url);
-        if (media) {
-          shown.add(item.src);
-          if (item.key) shown.add(item.key);
-          updateCard(index, withPhoto(scene, item, media));
-          return;
-        }
-      }
-      missing.push(index);
-    });
-    // Cards still without a photo: one deeper search that skips every photo already used.
-    if (missing.length) {
-      setStatus("Looking deeper for the last few photos…");
-      const deeper = await fetch("/api/ai/clips", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lines: missing.map((i) => parsed[i].voice),
-          topic: title,
-          exclude: [...new Set([...usedNow(), ...shown])].slice(-500),
-          offset: 50,
-          extra: Math.min(40, missing.length * 2),
-          ...(sceneQueries.length === parsed.length ? { queries: { scenes: missing.map((i) => sceneQueries[i]), topic: queriesRef.current?.queries.topic ?? [] } } : {}),
-        }),
-      })
-        .then((res) => res.json() as Promise<{ items?: (StockItem | null)[]; pool?: StockItem[] }>)
-        .catch(() => ({}) as { items?: (StockItem | null)[]; pool?: StockItem[] });
-      const queue = [...(deeper.items ?? []).map((item, k) => ({ item, k })), ...(deeper.pool ?? []).map((item) => ({ item, k: -1 }))];
-      const taken = new Set(usedNow());
-      for (const [k, index] of missing.slice().entries()) {
-        // The card's own deeper match first, then any unused spare from the deeper search.
-        const order = [...queue.filter((q) => q.k === k), ...queue.filter((q) => q.k === -1)];
-        for (const { item } of order) {
-          if (!item || taken.has(item.src) || (item.key && taken.has(item.key))) continue;
-          taken.add(item.src);
-          if (item.key) taken.add(item.key);
-          const media = await loadImage(item.url);
-          if (media) {
-            shown.add(item.src);
-            if (item.key) shown.add(item.key);
-            updateCard(index, withPhoto(parsed[index], item, media));
-            missing.splice(missing.indexOf(index), 1);
-            break;
-          }
-        }
-      }
-    }
+    const media = new Map<string, HTMLImageElement>();
+    // Long scripts search in batches; every batch skips the photos the earlier ones used.
+    const placed = await placePhotos<StockItem>({
+      lines,
+      topic: title,
+      exclude: [...shown],
+      queries: known,
+      fetchItems: (body) => clipsRequest(body),
+      load: async (url) => {
+        const img = await loadImage(url);
+        if (img) media.set(url, img);
+        return Boolean(img);
+      },
+      // Spares only go to cards whose words they fit.
+      fits: (item, index) => fitsCard(item, queriesRef.current?.sig === sig ? queriesRef.current.queries.scenes[index] ?? [lines[index]] : [lines[index]]),
+      onPick: (index, item) => {
+        shown.add(item.src);
+        if (item.key) shown.add(item.key);
+        const img = media.get(item.url);
+        if (img) updateCard(index, withPhoto(parsed[index], item, img));
+      },
+      onProgress: (done, total) => setStatus(done < total ? `Loading photos (${done} of ${total} cards)…` : "Loading the last photos…"),
+    }).catch(() => ({ picks: parsed.map(() => null) as (StockItem | null)[], queries: undefined }));
+    if (placed.queries) queriesRef.current = { sig, queries: placed.queries };
+    const missing = placed.picks.flatMap((pick, index) => (pick ? [] : [index]));
     // Last resort: each built-in still once, then the card holds the previous card's picture.
     const gaps = planGaps(
-      scenesRef.current.map((card, index) => !missing.includes(index) && Boolean(card.media)),
+      placed.picks.map(Boolean),
       parsed.map((scene) => scene.plan.still),
       STILLS.map((still) => still.id),
     );
@@ -359,48 +359,66 @@ export function FacelessBuilder({
       setStatus("Photo search didn't answer. Try Swap photo again.");
     }
   }
-  async function narrated(list: Scene[]): Promise<HTMLAudioElement | null> {
-    const text = Array.from(new Set(list.map((s) => s.voice))).join(" ");
-    if (!text.trim()) return null;
+  // The narrator voice for every card, in order, with each card's measured length. All or nothing:
+  // if any card cannot be voiced, the status says which ones and nothing partial is used.
+  async function narrated(list: Scene[]): Promise<{ audio: HTMLAudioElement; seconds: number[] } | { error: string }> {
+    const groups = voiceGroups(list);
+    if (!groups.some((g) => g.text.trim())) return { error: "Nothing to say" };
+    const ctx = new AudioContext();
     try {
-      const res = await fetch("/api/ai/narrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voiceId: "orion" }),
+      const track = await voiceTrack({
+        segments: groups.map((g) => g.text),
+        voiceId: "orion",
+        context: ctx,
+        unit: "card",
+        count: list.length,
+        numbersOf: (gi) => [groups[gi].cards[0] + 1, groups[gi].cards[groups[gi].cards.length - 1] + 1],
+        onProgress: (done, total) => {
+          if (total > 1) setStatus(`Scoring the voice (${done} of ${total} parts)…`);
+        },
       });
-      const body = (await res.json()) as { ok: boolean; audioBase64?: string; parts?: string[] };
-      const parts = body.ok ? (body.parts?.length ? body.parts : body.audioBase64 ? [body.audioBase64] : []) : [];
-      if (!parts.length) return null;
-      const bytes = parts.map((part) => Uint8Array.from(atob(part), (c) => c.charCodeAt(0)));
-      const audio = new Audio(URL.createObjectURL(new Blob(bytes, { type: "audio/mpeg" })));
+      if (!track.ok) return { error: track.error };
+      // Each card lasts from the start of its narration to the start of the next one.
+      const seconds = list.map(() => 0);
+      groups.forEach((g, gi) => {
+        const start = gi === 0 ? 0 : track.spans[gi].start;
+        const end = gi === groups.length - 1 ? track.total + 0.4 : track.spans[gi + 1].start;
+        const planned = g.cards.reduce((n, i) => n + list[i].seconds, 0) || 1;
+        g.cards.forEach((i) => (seconds[i] = ((end - start) * list[i].seconds) / planned));
+      });
+      const audio = new Audio(URL.createObjectURL(wavBlob(track.buffer)));
       await new Promise<void>((resolve, reject) => {
         audio.onloadedmetadata = () => resolve();
         audio.onerror = () => reject(new Error("voice unreadable"));
       });
-      return audio;
+      return { audio, seconds };
     } catch {
-      return null;
+      return { error: "Voice didn't answer." };
+    } finally {
+      void ctx.close();
     }
   }
-  async function ensureVoice(list: Scene[]): Promise<HTMLAudioElement | null> {
-    if (voiceRef.current?.src) return voiceRef.current;
+  async function ensureVoice(list: Scene[]): Promise<{ audio: HTMLAudioElement | null; error?: string }> {
+    if (voiceRef.current?.src) return { audio: voiceRef.current };
     setStatus("Scoring the voice…");
-    const audio = await narrated(list);
-    if (audio) voiceRef.current = audio;
-    return audio;
+    const result = await narrated(list);
+    if ("error" in result) return { audio: null, error: result.error };
+    voiceRef.current = result.audio;
+    timingRef.current = { sig: JSON.stringify(list.map((s) => [s.group, s.voice])), seconds: result.seconds };
+    return { audio: result.audio };
   }
   async function speak() {
     const parsed = scenesRef.current.length ? scenesRef.current : read();
-    const audio = await ensureVoice(parsed);
+    const { audio, error } = await ensureVoice(parsed);
     if (audio) {
-      setStatus(voiceFromFile.current ? "Playing your voice file." : "Playing the narrator voice. Make video records it into the file.");
+      setStatus(voiceFromFile.current ? "Playing your voice file." : `Playing the narrator voice for all ${parsed.length} cards. Make video records it into the file.`);
       audio.currentTime = 0;
       await audio.play().catch(() => undefined);
       return;
     }
-    setStatus("Narrator voice did not answer. Previewing with the browser voice, which is not recorded into the file.");
+    setStatus(`${error ?? "Narrator voice did not answer."} Previewing with the browser voice, which is not recorded into the file.`);
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(Array.from(new Set(parsed.map((s) => s.voice))).join(" ")));
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceGroups(parsed).map((g) => g.text).join(" ")));
   }
   async function render() {
     if (busy) return;
@@ -408,20 +426,32 @@ export function FacelessBuilder({
     const canvas = canvasRef.current;
     if (!canvas || !found.length) return;
     setBusy(true);
-    const voice = await ensureVoice(found);
+    const { audio: voice, error } = await ensureVoice(found);
     setBusy(false);
+    // The file always carries the whole script. If the narrator could not voice every card, stop and say so.
+    if (!voice) {
+      setStatus(`${error ?? "Narrator voice did not answer."} Nothing was recorded. Press Make video to try again, or add a voice file.`);
+      return;
+    }
     let list = found;
-    if (voice && Number.isFinite(voice.duration) && voice.duration > 0.5) {
-      // Stretch the cards so the picture lasts as long as the voice.
+    const sig = JSON.stringify(found.map((s) => [s.group, s.voice]));
+    if (!voiceFromFile.current && timingRef.current?.sig === sig) {
+      // Each card lasts exactly as long as its own narration, so the picture changes with the voice.
+      const seconds = timingRef.current.seconds;
+      list = found.map((s, i) => ({ ...s, seconds: seconds[i] ?? s.seconds }));
+      scenesRef.current = list;
+    } else if (Number.isFinite(voice.duration) && voice.duration > 0.5) {
+      // A voice file has no card timing, so the cards stretch to its length.
       const planned = found.reduce((n, s) => n + s.seconds, 0) || 1;
       const scale = (voice.duration + 0.4) / planned;
       list = found.map((s) => ({ ...s, seconds: s.seconds * scale }));
       scenesRef.current = list;
     }
-    setStatus(voice ? "Recording picture and voice…" : "Voice did not answer. Recording the picture only.");
+    const length = list.reduce((n, s) => n + s.seconds, 0);
+    setStatus(`Recording picture and voice for all ${list.length} cards (${fmtTime(length)}). Keep this tab open.`);
     const canvasStream = canvas.captureStream(30);
     let mixed: MediaStream = canvasStream;
-    if (voice?.src) {
+    if (voice.src) {
       if (!mixRef.current || mixRef.current.el !== voice) {
         // A media element can only be wired to one source node, so build this once per voice.
         const ctx = new AudioContext();
@@ -452,7 +482,7 @@ export function FacelessBuilder({
       }, 50);
     });
     rec.stop();
-    voice?.pause();
+    voice.pause();
     await done;
     const blob = new Blob(chunks, { type: "video/webm" });
     const url = URL.createObjectURL(blob);
@@ -474,7 +504,7 @@ export function FacelessBuilder({
       <canvas ref={canvasRef} width={720} height={1280} className="w-full max-w-[220px] rounded-2xl bg-black" />
       <div className="min-w-0">
         <label htmlFor="builder-script" className="text-xs font-medium text-dark-300 mb-1.5 block">
-          Script. Paste it here. Each line becomes a card, and a paragraph is split by sentence.
+          Script. Paste it here. Short lines are grouped so each card is about 4 to 8 seconds, and every line is used.
         </label>
         <textarea
           id="builder-script"
@@ -490,8 +520,13 @@ export function FacelessBuilder({
           className="cai-input min-h-[160px] text-sm"
         />
         <p className="text-[11px] text-dark-500 mt-1">
-          {previewCount} card{previewCount === 1 ? "" : "s"} from this script.
+          {previewCount} card{previewCount === 1 ? "" : "s"} from {preview.note ? "this script" : `all ${preview.lineCount} line${preview.lineCount === 1 ? "" : "s"} of this script`}.
         </p>
+        {preview.note ? (
+          <p role="alert" className="text-[11px] text-amber-300 mt-1">
+            {preview.note}
+          </p>
+        ) : null}
         <label className="mt-3 flex flex-wrap items-center gap-2 text-xs text-dark-300">
           <Mic size={12} /> Voice file
           <input type="file" accept="audio/*" className="max-w-full text-[11px]" onChange={(e) => {
