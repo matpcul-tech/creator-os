@@ -313,3 +313,80 @@ test("the same photographer's shoot counts as one photo", () => {
   assert.equal(a, b);
   assert.notEqual(a, c);
 });
+
+import { childPenalty, relevantTo } from "../lib/cut/clips";
+import { creditFor } from "../lib/cut/credit";
+
+test("the AI search term step gives up after its time limit and uses keywords", async () => {
+  const started = Date.now();
+  const got = await visualQueries([`Slow line ${Date.now()}.`], "", () => new Promise<string>(() => {}), 50);
+  assert.equal(got.source, "timeout");
+  assert.ok(got.scenes[0].length > 0);
+  assert.ok(Date.now() - started < 1000);
+});
+
+test("children and babies rank lower unless the line is about kids", () => {
+  assert.equal(childPenalty("child, outdoors, nature", "weightlifting gym"), 4);
+  assert.equal(childPenalty("child, outdoors, nature", "kids playing outside"), 0);
+  assert.equal(childPenalty("woman, asleep, girl", "person sleeping"), 0); // girl is common for young women
+  const kid = stockSiteScore("pixabay", "child, running, park", "running park")!;
+  const adult = stockSiteScore("pixabay", "woman, running, park", "running park")!;
+  assert.ok(adult > kid);
+});
+
+test("photos whose tags cover more of the query rank higher", () => {
+  const full = stockSiteScore("pixabay", "dumbbell, strong, arm, gym", "strong arm dumbbell")!;
+  const part = stockSiteScore("pixabay", "dumbbell, strong, sport", "strong arm dumbbell")!;
+  assert.ok(full > part);
+  assert.equal(stockSiteScore("pixabay", "clock tower, building, time", "laboratory scientist"), null);
+});
+
+test("a line only borrows a shared photo that matches one of its words", () => {
+  assert.equal(relevantTo("child, outdoors, nature", ["weightlift", "gym", "strong", "arm", "dumbbel"]), false);
+  assert.equal(relevantTo("man, gym, fitness", ["weightlift", "gym"]), true);
+  const picks = assignUnique(
+    [[], [{ src: "gym1" }]],
+    (index) => (index === 0 ? [] : [{ src: "x" }]), // scene 0 has nothing relevant in the pool
+  );
+  assert.equal(picks[0], null);
+});
+
+test("an unrelated topic photo is not forced onto a line with no matches", async () => {
+  process.env.PIXABAY_API_KEY = "x";
+  const stamp = Date.now();
+  const m = mockFetch((url) => {
+    if (!url.includes("pixabay.com/api")) return { query: { pages: {} } };
+    const q = new URL(url).searchParams.get("q") ?? "";
+    if (q.startsWith("topic")) {
+      return { hits: [
+        { id: 1, type: "photo", pageURL: "https://pixabay.com/p/1/", tags: `child, outdoors, nature, topic, healthy ${stamp}`, webformatURL: "https://pixabay.com/get/c1_640.jpg", user: "u1" },
+        { id: 2, type: "photo", pageURL: "https://pixabay.com/p/2/", tags: `clock tower, building, topic, healthy ${stamp}`, webformatURL: "https://pixabay.com/get/c2_640.jpg", user: "u2" },
+      ] };
+    }
+    return { hits: [] };
+  });
+  try {
+    const r = await pickPhotos({
+      lines: ["Muscle is the second."],
+      queries: { scenes: [[`weightlifting gym ${stamp}`, `strong arm dumbbell ${stamp}`]], topic: [`topic healthy ${stamp}`] },
+    });
+    assert.equal(r.picks[0], null); // built-in still beats a child or a clock tower
+  } finally {
+    m.restore();
+    delete process.env.PIXABAY_API_KEY;
+  }
+});
+
+test("credits name the photographer and source, never the raw ID", () => {
+  assert.equal(creditFor({ provider: "pixabay", attribution: "Image by Josch13 from Pixabay", title: "gym, weights (Pixabay 123456)" }), "Image by Josch13 from Pixabay");
+  assert.equal(creditFor({ provider: "wikimedia", title: "File:Bedroom @ night (3119861751).jpg" }), "Bedroom @ night, Wikimedia Commons");
+  assert.ok(!/\d{6,}/.test(creditFor({ provider: "pixabay", title: "x (Pixabay 123456)" })));
+});
+
+import { fitsCard } from "../lib/cut/credit";
+
+test("a spare photo only stands in for a card it fits", () => {
+  const sleep = { text: "bed, sleep, girl", title: "bed, sleep, girl (Pixabay 945881)" };
+  assert.equal(fitsCard(sleep, ["older man jogging", "elderly woman walking outdoors"]), false);
+  assert.equal(fitsCard(sleep, ["person sleeping in bed", "bedroom at night"]), true);
+});

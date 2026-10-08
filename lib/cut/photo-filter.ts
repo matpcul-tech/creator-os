@@ -124,7 +124,7 @@ function stem(word: string): string {
 const QUERY_STOP = new Set(["the", "and", "with", "for", "from", "photo", "photograph", "image", "picture", "stock", "a", "an", "of", "in", "on", "at", "to"]);
 
 export function queryWords(query: string): string[] {
-  return [...new Set(query.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !QUERY_STOP.has(w)).map(stem))];
+  return [...new Set(query.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^\d+$/.test(w) && !QUERY_STOP.has(w)).map(stem))];
 }
 
 /**

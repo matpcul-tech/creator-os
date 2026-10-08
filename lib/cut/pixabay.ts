@@ -26,6 +26,8 @@ export function pixabayKey(): string {
 /** Turn one Pixabay hit into our shape. Null for non photos or hits with no image. */
 export function fromPixabay(hit: PixabayHit): ProviderPhoto | null {
   if (hit.type && hit.type !== "photo") return null;
+  // largeImageURL (1280 px). The docs' trick of swapping _640 for _960 returns
+  // 404 on the current signed /get/ URLs, so it is not used.
   const src = hit.largeImageURL || hit.webformatURL;
   if (!src) return null;
   const who = (hit.user ?? "").trim();
