@@ -8,8 +8,8 @@ const keysOf = (item: Candidate) => (item.key ? [item.src, item.key] : [item.src
  * Give each scene its best candidate that has not been used yet.
  * 1. Each scene takes its own best unused candidate, in scene order.
  * 2. Scenes left empty take unused photos from the shared fallback pool (the topic).
- * 3. Only when every pool is used up are photos reused, round robin, never
- *    the same photo on two scenes in a row.
+ * 3. A scene with nothing unused left stays empty (null). Photos are never reused within a
+ *    video; the caller searches deeper or another source for the empty scenes.
  * Anything in `exclude` (photos already shown) is never picked in steps 1 and 2.
  * Near duplicates share a `key` (same object or photo series) and count as used together.
  */
@@ -44,24 +44,6 @@ export function assignUnique<T extends Candidate>(
     }
   });
 
-  // Truly exhausted: reuse what this video already has, spread out.
-  const assigned = out.filter((item): item is T => Boolean(item));
-  if (assigned.length > 1) {
-    let turn = 0;
-    out.forEach((value, index) => {
-      if (value) return;
-      for (let tries = 0; tries < assigned.length; tries++) {
-        const pick = assigned[(turn + tries) % assigned.length];
-        const prev = out[index - 1];
-        const next = out[index + 1];
-        if (pick.src !== prev?.src && pick.src !== next?.src) {
-          out[index] = pick;
-          turn = (turn + tries + 1) % assigned.length;
-          break;
-        }
-      }
-    });
-  }
   return out;
 }
 

@@ -77,12 +77,20 @@ export function fallbackQueries(lines: string[], topic: string): SceneQueries {
   return { scenes: lines.map(keywordQueries), topic: topic ? keywordQueries(topic) : [] };
 }
 
+/** Queries per line: fewer for long scripts so one call answers inside the timeout. */
+export function queriesPerLine(count: number): number {
+  return count > 20 ? 1 : count > 10 ? 2 : 3;
+}
+
 export function visualPrompt(lines: string[], topic: string): string {
   const numbered = lines.map((line, i) => `${i + 1}. ${line}`).join("\n");
+  const per = queriesPerLine(lines.length);
   return [
-    "You pick stock photos for a faceless video. For each numbered line, write 2 or 3 short stock photo search queries",
+    `You pick stock photos for a faceless video. For each numbered line, write ${per === 1 ? "1 short stock photo search query" : `${per} short stock photo search queries`}`,
     "that a photographer could actually shoot: concrete people, objects, places, or actions. 2 to 4 words each.",
     "Never abstract words, never metaphors, never text or charts. Think what a viewer should see while the line is spoken.",
+    "Keep every line on the video's topic. When a line is vague, show the product or subject the script is talking about right then (for example the Oura Ring or a glucose monitor), or the topic itself.",
+    "Show people, children or food only when the line is about them.",
     'Examples: "Sleep is the first lever." -> ["person sleeping in bed", "bedroom at night"].',
     '"Muscle is the second." -> ["weightlifting gym", "strong arm dumbbell"].',
     '"Longevity science" -> ["elderly people exercising", "healthy senior couple", "laboratory scientist"].',
@@ -122,7 +130,7 @@ export async function visualQueries(
     const timedOut = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new QueryTimeout()), timeoutMs);
     });
-    const text = await Promise.race([ask(visualPrompt(lines, topic), Math.min(4000, 200 + lines.length * 60)), timedOut]).finally(() =>
+    const text = await Promise.race([ask(visualPrompt(lines, topic), Math.min(4000, 200 + lines.length * (queriesPerLine(lines.length) * 12 + 10))), timedOut]).finally(() =>
       clearTimeout(timer),
     );
     const parsed = parseQueries(text, lines, topic);

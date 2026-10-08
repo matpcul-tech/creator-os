@@ -126,6 +126,9 @@ test("tokens are encrypted at rest and decrypt back", () => {
   assert.notEqual(box, "ya29.token");
   assert.ok(!box.includes("ya29"));
   assert.equal(decryptSecret(box), "ya29.token");
-  const tampered = box.slice(0, -2) + (box.endsWith("A") ? "B" : "A") + box.slice(-1);
+  // Always change one character of the auth tag, so the tampered box really differs.
+  const parts = box.split(".");
+  parts[2] = (parts[2][0] === "A" ? "B" : "A") + parts[2].slice(1);
+  const tampered = parts.join(".");
   assert.throws(() => decryptSecret(tampered));
 });

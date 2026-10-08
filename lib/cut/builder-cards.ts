@@ -1,4 +1,5 @@
 import { STILL_WORDS } from "@/lib/cut/direct";
+import { splitClauses, splitSentences } from "@/lib/cut/sentences";
 import type { StillId } from "@/lib/cut/types";
 
 // Splitting a pasted script into cards, matching a photo to each card, and naming the file.
@@ -13,35 +14,10 @@ function words(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
+// Sentences in a line. A very long one becomes several cards, broken only at clause marks or before
+// a joining word, never inside a phrase.
 function sentences(line: string): string[] {
-  const parts = line.match(/[^.!?]+(?:[.!?]+["\u201d']?|$)/g) ?? [line];
-  const out: string[] = [];
-  for (const raw of parts) {
-    const sentence = raw.trim();
-    if (!sentence) continue;
-    if (words(sentence).length <= LONG_SENTENCE) {
-      out.push(sentence);
-      continue;
-    }
-    // A very long sentence becomes several cards, broken at commas when possible.
-    let buf = "";
-    for (const clause of sentence.split(/(?<=[,;:])\s+/)) {
-      const next = buf ? `${buf} ${clause}` : clause;
-      if (buf && words(next).length > MAX_WORDS) {
-        out.push(buf);
-        buf = clause;
-      } else {
-        buf = next;
-      }
-    }
-    while (words(buf).length > LONG_SENTENCE) {
-      const all = words(buf);
-      out.push(all.slice(0, MAX_WORDS).join(" "));
-      buf = all.slice(MAX_WORDS).join(" ");
-    }
-    if (buf) out.push(buf);
-  }
-  return out;
+  return splitSentences(line).flatMap((sentence) => splitClauses(sentence, { trigger: LONG_SENTENCE, target: MAX_WORDS, hard: LONG_SENTENCE }));
 }
 
 /**
@@ -116,8 +92,8 @@ type Theme = { test: RegExp; query: string; tags: string[]; still: StillId };
 
 // Ordered by how specific the picture is. The theme with the most hits in the card wins.
 const THEMES: Theme[] = [
-  { test: /\b(timer|stopwatch|countdown|minutes?|seconds?)\b/g, query: "kitchen timer", tags: ["timer", "clock", "stopwatch"], still: "desk" },
-  { test: /\b(rings?|ringing|alarm|buzz|buzzes)\b/g, query: "alarm clock", tags: ["alarm", "clock", "bell"], still: "desk" },
+  { test: /\b(timer|stopwatch|countdown|minutes?|seconds)\b/g, query: "kitchen timer", tags: ["timer", "clock", "stopwatch"], still: "desk" },
+  { test: /\b(ringing|alarm|buzz|buzzes)\b/g, query: "alarm clock", tags: ["alarm", "clock", "bell"], still: "desk" },
   { test: /\b(clock|hours?|deadline|late|early)\b/g, query: "wall clock", tags: ["clock", "watch"], still: "desk" },
   { test: /\b(tasks?|to-?do|lists?|checklist|chores?|errands?)\b/g, query: "notebook and pen", tags: ["notebook", "pen", "list", "checklist"], still: "paper" },
   { test: /\b(finish|finished|finishing|complete|completed|done|goal|goals)\b/g, query: "runner crossing finish line", tags: ["runner", "crossing", "finish", "marathon"], still: "path" },
