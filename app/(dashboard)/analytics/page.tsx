@@ -496,7 +496,7 @@ function UrlCaptureForm({
       <p className="text-sm text-dark-400 mb-4">
         Paste the URL of a tweet, YouTube video, TikTok, or post. We&apos;ll
         detect the platform and (where possible) pull the title via oEmbed.
-        Add the engagement numbers below — they&apos;re saved as a snapshot.
+        Add the engagement numbers below. They&apos;re saved as a snapshot.
       </p>
 
       <input

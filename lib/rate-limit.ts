@@ -1,5 +1,5 @@
 // Per-IP fixed-window rate limiter. In-memory, so each serverless instance
-// has its own counters — fine as a defense-in-depth measure behind the auth
+// has its own counters, fine as a defense-in-depth measure behind the auth
 // gate, but not a substitute for an upstream limiter (e.g. Vercel WAF) if
 // the app is ever opened to the public internet.
 

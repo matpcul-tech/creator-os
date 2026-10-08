@@ -5,12 +5,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CreatorAI — Your AI-Powered Creator Empire",
-  description: "The all-in-one AI platform that learns your voice, creates content for every platform, spots trends, and grows your audience.",
+  title: "CreatorAI - Turn a script into a faceless short video",
+  description: "Paste a script and get a faceless vertical video with a natural voiceover. Join the waitlist for early access.",
   keywords: "AI content creator, content creation platform, social media AI, creator tools",
   openGraph: {
-    title: "CreatorAI — Your AI-Powered Creator Empire",
-    description: "The all-in-one AI platform that learns your voice and builds your creator empire.",
+    title: "CreatorAI - Turn a script into a faceless short video",
+    description: "Paste a script and get a faceless vertical video with a natural voiceover.",
     type: "website",
   },
 };

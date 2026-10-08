@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Lightbulb,
   Sparkles,
@@ -37,6 +37,9 @@ export default function IdeasPage() {
   const [filter, setFilter] = useState<string>("all");
   const [showNew, setShowNew] = useState(false);
   const [newIdea, setNewIdea] = useState({ title: "", hook: "", angle: "" });
+  // Last removed idea, kept for a few seconds so it can be undone.
+  const [removed, setRemoved] = useState<{ idea: Idea; index: number } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
     const res = await fetch("/api/ideas");
@@ -64,13 +67,39 @@ export default function IdeasPage() {
     }
   }
 
+  // Removing an idea archives it (a soft delete). An Undo toast stays up for
+  // 8 seconds and restores it.
   async function archive(id: number) {
+    const index = ideas.findIndex((i) => i.id === id);
+    if (index >= 0) {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      setRemoved({ idea: ideas[index], index });
+      undoTimer.current = setTimeout(() => setRemoved(null), 8000);
+    }
     await fetch(`/api/ideas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived: true }),
     });
     setIdeas((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  async function undoRemove() {
+    if (!removed) return;
+    const { idea, index } = removed;
+    setRemoved(null);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    await fetch(`/api/ideas/${idea.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: false }),
+    });
+    setIdeas((prev) => {
+      if (prev.some((i) => i.id === idea.id)) return prev;
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, idea);
+      return next;
+    });
   }
 
   async function promote(id: number) {
@@ -101,7 +130,7 @@ export default function IdeasPage() {
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Ideas</h1>
           <p className="text-dark-400">
-            Brainstorm, store, and ship. Generate fresh ideas in your voice with Claude, or add your own.
+            Brainstorm, store, and ship. Generate fresh ideas in your voice with AI, or add your own.
           </p>
         </div>
         <button
@@ -153,7 +182,7 @@ export default function IdeasPage() {
           </button>
         </div>
         <p className="text-xs text-dark-500 mt-3">
-          Uses your profile + voice to generate niche-aware ideas. Each gets a quality score 1–10.
+          Uses your profile + voice to generate niche-aware ideas. Each gets a quality score 1 to 10.
         </p>
       </div>
 
@@ -307,6 +336,8 @@ export default function IdeasPage() {
                   </Link>
                   <button
                     onClick={() => archive(i.id)}
+                    aria-label={`Remove idea: ${i.title}`}
+                    title="Remove idea"
                     className="ml-auto text-xs p-1.5 rounded-lg text-dark-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
                   >
                     <Trash2 size={14} />
@@ -317,6 +348,17 @@ export default function IdeasPage() {
           })}
         </div>
       )}
+      {removed ? (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-4 rounded-xl border border-dark-700 bg-dark-900/95 px-4 py-3 text-sm text-dark-200 shadow-lg"
+        >
+          <span>Idea removed.</span>
+          <button onClick={undoRemove} className="font-semibold text-brand-300 hover:text-white">
+            Undo
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

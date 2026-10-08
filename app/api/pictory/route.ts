@@ -3,7 +3,7 @@ import { createStoryboard, storyboardStatus } from "@/lib/pictory";
 
 export async function POST(req: Request) {
   if (!process.env.PICTORY_API_KEY) {
-    return NextResponse.json({ error: "Add PICTORY_API_KEY in Vercel, then redeploy." }, { status: 400 });
+    return NextResponse.json({ error: "Pictory isn't connected yet." }, { status: 400 });
   }
   const body = await req.json();
   const title = String(body.title || "Creator OS cut");
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   if (!process.env.PICTORY_API_KEY) {
-    return NextResponse.json({ error: "Add PICTORY_API_KEY in Vercel, then redeploy." }, { status: 400 });
+    return NextResponse.json({ error: "Pictory isn't connected yet." }, { status: 400 });
   }
   const jobId = new URL(req.url).searchParams.get("jobId") || "";
   if (!jobId) return NextResponse.json({ error: "jobId required" }, { status: 400 });

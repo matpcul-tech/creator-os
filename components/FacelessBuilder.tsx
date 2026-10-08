@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Mic } from "lucide-react";
+import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto } from "@/lib/cut/photo-filter";
 import { fileNameFor, photoPlan, scorePhoto, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
 import { STILLS } from "@/lib/cut/types";
 
@@ -63,12 +64,14 @@ function parseScript(script: string): Scene[] {
   }));
 }
 async function commons(q: string): Promise<StockInfo[]> {
-  const url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=1080&gsrsearch=" + encodeURIComponent(q + " filemime:image/jpeg");
+  const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=20&${COMMONS_IMAGEINFO}&iiurlwidth=1080&gsrsearch=` + encodeURIComponent(q + " filemime:image/jpeg");
   const data = await fetch(url).then((r) => r.json());
-  const pages = Object.values(data.query?.pages || {}) as { title?: string; imageinfo?: Omit<StockInfo, "title">[] }[];
+  const pages = Object.values(data.query?.pages || {}) as Parameters<typeof commonsInfo>[0][];
+  // Real photographs only. Screenshots, diagrams, maps, logos, and SVGs are dropped.
   return pages
-    .map((p) => (p.imageinfo?.[0] && p.title ? { ...p.imageinfo[0], title: p.title } : null))
-    .filter((info): info is StockInfo => Boolean(info));
+    .map(commonsInfo)
+    .filter((info): info is NonNullable<ReturnType<typeof commonsInfo>> => Boolean(info) && isLikelyPhoto(info!))
+    .map((info) => ({ url: info.url, thumburl: info.thumburl, descriptionurl: info.descriptionurl, title: info.title }));
 }
 function loadImage(url: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
@@ -345,6 +348,7 @@ export function FacelessBuilder({
           <button onClick={findStock} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><ImageIcon size={12} /> Find photos</button>
           <button onClick={() => void speak()} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><Mic size={12} /> Play voice</button>
           <button onClick={render} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-brand-500/15 text-brand-400 flex items-center gap-1"><Download size={12} /> Make video</button>
+          <a href={`/thumbnails?title=${encodeURIComponent(title)}`} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-dark-300 hover:text-white flex items-center gap-1"><ImageIcon size={12} /> Make thumbnail</a>
         </div>
         <p className="text-xs text-dark-500 mt-3">{status}</p>
         {scenes.slice(0, 12).map((s, i) => (

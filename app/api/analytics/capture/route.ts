@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 // URL → analytics snapshot via oEmbed (where available) and best-effort
 // heuristics. oEmbed gives us title/author/HTML but not engagement counts
-// — for those, the user fills in the numbers and submits.
+//, for those, the user fills in the numbers and submits.
 //
 // Real value here: detecting platform + content ID from a URL so the user
 // can record a snapshot without retyping context.
@@ -55,7 +55,7 @@ async function tryOembed(url: string): Promise<Record<string, unknown> | null> {
   } else if (provider === "tiktok") {
     endpoint = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
   } else if (provider === "instagram" || provider === "instagram_reels") {
-    // IG oEmbed requires a Facebook app token — skip silently.
+    // IG oEmbed requires a Facebook app token, skip silently.
     return null;
   } else if (provider === "threads") {
     // Threads has no public oEmbed; skip.

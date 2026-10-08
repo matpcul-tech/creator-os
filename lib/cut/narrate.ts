@@ -1,4 +1,5 @@
 import { edgeNarration } from "@/lib/cut/edge-voice";
+import { BudgetExceededError, assertWithinBudget, estimateCostUsd, recordUsage } from "@/lib/ai-budget";
 import { LAYOUTS, STILLS, VOICES, type Layout, type StillId } from "@/lib/cut/types";
 
 const voiceIds = new Set(VOICES.map((voice) => voice.id));
@@ -177,7 +178,13 @@ export async function sharpenCards(narrations: string[]) {
   if (clean.some((item) => !item)) return { ok: false as const, error: "Every scene needs words" };
 
   const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) return { ok: false as const, error: "Add XAI_API_KEY to sharpen lines" };
+  if (!apiKey) return { ok: false as const, error: "Sharpen isn't connected yet. You can still edit the on-screen lines by hand." };
+  try {
+    await assertWithinBudget();
+  } catch (e) {
+    if (e instanceof BudgetExceededError) return { ok: false as const, error: e.message };
+    throw e;
+  }
 
   const numbered = clean.map((line, index) => `${index + 1}. ${line}`).join("\n");
   let response: Response;
@@ -206,7 +213,22 @@ export async function sharpenCards(narrations: string[]) {
   }
 
   if (!response.ok) return { ok: false as const, error: "Sharpen didn't answer" };
-  const body = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+  const body = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  const sharpenModel = "grok-4.5";
+  await recordUsage({
+    provider: "xai",
+    model: sharpenModel,
+    feature: "sharpen",
+    inputTokens: body.usage?.prompt_tokens ?? 0,
+    outputTokens: body.usage?.completion_tokens ?? 0,
+    costUsd: estimateCostUsd(sharpenModel, {
+      inputTokens: body.usage?.prompt_tokens ?? 0,
+      outputTokens: body.usage?.completion_tokens ?? 0,
+    }),
+  });
   const content = body.choices?.[0]?.message?.content ?? "";
   const start = content.indexOf("{");
   const end = content.lastIndexOf("}");

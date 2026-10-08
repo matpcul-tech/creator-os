@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/anthropic";
+import { BudgetExceededError, budgetErrorResponse } from "@/lib/ai-budget";
 import { ideaBatchPrompt, ideaBatchSchema } from "@/lib/prompts";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
     const raw = await complete({
       user: ideaBatchPrompt({ count, topic }),
       jsonSchema: ideaBatchSchema as unknown as Record<string, unknown>,
-      effort: "high",
+      feature: "ideas",
       maxTokens: 6000,
     });
 
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ideas });
   } catch (e) {
+    if (e instanceof BudgetExceededError) return budgetErrorResponse(e);
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

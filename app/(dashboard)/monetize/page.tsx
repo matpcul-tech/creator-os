@@ -249,7 +249,7 @@ export default function MonetizePage() {
             <DollarSign size={36} className="text-dark-700 mx-auto mb-3" />
             <p className="text-white font-semibold">No revenue logged</p>
             <p className="text-sm text-dark-500 mt-1">
-              Add entries as you get paid — sponsorships, products, affiliates.
+              Add entries as you get paid, like sponsorships, products, and affiliates.
             </p>
           </div>
         ) : (

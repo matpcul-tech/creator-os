@@ -17,7 +17,7 @@ export function OnboardingBanner() {
           </p>
           <p className="text-xs text-dark-400 mt-0.5">
             Tell CreatorAI about your niche, audience, and voice. Every AI feature
-            uses this — without it, generations are generic. Takes 5 minutes.
+            uses this. Without it, generations are generic. Takes 5 minutes.
           </p>
         </div>
         <div className="flex items-center gap-1 text-sm font-medium text-brand-400 group-hover:translate-x-1 transition-transform shrink-0">

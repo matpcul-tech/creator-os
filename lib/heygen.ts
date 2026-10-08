@@ -37,9 +37,8 @@ export type VoiceOption = { id: string; name: string; language: string };
 function apiKey(): string {
   const key = process.env.HEYGEN_API_KEY;
   if (!key) {
-    throw new Error(
-      "HEYGEN_API_KEY is not set. Add it to .env.local, see .env.example.",
-    );
+    // Shown to the user. Setup details for the owner are in .env.example.
+    throw new Error("HeyGen isn't connected.");
   }
   return key;
 }

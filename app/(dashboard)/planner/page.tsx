@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { PLATFORMS, type PlatformId, PLATFORM_LIST } from "@/lib/platforms";
 import { parseJSON, formatDate } from "@/lib/utils";
-import { PublishPanel } from "@/components/PublishPanel";
+import { PostFlow } from "@/components/PostFlow";
 import { FacelessCut } from "@/components/FacelessCut";
 
 type Piece = {
@@ -242,7 +242,7 @@ function PieceCard({
         ) : null}
       </div>
       <div
-        className="grid grid-cols-4 gap-1 mt-2 pt-2 border-t border-dark-700/30"
+        className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-dark-700/30"
         onClick={(e) => e.stopPropagation()}
       >
         {COLUMNS.map((c) => {
@@ -252,14 +252,14 @@ function PieceCard({
               key={c.id}
               onClick={() => !active && onMove(c.id)}
               disabled={active}
-              className={`text-[10px] py-1 rounded transition-colors ${
+              className={`text-[11px] leading-tight px-1 py-1.5 rounded whitespace-nowrap transition-colors ${
                 active
                   ? "bg-brand-500/20 text-brand-400 cursor-default"
                   : "text-dark-500 hover:text-white hover:bg-dark-700/40"
               }`}
               title={`Move to ${c.label}`}
             >
-              {c.label.slice(0, 4)}
+              {c.label}
             </button>
           );
         })}
@@ -424,24 +424,28 @@ function PieceDrawer({
             </div>
           ) : null}
 
-          {platforms.length > 0 && body ? (
-            <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Send size={16} className="text-brand-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Publish
-                </h3>
-              </div>
-              <PublishPanel
-                contentId={piece.id}
-                title={title}
-                body={body}
-                variants={piece.variants}
-                publishUrls={piece.publishUrls}
-                platforms={platforms as PlatformId[]}
-              />
+          <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Thumbnail</h3>
+              <p className="text-xs text-dark-500 mt-1">Make a YouTube or vertical thumbnail and attach it to this piece.</p>
             </div>
-          ) : null}
+            <a
+              href={`/thumbnails?title=${encodeURIComponent(title)}&hook=${encodeURIComponent(hook)}&contentId=${piece.id}`}
+              className="px-3 py-2 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-300 hover:bg-brand-500/25"
+            >
+              Make thumbnail
+            </a>
+          </div>
+
+          <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Send size={16} className="text-brand-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Post
+              </h3>
+            </div>
+            <PostFlow piece={{ ...piece, title, body, hook }} />
+          </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-dark-800">
             <button

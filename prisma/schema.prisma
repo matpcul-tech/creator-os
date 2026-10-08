@@ -1,4 +1,4 @@
-// Creator OS — single-user Postgres schema.
+// Creator OS, single-user Postgres schema.
 // Models are intentionally flat; we'll add relations only where they pull weight.
 
 generator client {
@@ -29,7 +29,7 @@ model Profile {
   updatedAt       DateTime @updatedAt
 }
 
-// Brand kit — colors, fonts, logo URL, voice guidelines, taglines.
+// Brand kit, colors, fonts, logo URL, voice guidelines, taglines.
 model Brand {
   id             Int      @id @default(autoincrement())
   primaryColor   String   @default("#0EA5E9")
@@ -101,7 +101,7 @@ model Sponsor {
   updatedAt     DateTime @updatedAt
 }
 
-// Revenue events — sponsorships, affiliate payouts, product sales.
+// Revenue events, sponsorships, affiliate payouts, product sales.
 model RevenueEntry {
   id          Int      @id @default(autoincrement())
   source      String   // sponsor | affiliate | product | platform
@@ -113,7 +113,7 @@ model RevenueEntry {
   createdAt   DateTime @default(now())
 }
 
-// Audience contacts — top fans, collab partners, sponsor reps, journalists.
+// Audience contacts, top fans, collab partners, sponsor reps, journalists.
 model Contact {
   id           Int      @id @default(autoincrement())
   name         String
@@ -139,4 +139,54 @@ model AnalyticsSnapshot {
   saves        Int      @default(0)
   followers    Int      @default(0)
   capturedAt   DateTime @default(now())
+}
+
+// Public landing page waitlist. Emails are stored lowercased and unique.
+model WaitlistEntry {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  source    String   @default("landing")
+  createdAt DateTime @default(now())
+}
+
+// One row per paid AI or voice request, used for the daily spending cap.
+// costUsd is an estimate based on published per-token prices.
+model AiUsage {
+  id           Int      @id @default(autoincrement())
+  provider     String   // anthropic | xai | voice
+  model        String   @default("")
+  feature      String   @default("") // script | ideas | hooks | adapt | brand-voice | sharpen | voice
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Thumbnail images made in the Thumbnails tool. Stored as a data URL so no
+// extra file storage is needed. contentId links to a ContentPiece when attached.
+model Thumbnail {
+  id        Int      @id @default(autoincrement())
+  contentId Int?
+  format    String   @default("youtube") // youtube (1280x720) | vertical (1080x1920)
+  text      String   @default("")
+  dataUrl   String   // image/jpeg or image/png data URL
+  createdAt DateTime @default(now())
+
+  @@index([contentId])
+}
+
+// OAuth tokens for publishing connectors (YouTube first). Tokens are stored
+// encrypted with AES-256-GCM (see lib/crypto-box.ts). One row per provider.
+model OAuthToken {
+  id           Int       @id @default(autoincrement())
+  provider     String    @unique // youtube
+  accessToken  String    @default("") // encrypted
+  refreshToken String    @default("") // encrypted
+  expiresAt    DateTime?
+  scope        String    @default("")
+  accountName  String    @default("") // channel title, for display
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

@@ -7,6 +7,7 @@ import {
   Linkedin,
   Mail,
   Mic,
+  Music2,
   FileText,
   Globe,
 } from "lucide-react";
@@ -76,7 +77,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
   tiktok: {
     id: "tiktok",
     name: "TikTok",
-    icon: Mic,
+    icon: Music2,
     color: "from-fuchsia-500 to-pink-500",
     dotColor: "bg-fuchsia-500",
     format: "short_video",
@@ -140,7 +141,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     hashtagsRecommended: 3,
     hookSeconds: 0,
     promptTips:
-      "Hook → personal story → insight → ask. Line breaks every 1–2 sentences. Posts cap at 3 hashtags.",
+      "Hook → personal story → insight → ask. Line breaks every 1 to 2 sentences. Posts cap at 3 hashtags.",
   },
   threads: {
     id: "threads",

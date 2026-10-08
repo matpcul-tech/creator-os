@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { complete } from "@/lib/anthropic";
+import { BudgetExceededError, budgetErrorResponse } from "@/lib/ai-budget";
 import { brandVoicePrompt, brandVoiceSchema } from "@/lib/prompts";
 import { prisma } from "@/lib/db";
 import { stringifyJSON } from "@/lib/utils";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const raw = await complete({
       user: brandVoicePrompt({ samples }),
       jsonSchema: brandVoiceSchema as unknown as Record<string, unknown>,
-      effort: "high",
+      feature: "brand-voice",
       maxTokens: 4000,
     });
 
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(parsed);
   } catch (e) {
+    if (e instanceof BudgetExceededError) return budgetErrorResponse(e);
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

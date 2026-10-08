@@ -216,7 +216,7 @@ export default async function DashboardPage() {
             <Link href="/ideas" className="text-sm text-brand-400 hover:text-brand-300">All →</Link>
           </div>
           {s.recentIdeas.length === 0 ? (
-            <Empty title="No ideas yet." hint="Generate a batch with Claude in Ideas." />
+            <Empty title="No ideas yet." hint="Generate a batch with AI in Ideas." />
           ) : (
             <ul className="space-y-3">
               {s.recentIdeas.map((i) => (
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs text-dark-500">Followers</div>
-              <div className="text-3xl font-bold text-white mt-1">{s.totalFollowers ? formatNumber(s.totalFollowers) : "—"}</div>
+              <div className="text-3xl font-bold text-white mt-1">{s.totalFollowers ? formatNumber(s.totalFollowers) : "0"}</div>
             </div>
             <div>
               <div className="text-xs text-dark-500">Contacts</div>
@@ -318,7 +318,7 @@ function Row({ label, value }: { label: string; value?: string | null }) {
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-xs text-dark-500">{label}</dt>
       <dd className="text-sm text-white text-right truncate max-w-[200px]">
-        {value || <span className="text-dark-600">—</span>}
+        {value || <span className="text-dark-600">Not set</span>}
       </dd>
     </div>
   );
