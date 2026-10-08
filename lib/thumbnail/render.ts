@@ -1,5 +1,7 @@
 // Pure canvas drawing for thumbnails. Runs in the browser only.
 
+import { clamp, fitText, safeArea, type Measure, type SafeArea } from "@/lib/text/fit";
+
 export type ThumbFormat = "youtube" | "vertical";
 export type ThumbLayout = "bottom" | "center" | "band";
 
@@ -46,24 +48,66 @@ export function layoutAnchor(layout: ThumbLayout, format: ThumbFormat): { x: num
   return { x: 0.06, y: format === "youtube" ? 0.86 : 0.8 };
 }
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = next;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
+export const FONT = '"Arial Black", "Helvetica Neue", Arial, sans-serif';
+// Line height and outline as multiples of the font size. Layout and drawing both use these.
+export const LINE_HEIGHT = 1.08;
+export const OUTLINE = 0.14;
 
-const FONT = '"Arial Black", "Helvetica Neue", Arial, sans-serif';
+export type ThumbTextLayout = {
+  size: number;
+  lines: string[];
+  lineHeight: number;
+  align: CanvasTextAlign;
+  /** Where fillText draws: the left edge for left aligned text, the center otherwise. */
+  x: number;
+  top: number;
+  width: number;
+  height: number;
+  safe: SafeArea;
+};
+
+/**
+ * Places thumbnail text: wraps and shrinks it until it fits the safe area, then moves the block
+ * so it stays inside even when the anchor was dragged near an edge. Pure, so tests and the
+ * canvas share the same math.
+ */
+export function layoutThumbText(opts: {
+  format: ThumbFormat;
+  layout: ThumbLayout;
+  text: string;
+  anchor: { x: number; y: number };
+  scale: number;
+  measure: Measure;
+}): ThumbTextLayout {
+  const { w, h } = THUMB_SIZES[opts.format];
+  const safe = safeArea(w, h);
+  const safeW = safe.right - safe.left;
+  const safeH = safe.bottom - safe.top;
+  const base = opts.format === "youtube" ? h * 0.17 : w * 0.13;
+  const maxSize = base * opts.scale;
+  const align: CanvasTextAlign = opts.layout === "bottom" ? "left" : "center";
+  const ax = opts.anchor.x * w;
+  const ay = opts.anchor.y * h;
+  // Text wraps to the whole safe width, then slides back inside if the anchor sits near an edge.
+  const fit = fitText(opts.text, opts.measure, {
+    maxWidth: safeW,
+    maxHeight: safeH * (opts.format === "vertical" ? 0.6 : 0.8),
+    maxSize,
+    minSize: Math.min(maxSize, base * 0.3),
+    lineHeight: LINE_HEIGHT,
+    maxLines: opts.format === "vertical" ? 5 : 3,
+    outline: OUTLINE,
+  });
+  const pad = (fit.size * OUTLINE) / 2; // the outline reaches this far past the letters
+  const x =
+    align === "left"
+      ? clamp(ax, safe.left, safe.right - fit.width) + pad
+      : clamp(ax, safe.left + fit.width / 2, safe.right - fit.width / 2);
+  // Bottom layout anchors at the last line; the others center the block.
+  const wantTop = opts.layout === "bottom" ? ay - fit.height : ay - fit.height / 2;
+  const top = clamp(wantTop, safe.top, safe.bottom - fit.height);
+  return { size: fit.size, lines: fit.lines, lineHeight: fit.lineHeight, align, x, top, width: fit.width, height: fit.height, safe };
+}
 
 export function drawThumbnail(
   canvas: HTMLCanvasElement,
@@ -113,24 +157,17 @@ export function drawThumbnail(
   const text = opts.text.trim().toUpperCase();
   if (!text) return;
 
-  const base = opts.format === "youtube" ? h * 0.17 : w * 0.13;
-  let size = base * opts.scale;
-  const maxWidth = w * (opts.layout === "bottom" ? 0.86 : 0.88);
-  let lines: string[] = [];
-  for (let i = 0; i < 30; i++) {
-    ctx.font = `900 ${Math.round(size)}px ${FONT}`;
-    lines = wrap(ctx, text, maxWidth);
-    const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
-    if (lines.length <= 3 && widest <= maxWidth) break;
-    size *= 0.92;
-  }
-  const lineH = size * 1.08;
-  const blockH = lineH * lines.length;
-  const align: CanvasTextAlign = opts.layout === "bottom" ? "left" : "center";
-  const ax = opts.anchor.x * w;
-  const ay = opts.anchor.y * h;
-  // Bottom layout anchors at the last line; the others center the block.
-  const top = opts.layout === "bottom" ? ay - blockH : ay - blockH / 2;
+  const fontAt = (size: number) => `900 ${Math.round(size)}px ${FONT}`;
+  const measure: Measure = (line, size) => {
+    ctx.font = fontAt(size);
+    return ctx.measureText(line).width;
+  };
+  const placed = layoutThumbText({ format: opts.format, layout: opts.layout, text, anchor: opts.anchor, scale: opts.scale, measure });
+  const { lines, top, align } = placed;
+  const size = placed.size;
+  const lineH = placed.lineHeight;
+  const blockH = placed.height;
+  const ax = placed.x;
 
   if (opts.layout === "band") {
     const pad = size * 0.35;
@@ -138,6 +175,7 @@ export function drawThumbnail(
     ctx.fillRect(0, top - pad, w, blockH + pad * 2);
   }
 
+  ctx.font = fontAt(size);
   ctx.textAlign = align;
   ctx.textBaseline = "top";
   ctx.lineJoin = "round";
@@ -147,7 +185,7 @@ export function drawThumbnail(
     ctx.shadowColor = "rgba(0,0,0,0.55)";
     ctx.shadowBlur = size * 0.18;
     ctx.shadowOffsetY = size * 0.06;
-    ctx.lineWidth = size * 0.14;
+    ctx.lineWidth = size * OUTLINE;
     ctx.strokeStyle = opts.palette.stroke;
     ctx.strokeText(line, ax, y);
     ctx.restore();
