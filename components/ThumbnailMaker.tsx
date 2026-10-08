@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
+type Photo = { src: string; url: string; key?: string; attribution?: string; provider?: string };
 import { Download, ImagePlus, Loader2, Paperclip, Search, Sparkles, Check } from "lucide-react";
 import {
   THUMB_SIZES,
@@ -43,9 +45,15 @@ export function ThumbnailMaker({
   const [scale, setScale] = useState(1);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   // Photos not shown yet, and every photo already shown, so "Try another photo" never repeats one.
-  const [photoQueue, setPhotoQueue] = useState<{ src: string; url: string }[]>([]);
+  const photoQueue = useRef<Photo[]>([]);
   const shownPhotos = useRef<Set<string>>(new Set());
   const [photoCount, setPhotoCount] = useState(0);
+  const [photoCredit, setPhotoCredit] = useState("");
+  // Guards against a double press skipping ahead, and against a slow photo
+  // replacing a newer one.
+  const photoBusy = useRef(false);
+  const photoToken = useRef(0);
+  const photoQueries = useRef<{ sig: string; queries: unknown } | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [busy, setBusy] = useState<"" | "photo" | "ai" | "attach">("");
   const [note, setNote] = useState("");
@@ -92,59 +100,88 @@ export function ThumbnailMaker({
     img.src = src;
   }
 
-  // Photos come from the same stock source as the Faceless builder.
-  function showPhoto(photo: { src: string; url: string }) {
-    shownPhotos.current.add(photo.src);
-    setPhotoCount(shownPhotos.current.size);
-    loadImage(photo.url);
+  // Resolves once the photo has loaded, or with null if it failed.
+  function fetchImage(src: string): Promise<HTMLImageElement | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
   }
 
-  async function findPhoto() {
-    if (photoQueue.length) {
-      const [next, ...rest] = photoQueue;
-      setPhotoQueue(rest);
-      showPhoto(next);
-      return;
+  // Warm the browser cache for the next photo so the next press is instant.
+  function preloadNext() {
+    const next = photoQueue.current[0];
+    if (next) void fetchImage(next.url);
+  }
+
+  async function morePhotos(): Promise<Photo[]> {
+    const lines = [title, hook, text].map((l) => l.trim()).filter(Boolean);
+    const sig = JSON.stringify(lines);
+    const known = photoQueries.current?.sig === sig ? photoQueries.current.queries : undefined;
+    const res = await fetch("/api/ai/clips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lines: lines.slice(0, 1),
+        topic: lines.join(" "),
+        exclude: [...shownPhotos.current].slice(-400),
+        extra: 15,
+        ...(known ? { queries: known } : {}),
+      }),
+    });
+    const json = (await res.json()) as { items?: (Photo | null)[]; pool?: Photo[]; queries?: unknown };
+    if (json.queries) photoQueries.current = { sig, queries: json.queries };
+    const seen = new Set(shownPhotos.current);
+    const found: Photo[] = [];
+    for (const item of [...(json.items ?? []), ...(json.pool ?? [])]) {
+      if (!item || seen.has(item.src) || (item.key && seen.has(item.key))) continue;
+      seen.add(item.src);
+      if (item.key) seen.add(item.key);
+      found.push(item);
     }
+    return found;
+  }
+
+  // Photos come from the same stock source as the Faceless builder.
+  async function findPhoto() {
+    if (photoBusy.current) return;
+    photoBusy.current = true;
+    const token = ++photoToken.current;
     setBusy("photo");
     setNote("");
     try {
-      const lines = [title, hook, text].map((l) => l.trim()).filter(Boolean);
-      const res = await fetch("/api/ai/clips", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lines: lines.slice(0, 1),
-          topic: lines.join(" "),
-          exclude: [...shownPhotos.current].slice(-400),
-          extra: 15,
-        }),
-      });
-      const json = (await res.json()) as {
-        items?: ({ src: string; url: string } | null)[];
-        pool?: { src: string; url: string }[];
-      };
-      const seen = new Set(shownPhotos.current);
-      const found: { src: string; url: string }[] = [];
-      for (const item of [...(json.items ?? []), ...(json.pool ?? [])]) {
-        if (!item || seen.has(item.src)) continue;
-        seen.add(item.src);
-        found.push(item);
+      // Up to a few tries, skipping photos that fail to load.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (!photoQueue.current.length) photoQueue.current = await morePhotos();
+        const next = photoQueue.current.shift();
+        if (!next) {
+          setNote(
+            shownPhotos.current.size
+              ? "That's every matching photo we could find. Upload your own, or edit the text to search for something else."
+              : "No matching photo found. Upload your own, or keep the color background.",
+          );
+          return;
+        }
+        shownPhotos.current.add(next.src);
+        if (next.key) shownPhotos.current.add(next.key);
+        const img = await fetchImage(next.url);
+        if (token !== photoToken.current) return;
+        if (img) {
+          setImage(img);
+          setPhotoCount(shownPhotos.current.size);
+          setPhotoCredit(next.provider && next.provider !== "wikimedia" ? next.attribution ?? "" : "");
+          preloadNext();
+          return;
+        }
       }
-      if (!found.length) {
-        setNote(
-          shownPhotos.current.size
-            ? "That's every matching photo we could find. Upload your own, or edit the text to search for something else."
-            : "No matching photo found. Upload your own, or keep the color background.",
-        );
-        return;
-      }
-      const [first, ...rest] = found;
-      setPhotoQueue(rest);
-      showPhoto(first);
+      setNote("Those photos didn't load. Try again or upload your own.");
     } catch {
       setNote("Photo search didn't answer. Try again or upload your own.");
     } finally {
+      photoBusy.current = false;
       setBusy("");
     }
   }
@@ -155,6 +192,8 @@ export function ThumbnailMaker({
       setNote("Please choose an image file.");
       return;
     }
+    photoToken.current += 1; // a stock photo still loading must not replace the upload
+    setPhotoCredit("");
     loadImage(URL.createObjectURL(file));
   }
 
@@ -309,19 +348,21 @@ export function ThumbnailMaker({
         <div>
           <label className="text-xs uppercase tracking-wider font-semibold text-dark-500 mb-2 block">Background photo</label>
           <div className="flex flex-wrap gap-2">
-            <button onClick={findPhoto} disabled={busy === "photo"} className={`${chip(false)} inline-flex items-center gap-1.5`}>
+            <button onClick={findPhoto} disabled={busy === "photo"} aria-busy={busy === "photo"} className={`${chip(false)} inline-flex items-center gap-1.5 disabled:opacity-60`}>
               {busy === "photo" ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
-              {photoCount > 0 ? "Try another photo" : "Find a photo"}
+              {busy === "photo" ? "Loading photo..." : photoCount > 0 ? "Try another photo" : "Find a photo"}
             </button>
             <label className={`${chip(false)} inline-flex items-center gap-1.5 cursor-pointer`}>
               <ImagePlus size={12} /> Upload
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
             </label>
             {image ? (
-              <button onClick={() => setImage(null)} className={chip(false)}>Remove photo</button>
+              <button onClick={() => { photoToken.current += 1; setImage(null); setPhotoCredit(""); }} className={chip(false)}>Remove photo</button>
             ) : null}
           </div>
-          <p className="mt-1.5 text-[11px] text-dark-500">Stock photos come from Wikimedia Commons. Check the license before commercial use.</p>
+          <p className="mt-1.5 text-[11px] text-dark-500">
+            {photoCredit ? `${photoCredit}. ` : ""}Stock photos come from Pexels or Pixabay when set up, otherwise Wikimedia Commons. Check the license before commercial use.
+          </p>
         </div>
 
         {note ? <p role="alert" className="text-sm text-amber-200">{note}</p> : null}

@@ -6,6 +6,7 @@ import { DONE_MARKER, ERROR_MARKER, continuationMessages, joinContinuation, shou
 import {
   AI_MODELS,
   BudgetExceededError,
+  supportsEffort,
   DEFAULT_EFFORT,
   assertWithinBudget,
   estimateCostUsd,
@@ -143,7 +144,7 @@ export async function complete(opts: CallOpts & {
     max_tokens: opts.maxTokens ?? 8000,
     system,
     thinking: opts.noThinking ? { type: "disabled" } : { type: "adaptive" },
-    output_config: { effort: opts.effort ?? DEFAULT_EFFORT },
+    ...(supportsEffort(model) ? { output_config: { effort: opts.effort ?? DEFAULT_EFFORT } } : {}),
     messages: [{ role: "user", content: opts.user }],
   };
 
@@ -188,7 +189,7 @@ export async function streamCompletion(opts: CallOpts): Promise<ReadableStream<U
             system,
             // Thinking shares max_tokens with the answer, so long writing turns it off.
             thinking: opts.noThinking ? { type: "disabled" } : { type: "adaptive" },
-            output_config: { effort: opts.effort ?? DEFAULT_EFFORT },
+            ...(supportsEffort(model) ? { output_config: { effort: opts.effort ?? DEFAULT_EFFORT } } : {}),
             messages,
           });
 

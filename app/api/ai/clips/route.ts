@@ -1,4 +1,6 @@
 import { allowedImage, pickPhotos, WIKI_UA } from "@/lib/cut/clips";
+import { sanitizeQueries } from "@/lib/cut/visual-queries";
+import { complete } from "@/lib/anthropic";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
@@ -13,7 +15,7 @@ export async function POST(req: Request) {
   const limit = rateLimit(`clips:${clientIp(req)}`, 20, 60);
   if (!limit.ok) return rateLimitResponse(limit);
   const body = (await req.json().catch(() => null)) as
-    | { lines?: unknown; topic?: unknown; exclude?: unknown; offset?: unknown; extra?: unknown }
+    | { lines?: unknown; topic?: unknown; exclude?: unknown; offset?: unknown; extra?: unknown; queries?: unknown }
     | null;
   const lines = strings(body?.lines, MAX_LINES, 280);
   if (!lines.length) return Response.json({ clips: [], items: [], pool: [] });
@@ -21,12 +23,34 @@ export async function POST(req: Request) {
   const exclude = strings(body?.exclude, 500, 1000);
   const offset = typeof body?.offset === "number" ? body.offset : 0;
   const extra = typeof body?.extra === "number" ? Math.max(0, Math.min(40, Math.floor(body.extra))) : 0;
-  const { picks, pool } = await pickPhotos({ lines, topic, exclude, offset, extra });
-  const view = (p: (typeof pool)[number]) => ({ src: p.src, url: p.url, title: p.title, credit: p.credit });
+  // Queries from an earlier call for the same script skip the AI step.
+  const queries = sanitizeQueries(body?.queries, lines);
+  const { picks, pool, queries: used, querySource } = await pickPhotos({
+    lines,
+    topic,
+    exclude,
+    offset,
+    extra,
+    queries,
+    // One small call for the whole script. It counts against the daily cap, and
+    // any failure (cap reached, no key, bad answer) falls back to keyword queries.
+    ask: (prompt, maxTokens) => complete({ user: prompt, tier: "fast", noThinking: true, maxTokens, feature: "photo-queries" }),
+  });
+  const view = (p: (typeof pool)[number]) => ({
+    src: p.src,
+    url: p.url,
+    key: p.key,
+    title: p.title,
+    credit: p.credit,
+    attribution: p.attribution,
+    provider: p.provider,
+  });
   return Response.json({
     clips: picks.map((p) => p?.url ?? null),
     items: picks.map((p) => (p ? view(p) : null)),
     pool: pool.map(view),
+    queries: used,
+    querySource,
   });
 }
 
