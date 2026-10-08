@@ -7,6 +7,10 @@ import { fromPexels, searchPexels } from "../lib/cut/pexels";
 import { allowedImage, pickPhotos, scoreFor } from "../lib/cut/clips";
 import { supportsEffort } from "../lib/ai-budget";
 
+// Tests must not depend on (or use) real provider keys from the shell.
+delete process.env.PEXELS_API_KEY;
+delete process.env.PIXABAY_API_KEY;
+
 const lines = ["Sleep is the first lever.", "Muscle is the second."];
 
 test("AI queries are parsed, cleaned, and capped at three per scene", () => {
@@ -286,4 +290,26 @@ test("different stock photos with the same tags are not treated as duplicates", 
     m.restore();
     delete process.env.PIXABAY_API_KEY;
   }
+});
+
+import { shootKey, stockSiteScore } from "../lib/cut/clips";
+
+test("Pixabay matches need most of the query in the tags, and skip animal photos", () => {
+  assert.equal(stockSiteScore("pixabay", "duck, bird, waterfowl, water, winter, cold, swimming", "cold water swimming"), null);
+  assert.equal(stockSiteScore("pixabay", "turtle, sea, water, swimming, ocean, animal", "cold water swimming"), null);
+  assert.equal(stockSiteScore("pixabay", "cat, pet, sleep, bed", "person sleeping in bed"), null);
+  assert.ok((stockSiteScore("pixabay", "woman, asleep, sleep, bed, pillow", "person sleeping in bed") ?? 0) > 0);
+  assert.equal(stockSiteScore("pixabay", "mountains, hiking, italy, nature", "running shoes morning"), null);
+  assert.ok((stockSiteScore("pixabay", "dog, park, walk", "dog walking park") ?? 0) > 0); // asked for an animal
+  const real = stockSiteScore("pixabay", "woman, running, fitness", "woman running")!;
+  const made = stockSiteScore("pixabay", "woman, running, fitness, ai generated", "woman running")!;
+  assert.ok(real > made);
+});
+
+test("the same photographer's shoot counts as one photo", () => {
+  const a = shootKey({ provider: "pixabay", title: "kettlebell, arm, strong arm (Pixabay 1203889)", attribution: "Image by Keifit from Pixabay", src: "a" });
+  const b = shootKey({ provider: "pixabay", title: "kettlebell, arm, strong arm (Pixabay 1203887)", attribution: "Image by Keifit from Pixabay", src: "b" });
+  const c = shootKey({ provider: "pixabay", title: "kettlebell, arm, strong arm (Pixabay 5)", attribution: "Image by Someone from Pixabay", src: "c" });
+  assert.equal(a, b);
+  assert.notEqual(a, c);
 });
