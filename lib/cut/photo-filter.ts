@@ -87,3 +87,76 @@ export function commonsInfo(page: RawPage): (CommonsInfo & { url: string; thumbu
     description: info.extmetadata?.ImageDescription?.value,
   };
 }
+
+// Real photos that are not scene stock: museum and dig finds, medical and
+// anatomy images, specimens, ID style portraits. Dropped outright.
+const NOT_STOCK =
+  /\bfind ?id\b|portable antiquities|\bpas\b.*\bfinds?\b|archaeolog|\bartefacts?\b|\bartifacts?\b|\bmuseum (?:object|collection|number|no)\b|accession (?:number|no)|\bspecimens?\b|herbarium|\bfossils?\b|\banatom(?:y|ical)\b|\bmedical\b|\bclinical\b|\bsurgery\b|\bsurgical\b|\bpatients?\b|\blesions?\b|\bsyndrome\b|\bdisease\b|\breflex\b|\bx-?rays?\b|\bradiograph|\bhistolog|\bmicroscop|\bmri\b|\bct scan|\bpathology\b|\bautopsy\b|\bmugshots?\b|\bpassport photo|\bid (?:photo|card)\b|official portrait|\bheadshot\b|\bvisa photo|\bstatues?\b|\bsculptures?\b|\bbust of\b|\bfigurines?\b|\bmagazines?\b|\bperiodicals?\b|\bdefecat|\bfeces\b|\bcorpses?\b|\bcarcass|\broadkill\b|\btaxiderm/i;
+
+// Museum in the file name almost always means an object photographed in a museum.
+const MUSEUM_TITLE = /\bmuseum\b|\bmus[e\u00e9]e\b|\bmuseo\b/i;
+
+// Buildings and places of worship are fine when the scene asks for them.
+const BUILDING = /\b(church|cathedral|chapel|basilica|abbey|mosque|temple|synagogue|monastery|castle|palace|courthouse|town hall|facade|fa\u00e7ade|listed building|grade (i|ii)\b)/i;
+
+// Categories that usually hold everyday, photo-like subjects.
+const LIFE_CATEGORY =
+  /\b(people|men|women|persons|children|families|couples|elderly|seniors?|sports?|exercise|fitness|gym|running|walking|swimming|yoga|food|drinks?|cooking|kitchens?|bedrooms?|sleep|nature|landscapes?|forests?|beaches|mountains|sunrises?|sunsets?|streets?|cities|offices?|work|working|laptops?|coffee|animals|dogs|cats|gardens?|outdoors?|lifestyle|hands|activities)\b/i;
+
+function textOf(info: CommonsInfo): { title: string; body: string } {
+  const title = info.title.replace(/^File:/i, "").replace(/\.[a-z0-9]+$/i, "").replace(/[_]+/g, " ");
+  return { title, body: `${stripHtml(info.categories)} ${stripHtml(info.description)}` };
+}
+
+/** False for real photos that clearly are not stock for a scene. */
+export function isSceneStock(info: CommonsInfo): boolean {
+  const { title, body } = textOf(info);
+  return !NOT_STOCK.test(`${title} ${body}`) && !MUSEUM_TITLE.test(title);
+}
+
+function stem(word: string): string {
+  return word
+    .toLowerCase()
+    .replace(/(ing|ers|er|ed|es|s)$/, "")
+    .slice(0, 7);
+}
+
+const QUERY_STOP = new Set(["the", "and", "with", "for", "from", "photo", "photograph", "image", "picture", "stock", "a", "an", "of", "in", "on", "at", "to"]);
+
+export function queryWords(query: string): string[] {
+  return [...new Set(query.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !QUERY_STOP.has(w)).map(stem))];
+}
+
+/**
+ * How well a Commons file fits a search query: words of the query found in
+ * the title count double, in the description or categories once. Buildings
+ * the query did not ask for, and photos of screens, rank lower; files filed
+ * under everyday subjects rank a little higher.
+ */
+export function stockScore(info: CommonsInfo, query: string): { overlap: number; titleHits: number; score: number } {
+  const { title, body } = textOf(info);
+  const titleWords = title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^\d+$/.test(w));
+  const titleStems = new Set(titleWords.map(stem));
+  const bodyStems = new Set(body.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).map(stem));
+  let overlap = 0;
+  let titleHits = 0;
+  let score = 0;
+  for (const word of queryWords(query)) {
+    if (titleStems.has(word)) {
+      overlap += 1;
+      titleHits += 1;
+      score += 2;
+    } else if (bodyStems.has(word)) {
+      overlap += 1;
+      score += 1;
+    }
+  }
+  // A title that is mostly about the query beats one that mentions it in passing.
+  if (titleWords.length) score += (2 * titleHits) / Math.max(3, titleWords.length);
+  if (BUILDING.test(`${title} ${body}`) && !BUILDING.test(query)) score -= 3;
+  // Dated before 1900 in the title: archive photos, rarely modern stock.
+  if (/\b1[5-8]\d\d\b|\blccn\b|\bn\.d\./i.test(title)) score -= 3;
+  if (LIFE_CATEGORY.test(stripHtml(info.categories))) score += 1;
+  score += photoBonus(info);
+  return { overlap, titleHits, score };
+}

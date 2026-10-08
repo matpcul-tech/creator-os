@@ -1,6 +1,8 @@
 // Pure photo assignment so no photo repeats across the scenes of one video.
 
-export type Candidate = { src: string };
+export type Candidate = { src: string; key?: string };
+
+const keysOf = (item: Candidate) => (item.key ? [item.src, item.key] : [item.src]);
 
 /**
  * Give each scene its best candidate that has not been used yet.
@@ -9,6 +11,7 @@ export type Candidate = { src: string };
  * 3. Only when every pool is used up are photos reused, round robin, never
  *    the same photo on two scenes in a row.
  * Anything in `exclude` (photos already shown) is never picked in steps 1 and 2.
+ * Near duplicates share a `key` (same object or photo series) and count as used together.
  */
 export function assignUnique<T extends Candidate>(
   perScene: T[][],
@@ -19,20 +22,20 @@ export function assignUnique<T extends Candidate>(
   const out: (T | null)[] = perScene.map(() => null);
 
   perScene.forEach((list, index) => {
-    const pick = list.find((item) => !used.has(item.src));
+    const pick = list.find((item) => keysOf(item).every((k) => !used.has(k)));
     if (pick) {
       out[index] = pick;
-      used.add(pick.src);
+      keysOf(pick).forEach((k) => used.add(k));
     }
   });
 
   const spare = [...fallback, ...perScene.flat()].filter((item, i, all) => all.findIndex((x) => x.src === item.src) === i);
   out.forEach((value, index) => {
     if (value) return;
-    const pick = spare.find((item) => !used.has(item.src));
+    const pick = spare.find((item) => keysOf(item).every((k) => !used.has(k)));
     if (pick) {
       out[index] = pick;
-      used.add(pick.src);
+      keysOf(pick).forEach((k) => used.add(k));
     }
   });
 
@@ -71,4 +74,25 @@ export function spreadStills<S extends string>(scores: Record<S, number>[], ids:
     out.push(pick);
   });
   return out;
+}
+
+/**
+ * A key shared by near duplicates: the same object or Flickr series uploaded
+ * as several files. Drops the File: prefix, extension, numbers, IDs, and
+ * copyright tails. Titles that are only a camera code (DSC 0042) keep their
+ * own key so different photos are not merged.
+ */
+export function photoKey(title: string, src: string): string {
+  const base = title
+    .replace(/^File:/i, "")
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/\bcopyright\b.*$/i, "")
+    .replace(/\([^)]*\d[^)]*\)/g, " ")
+    .replace(/[_\-.,;:()[\]'"]+/g, " ")
+    .replace(/\d+/g, " ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = base.split(" ").filter((w) => w.length >= 3 && !/^(img|dsc|dscn|dscf|pxl|photo|image|file|jpg|jpeg)$/.test(w));
+  return words.length >= 2 ? `t:${words.join(" ")}` : `u:${src}`;
 }

@@ -1,6 +1,7 @@
-import { photoPlan, scorePhoto, keywords } from "./builder-cards";
-import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto, photoBonus } from "./photo-filter";
-import { assignUnique } from "./photo-pool";
+import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto, isSceneStock, queryWords, stockScore, type CommonsInfo } from "./photo-filter";
+import { assignUnique, photoKey } from "./photo-pool";
+import { pexelsKey, searchPexels, type ProviderPhoto } from "./pexels";
+import { fallbackQueries, visualQueries, type SceneQueries } from "./visual-queries";
 
 // Wikimedia rate-limits (HTTP 429) any client whose User-Agent has no real contact URL or email.
 // See https://meta.wikimedia.org/wiki/User-Agent_policy
@@ -8,21 +9,40 @@ export const WIKI_UA =
   "CreatorAI/1.0 (https://creatorai-os.vercel.app; https://github.com/matpcul-tech/creator-os) node-fetch";
 
 export type StockPhoto = {
-  src: string; // upstream Wikimedia URL (used for dedupe and exclude lists)
+  src: string; // upstream image URL (used for dedupe and exclude lists)
   url: string; // same-origin proxy URL, safe to draw on a canvas
+  key: string; // shared by near duplicates (same object or photo series)
   title: string;
-  credit: string; // file page on Commons
+  credit: string; // page for the photo on Commons or Pexels
+  attribution: string; // e.g. "Photo by Jane Doe on Pexels"
+  provider: "pexels" | "wikimedia";
   score: number;
 };
 
-const PER_QUERY = 30;
-const MAX_QUERIES = 30;
+type Found = ProviderPhoto & { info?: CommonsInfo };
 
-type Found = Omit<StockPhoto, "score"> & { bonus: number };
+const WIKI_PER_QUERY = 30;
+const PEXELS_PER_QUERY = 20;
+const MAX_QUERIES = 36;
+const MAX_PEXELS_QUERIES = 24; // Pexels allows 200 requests an hour
+const PEXELS_ENOUGH = 6; // below this, Wikimedia fills in for that query
 
-async function search(query: string, offset: number): Promise<Found[]> {
+// Same query, same results for an hour. Saves Pexels quota and speeds up reshuffles.
+const resultCache = new Map<string, { at: number; items: Found[] }>();
+const CACHE_MS = 60 * 60 * 1000;
+
+async function cached(key: string, run: () => Promise<Found[]>): Promise<Found[]> {
+  const hit = resultCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.items;
+  const items = await run();
+  if (resultCache.size > 600) resultCache.delete(resultCache.keys().next().value as string);
+  resultCache.set(key, { at: Date.now(), items });
+  return items;
+}
+
+async function searchWikimedia(query: string, offset: number): Promise<Found[]> {
   const url =
-    `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=${PER_QUERY}&gsroffset=${offset}&${COMMONS_IMAGEINFO}&iiurlwidth=960&gsrsearch=` +
+    `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=${WIKI_PER_QUERY}&gsroffset=${offset}&${COMMONS_IMAGEINFO}&iiurlwidth=960&gsrsearch=` +
     encodeURIComponent(`${query} filemime:image/jpeg`);
   const response = await fetch(url, { headers: { "User-Agent": WIKI_UA, "Api-User-Agent": WIKI_UA } });
   if (!response.ok) {
@@ -33,14 +53,15 @@ async function search(query: string, offset: number): Promise<Found[]> {
   const out: Found[] = [];
   for (const page of Object.values(data.query?.pages ?? {})) {
     const info = commonsInfo(page);
-    if (!info || !isLikelyPhoto(info)) continue;
-    const src = info.thumburl || info.url;
+    if (!info || !isLikelyPhoto(info) || !isSceneStock(info)) continue;
     out.push({
-      src,
-      url: `/api/ai/clips?u=${encodeURIComponent(src)}`,
+      src: info.thumburl || info.url,
       title: info.title,
       credit: info.descriptionurl || "Wikimedia Commons",
-      bonus: photoBonus(info),
+      attribution: "Wikimedia Commons",
+      provider: "wikimedia",
+      text: "",
+      info,
     });
   }
   return out;
@@ -59,11 +80,58 @@ async function runLimited<T>(tasks: (() => Promise<T>)[], limit: number): Promis
   return out;
 }
 
+/** Score one result against the query that found it. Null when it does not fit the query. */
+export function scoreFor(item: Found, query: string): number | null {
+  if (item.provider === "pexels") {
+    // Pexels search is relevance ranked already. Keep it first, nudged by its alt text.
+    const words = queryWords(query);
+    const alt = item.text.toLowerCase();
+    const hits = words.filter((w) => alt.includes(w)).length;
+    return 6 + hits;
+  }
+  if (!item.info) return null;
+  const { overlap, titleHits, score } = stockScore(item.info, query);
+  const words = queryWords(query).length;
+  // The title has to mention the query, and most of the query has to show up
+  // somewhere in the title, description, or categories.
+  if (titleHits < 1) return null;
+  if (overlap < Math.min(2, Math.max(1, Math.ceil(words / 2)))) return null;
+  return score;
+}
+
+function toStock(item: Found, score: number): StockPhoto {
+  return {
+    src: item.src,
+    url: `/api/ai/clips?u=${encodeURIComponent(item.src)}`,
+    key: photoKey(item.title, item.src),
+    title: item.title,
+    credit: item.credit,
+    attribution: item.attribution,
+    provider: item.provider,
+    score,
+  };
+}
+
+/** Rank everything the given queries found, best first, one entry per photo. */
+export function rankFor(queries: string[], results: Map<string, Found[]>): StockPhoto[] {
+  const best = new Map<string, StockPhoto>();
+  queries.forEach((query, qi) => {
+    for (const item of results.get(query) ?? []) {
+      const raw = scoreFor(item, query);
+      if (raw === null) continue;
+      const score = raw - qi * 0.5; // earlier queries describe the scene best
+      const prev = best.get(item.src);
+      if (!prev || score > prev.score) best.set(item.src, toStock(item, score));
+    }
+  });
+  return [...best.values()].sort((a, b) => b.score - a.score);
+}
+
 /**
- * One photo per line, no repeats across the video, plus a spare pool for
- * "another photo". Queries come from each line's key nouns and themes, with
- * the topic as a fallback. `exclude` lists photos already shown; `offset`
- * pages deeper into the search results.
+ * One photo per line, no repeats or near repeats across the video, plus a
+ * spare pool for "another photo". Queries come from the AI (cached per
+ * script) or from keywords. `exclude` lists photos (src or key) already
+ * shown; `offset` pages deeper into the results.
  */
 export async function pickPhotos(opts: {
   lines: string[];
@@ -71,82 +139,83 @@ export async function pickPhotos(opts: {
   exclude?: string[];
   offset?: number;
   extra?: number;
-}): Promise<{ picks: (StockPhoto | null)[]; pool: StockPhoto[] }> {
+  queries?: SceneQueries | null;
+  ask?: (prompt: string, maxTokens: number) => Promise<string>;
+}): Promise<{ picks: (StockPhoto | null)[]; pool: StockPhoto[]; queries: SceneQueries; querySource: string }> {
   const offset = Math.max(0, Math.min(500, Math.floor(opts.offset ?? 0)));
-  const plans = opts.lines.map((line) => photoPlan(line));
   const topic = (opts.topic ?? "").trim();
-  const topicKeys = keywords(topic).slice(0, 3);
-  const topicPlan = topic ? photoPlan(topic) : null;
-  const topicQueries = topic
-    ? [...new Set([...(topicPlan?.queries ?? []), topicKeys.length ? `${topicKeys.join(" ")} photo` : ""].filter(Boolean))]
-    : [];
+  let querySource = "client";
+  let sq: SceneQueries;
+  if (opts.queries) sq = opts.queries;
+  else if (opts.ask) {
+    const got = await visualQueries(opts.lines, topic, opts.ask);
+    querySource = got.source;
+    sq = { scenes: got.scenes, topic: got.topic };
+  } else {
+    querySource = "keywords";
+    sq = fallbackQueries(opts.lines, topic);
+  }
+  const topicQueries = sq.topic.length ? sq.topic : sq.scenes[0] ?? [];
 
-  // Unique queries, topic first so the fallback pool always exists.
+  // Unique queries: the topic first so a fallback pool exists, then every
+  // scene's first query, then the second and third while there is room.
   const queries: string[] = [];
-  const add = (q: string) => {
+  const add = (q: string | undefined) => {
     if (q && !queries.includes(q) && queries.length < MAX_QUERIES) queries.push(q);
   };
   topicQueries.forEach(add);
-  // Every line's main query first, then the second variants while there is room.
-  plans.forEach((plan) => add(plan.queries[0]));
-  plans.forEach((plan) => add(plan.queries[1]));
+  for (let rank = 0; rank < 3; rank++) sq.scenes.forEach((list) => add(list[rank]));
 
-  const byQuery = new Map<string, Found[]>();
+  const usePexels = Boolean(pexelsKey());
+  const results = new Map<string, Found[]>();
   const fetchPage = async (page: number) => {
-    const results = await runLimited(
-      queries.map((q) => () => search(q, page).catch(() => [] as Found[])),
+    const lists = await runLimited(
+      queries.map((q, qi) => async () => {
+        let items: Found[] = [];
+        if (usePexels && qi < MAX_PEXELS_QUERIES) {
+          const pexelsPage = 1 + Math.floor(offset / PEXELS_PER_QUERY) + page;
+          items = await cached(`p|${q}|${pexelsPage}`, () => searchPexels(q, pexelsPage, PEXELS_PER_QUERY)).catch(() => []);
+        }
+        if (items.length < PEXELS_ENOUGH) {
+          const wikiOffset = offset + page * WIKI_PER_QUERY;
+          const wiki = await cached(`w|${q}|${wikiOffset}`, () => searchWikimedia(q, wikiOffset)).catch(() => []);
+          items = [...items, ...wiki];
+        }
+        return items;
+      }),
       4,
     );
-    queries.forEach((q, i) => byQuery.set(q, [...(byQuery.get(q) ?? []), ...results[i]]));
-    return results.some((list) => list.length > 0);
+    queries.forEach((q, i) => results.set(q, [...(results.get(q) ?? []), ...lists[i]]));
+    return lists.some((list) => list.length > 0);
   };
 
-  const score = (item: Found, plan: ReturnType<typeof photoPlan>) => scorePhoto(item.title, plan) + item.bonus;
-  const clean = ({ bonus: _bonus, ...rest }: Found, value: number): StockPhoto => ({ ...rest, score: value });
-  const fallbackPlan = topicPlan ?? { queries: [], tags: [], still: "desk" as const };
   const exclude = new Set(opts.exclude ?? []);
-
   const build = () => {
-    const perScene = plans.map((plan) => {
-      const seen = new Set<string>();
-      const list: StockPhoto[] = [];
-      for (const q of plan.queries.slice(0, 2)) {
-        for (const item of byQuery.get(q) ?? []) {
-          if (seen.has(item.src)) continue;
-          seen.add(item.src);
-          list.push(clean(item, score(item, plan)));
-        }
-      }
-      // Only photos that mention what the line is about count as its own.
-      return list.filter((item) => item.score >= 1).sort((a, b) => b.score - a.score);
-    });
-    const fallback: StockPhoto[] = [];
-    const seenFallback = new Set<string>();
-    for (const q of [...topicQueries, ...queries]) {
-      for (const item of byQuery.get(q) ?? []) {
-        if (seenFallback.has(item.src)) continue;
-        seenFallback.add(item.src);
-        fallback.push(clean(item, score(item, fallbackPlan)));
-      }
-    }
-    fallback.sort((a, b) => b.score - a.score);
+    const perScene = sq.scenes.map((list) => rankFor(list, results));
+    const fallback = rankFor([...topicQueries, ...queries.filter((q) => !topicQueries.includes(q))], results);
     const picks = assignUnique(perScene, fallback, exclude);
-    const usedNow = new Set(picks.filter(Boolean).map((p) => p!.src));
-    const fresh = fallback.filter((item) => !exclude.has(item.src) && !usedNow.has(item.src));
-    return { picks, fresh, unique: usedNow.size };
+    const used = new Set<string>();
+    picks.forEach((p) => p && (used.add(p.src), used.add(p.key)));
+    const fresh: StockPhoto[] = [];
+    for (const item of fallback) {
+      if (exclude.has(item.src) || exclude.has(item.key) || used.has(item.src) || used.has(item.key)) continue;
+      used.add(item.key);
+      fresh.push(item);
+    }
+    return { picks, fresh, unique: new Set(picks.filter(Boolean).map((p) => p!.key)).size };
   };
 
-  // Page through the results until every line has its own photo and the spare
-  // pool is full, or Commons runs dry. At most three pages.
+  // Page through results until every line has its own photo and the spare
+  // pool is full, or the sources run dry. At most three pages.
   const want = opts.lines.length;
   const extra = Math.max(0, opts.extra ?? 0);
   let result = { picks: [] as (StockPhoto | null)[], fresh: [] as StockPhoto[], unique: 0 };
   for (let page = 0; page < 3; page++) {
-    const more = await fetchPage(offset + page * PER_QUERY);
+    const more = await fetchPage(page);
     result = build();
     if (!more || (result.unique >= want && result.fresh.length >= extra)) break;
   }
-  return { picks: result.picks, pool: result.fresh.slice(0, extra) };
+  return { picks: result.picks, pool: result.fresh.slice(0, extra), queries: sq, querySource };
 }
 
 /** Back-compat: proxied photo URL per line, or null. */
@@ -159,7 +228,8 @@ export function allowedImage(raw: string): string | null {
   try {
     const target = new URL(raw);
     if (target.protocol !== "https:") return null;
-    if (target.hostname !== "upload.wikimedia.org" && target.hostname !== "thumb.wikimedia.org") return null;
+    const host = target.hostname;
+    if (host !== "upload.wikimedia.org" && host !== "thumb.wikimedia.org" && host !== "images.pexels.com") return null;
     return target.toString();
   } catch {
     return null;

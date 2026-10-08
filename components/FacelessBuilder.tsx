@@ -16,7 +16,8 @@ type Scene = {
   source: string;
   seconds: number;
 };
-type StockItem = { src: string; url: string; title: string; credit: string };
+type StockItem = { src: string; url: string; key?: string; title: string; credit: string; attribution?: string; provider?: string };
+type SceneQueries = { scenes: string[][]; topic: string[] };
 
 function clean(value: string) {
   return value
@@ -114,6 +115,9 @@ export function FacelessBuilder({
   const [voiceName, setVoiceName] = useState("");
   const [busy, setBusy] = useState(false);
   const shownRef = useRef<Set<string>>(new Set());
+  // Photo search queries the AI wrote for this script, reused on every reshuffle.
+  const queriesRef = useRef<{ sig: string; queries: SceneQueries } | null>(null);
+  const findingRef = useRef(false);
   const previewCount = useMemo(() => parseScript(text).length, [text]);
   useEffect(() => {
     setText(script);
@@ -148,20 +152,34 @@ export function FacelessBuilder({
     else { ctx.fillStyle = "#1c1b19"; ctx.fillRect(0, 0, 720, 1280); }
   }
   async function findStock() {
+    // A second press while photos load would start a parallel search.
+    if (findingRef.current) return scenesRef.current;
+    findingRef.current = true;
+    try {
+      return await findStockOnce();
+    } finally {
+      findingRef.current = false;
+    }
+  }
+  async function findStockOnce() {
     setBusy(true);
     setStatus("Finding a photo for each card…");
     const parsed = read();
     // Photos shown by an earlier Find photos press are skipped, so pressing it again reshuffles to new ones.
     const shown = shownRef.current;
     let items: (StockItem | null)[] = [];
+    const lines = parsed.map((s) => s.voice);
+    const sig = JSON.stringify([title, lines]);
+    const known = queriesRef.current?.sig === sig ? queriesRef.current.queries : undefined;
     try {
       const res = await fetch("/api/ai/clips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines: parsed.map((s) => s.voice), topic: title, exclude: [...shown].slice(-400) }),
+        body: JSON.stringify({ lines, topic: title, exclude: [...shown].slice(-400), ...(known ? { queries: known } : {}) }),
       });
-      const body = (await res.json()) as { items?: (StockItem | null)[] };
+      const body = (await res.json()) as { items?: (StockItem | null)[]; queries?: SceneQueries };
       items = body.items ?? [];
+      if (body.queries) queriesRef.current = { sig, queries: body.queries };
     } catch {
       items = [];
     }
@@ -177,8 +195,11 @@ export function FacelessBuilder({
           const media = await loadImage(item.url);
           if (media) {
             shown.add(item.src);
+            if (item.key) shown.add(item.key);
             const name = item.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "").replace(/_/g, " ");
-            return { ...scene, media, credit: item.credit, source: name };
+            // Pexels photos carry the photographer credit.
+            const label = item.provider === "pexels" && item.attribution ? `${name} (${item.attribution})` : name;
+            return { ...scene, media, credit: item.credit, source: label };
           }
         }
         const still = STILLS.find((entry) => entry.id === stills[index]) ?? STILLS[0];

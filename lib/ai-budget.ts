@@ -8,7 +8,14 @@ import { prisma } from "./db";
 export const AI_MODELS = {
   default: process.env.AI_MODEL_DEFAULT || "claude-sonnet-4-6",
   premium: process.env.AI_MODEL_PREMIUM || "claude-opus-4-7",
+  // Small, quick jobs like turning script lines into photo search terms.
+  fast: process.env.AI_MODEL_FAST || "claude-haiku-4-5",
 } as const;
+
+// Haiku 4.5 and older models reject output_config.effort with a 400.
+export function supportsEffort(model: string): boolean {
+  return !/haiku-4|haiku-3|sonnet-4-5|sonnet-4-0|opus-4-1|opus-4-0|claude-3/.test(model);
+}
 
 export type ModelTier = keyof typeof AI_MODELS;
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
