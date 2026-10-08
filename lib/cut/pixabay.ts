@@ -32,7 +32,7 @@ export function fromPixabay(hit: PixabayHit): ProviderPhoto | null {
   const tags = (hit.tags ?? "").trim();
   return {
     src,
-    title: tags ? `${tags.split(",")[0].trim()} (Pixabay ${hit.id})` : `Pixabay photo ${hit.id}`,
+    title: tags ? `${tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 3).join(", ")} (Pixabay ${hit.id})` : `Pixabay photo ${hit.id}`,
     credit: hit.pageURL || "https://pixabay.com",
     attribution: who ? `Image by ${who} from Pixabay` : "Image from Pixabay",
     provider: "pixabay",
