@@ -95,6 +95,8 @@ export function visualPrompt(lines: string[], topic: string): string {
     .join("\n");
 }
 
+class QueryTimeout extends Error {}
+
 // Same script, same queries, so reshuffles and repeat presses do not call the AI again.
 const cache = new Map<string, SceneQueries>();
 const CACHE_MAX = 300;
@@ -103,22 +105,33 @@ export function cacheKey(lines: string[], topic: string): string {
   return createHash("sha1").update(JSON.stringify([topic, lines])).digest("hex");
 }
 
+// The AI step must never hold up photos for long. Past this, keyword queries are used.
+export const AI_QUERY_TIMEOUT_MS = 8000;
+
 export async function visualQueries(
   lines: string[],
   topic: string,
   ask: (prompt: string, maxTokens: number) => Promise<string>,
-): Promise<SceneQueries & { source: "ai" | "cache" | "keywords" }> {
+  timeoutMs = AI_QUERY_TIMEOUT_MS,
+): Promise<SceneQueries & { source: "ai" | "cache" | "keywords" | "timeout" }> {
   const key = cacheKey(lines, topic);
   const hit = cache.get(key);
   if (hit) return { ...hit, source: "cache" };
   try {
-    const text = await ask(visualPrompt(lines, topic), Math.min(4000, 200 + lines.length * 60));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new QueryTimeout()), timeoutMs);
+    });
+    const text = await Promise.race([ask(visualPrompt(lines, topic), Math.min(4000, 200 + lines.length * 60)), timedOut]).finally(() =>
+      clearTimeout(timer),
+    );
     const parsed = parseQueries(text, lines, topic);
     if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
     cache.set(key, parsed);
     return { ...parsed, source: "ai" };
   } catch (err) {
-    console.warn("photo queries fell back to keywords:", err instanceof Error ? err.message : String(err));
-    return { ...fallbackQueries(lines, topic), source: "keywords" };
+    const timeout = err instanceof QueryTimeout;
+    console.warn(timeout ? `photo queries timed out after ${timeoutMs} ms, using keywords` : `photo queries fell back to keywords: ${err instanceof Error ? err.message : String(err)}`);
+    return { ...fallbackQueries(lines, topic), source: timeout ? "timeout" : "keywords" };
   }
 }

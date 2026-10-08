@@ -15,7 +15,7 @@ const keysOf = (item: Candidate) => (item.key ? [item.src, item.key] : [item.src
  */
 export function assignUnique<T extends Candidate>(
   perScene: T[][],
-  fallback: T[] = [],
+  fallback: T[] | ((index: number) => T[]) = [],
   exclude: Iterable<string> = [],
 ): (T | null)[] {
   const used = new Set(exclude);
@@ -29,9 +29,14 @@ export function assignUnique<T extends Candidate>(
     }
   });
 
-  const spare = [...fallback, ...perScene.flat()].filter((item, i, all) => all.findIndex((x) => x.src === item.src) === i);
+  // A function gives each scene its own (already relevance checked) spare pool.
+  const shared =
+    typeof fallback === "function"
+      ? null
+      : [...fallback, ...perScene.flat()].filter((item, i, all) => all.findIndex((x) => x.src === item.src) === i);
   out.forEach((value, index) => {
     if (value) return;
+    const spare = shared ?? (fallback as (index: number) => T[])(index);
     const pick = spare.find((item) => keysOf(item).every((k) => !used.has(k)));
     if (pick) {
       out[index] = pick;

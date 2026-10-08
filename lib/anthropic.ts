@@ -44,6 +44,11 @@ type CallOpts = {
   noThinking?: boolean;
   // Streaming only: text already written, to pick up where an earlier stream stopped.
   partial?: string;
+  // complete() only: a short system prompt instead of the creator profile (skips a DB read),
+  // and a hard time limit with no retries for calls that have a fallback.
+  system?: string;
+  timeoutMs?: number;
+  maxRetries?: number;
 };
 
 function logUsage(model: string, feature: string | undefined, usage: Anthropic.Usage | undefined) {
@@ -136,7 +141,7 @@ export async function complete(opts: CallOpts & {
   jsonSchema?: Record<string, unknown>;
 }): Promise<string> {
   await assertWithinBudget();
-  const system = await creatorSystemPrompt();
+  const system = opts.system ?? (await creatorSystemPrompt());
   const model = AI_MODELS[opts.tier ?? "default"];
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {
@@ -155,7 +160,10 @@ export async function complete(opts: CallOpts & {
     };
   }
 
-  const response = await client().messages.create(params);
+  const response = await client().messages.create(params, {
+    ...(opts.timeoutMs ? { timeout: opts.timeoutMs } : {}),
+    ...(opts.maxRetries !== undefined ? { maxRetries: opts.maxRetries } : {}),
+  });
   await logUsage(model, opts.feature, response.usage);
 
   const text = response.content.find(

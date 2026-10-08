@@ -34,7 +34,17 @@ export async function POST(req: Request) {
     queries,
     // One small call for the whole script. It counts against the daily cap, and
     // any failure (cap reached, no key, bad answer) falls back to keyword queries.
-    ask: (prompt, maxTokens) => complete({ user: prompt, tier: "fast", noThinking: true, maxTokens, feature: "photo-queries" }),
+    ask: (prompt, maxTokens) =>
+      complete({
+        user: prompt,
+        system: "You write short, concrete stock photo search queries. Answer with JSON only.",
+        tier: "fast",
+        noThinking: true,
+        maxTokens,
+        feature: "photo-queries",
+        timeoutMs: 7500,
+        maxRetries: 0,
+      }),
   });
   const view = (p: (typeof pool)[number]) => ({
     src: p.src,
@@ -44,6 +54,7 @@ export async function POST(req: Request) {
     credit: p.credit,
     attribution: p.attribution,
     provider: p.provider,
+    text: p.text.slice(0, 300),
   });
   return Response.json({
     clips: picks.map((p) => p?.url ?? null),
@@ -58,14 +69,26 @@ export async function GET(req: Request) {
   const raw = new URL(req.url).searchParams.get("u") ?? "";
   const target = allowedImage(raw);
   if (!target) return new Response("no", { status: 400 });
-  const image = await fetch(target, {
-    headers: { "User-Agent": WIKI_UA },
-    redirect: "follow",
-  });
+  const get = () =>
+    fetch(target, {
+      headers: { "User-Agent": WIKI_UA },
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => null);
+  let image = await get();
+  // Image hosts (Pixabay in particular) rate limit downloads. Wait as asked, once.
+  if (image?.status === 429) {
+    const wait = Math.min(2, Number(image.headers.get("retry-after")) || 1);
+    await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    image = await get();
+  }
+  if (!image) return new Response("slow", { status: 504 });
+  if (image.status === 429) return new Response("busy", { status: 503, headers: { "Retry-After": "2" } });
   if (!image.ok) return new Response("miss", { status: 404 });
   const type = image.headers.get("content-type") ?? "";
   if (!type.startsWith("image/")) return new Response("no", { status: 415 });
   return new Response(image.body, {
-    headers: { "Content-Type": type, "Cache-Control": "public, max-age=86400" },
+    // s-maxage lets Vercel's CDN keep a copy, so repeat views do not hit the image host again.
+    headers: { "Content-Type": type, "Cache-Control": "public, max-age=86400, s-maxage=86400" },
   });
 }

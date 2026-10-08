@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { creditFor } from "@/lib/cut/credit";
 
-type Photo = { src: string; url: string; key?: string; attribution?: string; provider?: string };
+type Photo = { src: string; url: string; key?: string; attribution?: string; provider?: string; credit?: string; title?: string };
 import { Download, ImagePlus, Loader2, Paperclip, Search, Sparkles, Check } from "lucide-react";
 import {
   THUMB_SIZES,
@@ -48,7 +49,8 @@ export function ThumbnailMaker({
   const photoQueue = useRef<Photo[]>([]);
   const shownPhotos = useRef<Set<string>>(new Set());
   const [photoCount, setPhotoCount] = useState(0);
-  const [photoCredit, setPhotoCredit] = useState("");
+  // Who took the current stock photo, and a link to its page.
+  const [photoCredit, setPhotoCredit] = useState<{ label: string; url: string } | null>(null);
   // Guards against a double press skipping ahead, and against a slow photo
   // replacing a newer one.
   const photoBusy = useRef(false);
@@ -172,7 +174,7 @@ export function ThumbnailMaker({
         if (img) {
           setImage(img);
           setPhotoCount(shownPhotos.current.size);
-          setPhotoCredit(next.provider && next.provider !== "wikimedia" ? next.attribution ?? "" : "");
+          setPhotoCredit({ label: creditFor({ provider: next.provider, attribution: next.attribution, title: next.title ?? "" }), url: next.credit ?? "" });
           preloadNext();
           return;
         }
@@ -193,7 +195,7 @@ export function ThumbnailMaker({
       return;
     }
     photoToken.current += 1; // a stock photo still loading must not replace the upload
-    setPhotoCredit("");
+    setPhotoCredit(null);
     loadImage(URL.createObjectURL(file));
   }
 
@@ -288,7 +290,17 @@ export function ThumbnailMaker({
             onPointerUp={() => (dragging.current = false)}
           />
         </div>
-        <p className="mt-2 text-center text-xs text-dark-500">Drag on the preview to move the text.</p>
+        {photoCredit ? (
+          <p className="mt-2 text-center text-xs text-dark-400">
+            Photo:{" "}
+            {photoCredit.url ? (
+              <a href={photoCredit.url} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline hover:text-dark-200">{photoCredit.label}</a>
+            ) : (
+              photoCredit.label
+            )}
+          </p>
+        ) : null}
+        <p className="mt-1 text-center text-xs text-dark-500">Drag on the preview to move the text.</p>
       </div>
 
       <div className="space-y-5">
@@ -357,11 +369,11 @@ export function ThumbnailMaker({
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
             </label>
             {image ? (
-              <button onClick={() => { photoToken.current += 1; setImage(null); setPhotoCredit(""); }} className={chip(false)}>Remove photo</button>
+              <button onClick={() => { photoToken.current += 1; setImage(null); setPhotoCredit(null); }} className={chip(false)}>Remove photo</button>
             ) : null}
           </div>
           <p className="mt-1.5 text-[11px] text-dark-500">
-            {photoCredit ? `${photoCredit}. ` : ""}Stock photos come from Pexels or Pixabay when set up, otherwise Wikimedia Commons. Check the license before commercial use.
+            Stock photos come from Pexels or Pixabay when set up, otherwise Wikimedia Commons. Check the license before commercial use.
           </p>
         </div>
 
