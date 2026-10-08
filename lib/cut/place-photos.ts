@@ -32,6 +32,8 @@ export async function placePhotos<I extends PlaceItem>(opts: {
   onPick?: (sceneIndex: number, item: I) => void;
   /** Called after each batch with how many scenes are done. */
   onProgress?: (done: number, total: number) => void;
+  /** Stops after the current photo when the script changes, so old searches do not keep running. */
+  signal?: AbortSignal;
   retryDelayMs?: number;
   concurrency?: number;
   batchSize?: number;
@@ -55,6 +57,7 @@ export async function placePhotos<I extends PlaceItem>(opts: {
     const spares = pool.slice();
     const usable = (spare: I, sceneIndex: number) => ledger.free(spare) && (!strict || !opts.fits || opts.fits(spare, sceneIndex));
     await inBatches(indexes, opts.concurrency ?? 3, async (sceneIndex, k) => {
+      if (opts.signal?.aborted) return;
       const own = items[k];
       if (own && ledger.claim(own)) {
         if ((await opts.load(own.url)) || (await wait(opts.retryDelayMs ?? 1000).then(() => opts.load(own.url)))) {
@@ -80,6 +83,7 @@ export async function placePhotos<I extends PlaceItem>(opts: {
   };
 
   for (let from = 0; from < opts.lines.length; from += size) {
+    if (opts.signal?.aborted) break;
     const indexes = opts.lines.slice(from, from + size).map((_, k) => from + k);
     const lines = indexes.map((i) => opts.lines[i]);
     const context = opts.lines.slice(Math.max(0, from - CONTEXT_LINES), from);
@@ -99,7 +103,7 @@ export async function placePhotos<I extends PlaceItem>(opts: {
     await fill(indexes, first.items ?? [], first.pool ?? [], true);
 
     const missing = indexes.filter((i) => !picks[i]);
-    if (missing.length) {
+    if (missing.length && !opts.signal?.aborted) {
       rounds = 2;
       const queries = missing.every((i) => sceneQueries[i]) ? { scenes: missing.map((i) => sceneQueries[i]!), topic: topicQueries } : undefined;
       const second = await ask({

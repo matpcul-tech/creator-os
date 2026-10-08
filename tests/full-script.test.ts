@@ -220,3 +220,16 @@ test("when today's voice limit cannot cover the script, nothing is voiced and th
   assert.equal(voiceLimitNote(3, 5, 100), "");
   assert.equal(voiceLimitNote(3, null, 100), "");
 });
+
+test("an old photo search stops once the script changes", async () => {
+  const lines = directScript(WEARABLES_SCRIPT).map((scene) => scene.narration);
+  const stop = new AbortController();
+  let calls = 0;
+  const fetchItems = async (body: Record<string, unknown>) => {
+    calls += 1;
+    if (calls === 1) stop.abort();
+    return { items: (body.lines as string[]).map((_, k) => ({ src: `a${calls}-${k}`, url: `/u/a${calls}-${k}` })) };
+  };
+  await placePhotos<PlaceItem>({ lines, topic: "t", fetchItems, load: async () => true, signal: stop.signal });
+  assert.equal(calls, 1, "no further batches after the abort");
+});

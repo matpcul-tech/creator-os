@@ -78,6 +78,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     setCoverage({ lines: plan.lineCount, limit: overLimitNote(plan) });
     setPhotoNote(next.length > 1 ? `Finding photos (0 of ${next.length} scenes)…` : "Finding photos…");
     let cancel = false;
+    const stop = new AbortController();
     const found = new Map<number, string>();
     let shown = 0;
     // Photos show up batch by batch, so a long script is watchable before every photo is in.
@@ -88,9 +89,10 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     };
     // Same picker as the Faceless builder. No photo repeats anywhere in the video: failed loads take
     // unused spares, then a deeper search, then each built-in still once. Long scripts go in batches.
-    placePhotos<{ src: string; url: string; key?: string }>({
+    const search = () => placePhotos<{ src: string; url: string; key?: string }>({
       lines: next.map((scene) => scene.narration),
       topic: title,
+      signal: stop.signal,
       fetchItems: (body) => clipsRequest(body),
       load: loadOk,
       onPick: (index, item) => found.set(index, item.url),
@@ -118,8 +120,12 @@ export function FacelessCut({ script, title }: { script: string; title: string }
         if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
       })
       .catch(() => setPhotoNote(""));
+    // Typing in the draft changes the script on every key, so the search waits for a pause.
+    const timer = setTimeout(() => void search(), 600);
     return () => {
       cancel = true;
+      clearTimeout(timer);
+      stop.abort();
     };
     // The title only sharpens the photo search, so a title edit alone does not refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
