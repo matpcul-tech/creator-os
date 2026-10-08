@@ -424,6 +424,19 @@ function PieceDrawer({
             </div>
           ) : null}
 
+          <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Thumbnail</h3>
+              <p className="text-xs text-dark-500 mt-1">Make a YouTube or vertical thumbnail and attach it to this piece.</p>
+            </div>
+            <a
+              href={`/thumbnails?title=${encodeURIComponent(title)}&hook=${encodeURIComponent(hook)}&contentId=${piece.id}`}
+              className="px-3 py-2 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-300 hover:bg-brand-500/25"
+            >
+              Make thumbnail
+            </a>
+          </div>
+
           {platforms.length > 0 && body ? (
             <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
               <div className="flex items-center gap-2 mb-4">

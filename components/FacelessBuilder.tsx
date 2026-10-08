@@ -345,6 +345,7 @@ export function FacelessBuilder({
           <button onClick={findStock} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><ImageIcon size={12} /> Find photos</button>
           <button onClick={() => void speak()} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1"><Mic size={12} /> Play voice</button>
           <button onClick={render} disabled={busy} className="px-3 py-1.5 rounded-lg text-xs bg-brand-500/15 text-brand-400 flex items-center gap-1"><Download size={12} /> Make video</button>
+          <a href={`/thumbnails?title=${encodeURIComponent(title)}`} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-dark-300 hover:text-white flex items-center gap-1"><ImageIcon size={12} /> Make thumbnail</a>
         </div>
         <p className="text-xs text-dark-500 mt-3">{status}</p>
         {scenes.slice(0, 12).map((s, i) => (

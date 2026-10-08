@@ -163,3 +163,16 @@ model AiUsage {
 
   @@index([createdAt])
 }
+
+// Thumbnail images made in the Thumbnails tool. Stored as a data URL so no
+// extra file storage is needed. contentId links to a ContentPiece when attached.
+model Thumbnail {
+  id        Int      @id @default(autoincrement())
+  contentId Int?
+  format    String   @default("youtube") // youtube (1280x720) | vertical (1080x1920)
+  text      String   @default("")
+  dataUrl   String   // image/jpeg or image/png data URL
+  createdAt DateTime @default(now())
+
+  @@index([contentId])
+}
