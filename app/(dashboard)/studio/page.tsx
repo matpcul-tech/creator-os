@@ -43,7 +43,7 @@ function StudioInner() {
 
   const [title, setTitle] = useState(initialTitle);
   const [platform, setPlatform] = useState<PlatformId>(initialPlatform);
-  const [context, setContext] = useState("Faceless. No on-camera person. Short spoken lines only.");
+  const [context, setContext] = useState("");
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -54,7 +54,11 @@ function StudioInner() {
   const [adapting, setAdapting] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [aiError, setAiError] = useState("");
-  const [thinWarn, setThinWarn] = useState(false);
+  // Angle suggestions for short or broad titles.
+  const [angles, setAngles] = useState<string[]>([]);
+  const [anglesFor, setAnglesFor] = useState("");
+  const [anglesLoading, setAnglesLoading] = useState(false);
+  const [angleNote, setAngleNote] = useState("");
 
   useEffect(() => {
     if (initialTitle) setTitle(initialTitle);
@@ -69,19 +73,61 @@ function StudioInner() {
     if (shaped !== draft) setDraft(shaped);
   }, [draft, generating]);
 
-  // A one or two word title ("Tech") gives the model nothing to go on and it
-  // tends to drift off topic. Ask for more detail first.
+  // A one or two word title ("Longevity science") is broad, and the script
+  // tends to drift. Offer 3 specific angles first.
   const titleWords = title.trim().split(/\s+/).filter(Boolean).length;
   const thinTitle = title.trim().length > 0 && (titleWords < 3 || title.trim().length < 12);
 
-  async function generate(force = false) {
-    if (!title.trim() || generating) return;
+  function clearAngles() {
+    setAngles([]);
+    setAnglesFor("");
+  }
+
+  async function generate() {
+    const t = title.trim();
+    if (!t || generating || anglesLoading) return;
     setAiError("");
-    if (thinTitle && !force) {
-      setThinWarn(true);
-      return;
+    setAngleNote("");
+    if (!thinTitle) return writeScript(t);
+
+    clearAngles();
+    setAnglesLoading(true);
+    try {
+      const res = await fetch("/api/ai/angles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: t, platform, context }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { angles?: string[] };
+      if (res.ok && json.angles?.length) {
+        setAngles(json.angles);
+        setAnglesFor(t);
+        return;
+      }
+    } catch {
+      // fall through to writing from the original title
+    } finally {
+      setAnglesLoading(false);
     }
-    setThinWarn(false);
+    setAngleNote("Angle ideas aren't available right now, so we're writing from your title.");
+    await writeScript(t);
+  }
+
+  function pickAngle(angle: string) {
+    setTitle(angle);
+    clearAngles();
+    writeScript(angle);
+  }
+
+  function keepTitleAsIs() {
+    const t = anglesFor || title.trim();
+    clearAngles();
+    writeScript(t);
+  }
+
+  async function writeScript(scriptTitle: string) {
+    if (!scriptTitle || generating) return;
+    setAiError("");
     setGenerating(true);
     setDraft("");
     setVariants({});
@@ -91,7 +137,7 @@ function StudioInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
+          title: scriptTitle,
           platform,
           context: `${context}\n\nHard rule: faceless video. One short sentence per line. A blank line between lines. No em dashes, no en dashes, and no hyphens used as dashes. Use a period. No markdown, no headings, no asterisks, no captions.`,
         }),
@@ -193,7 +239,7 @@ function StudioInner() {
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-dark-300 mb-1.5 block">Title or topic</label>
-            <input value={title} onChange={(e) => { setTitle(e.target.value); setThinWarn(false); }} placeholder="e.g. the 90-second rule for starting hard work" className="cai-input" />
+            <input value={title} onChange={(e) => { setTitle(e.target.value); clearAngles(); }} placeholder="e.g. the 90-second rule for starting hard work" className="cai-input" />
           </div>
           <div>
             <label className="text-sm font-medium text-dark-300 mb-2 block">Primary platform</label>
@@ -211,31 +257,66 @@ function StudioInner() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-dark-300 mb-1.5 block">Context</label>
-            <textarea value={context} onChange={(e) => setContext(e.target.value)} className="cai-input min-h-[80px]" />
+            <label htmlFor="studio-context" className="text-sm font-medium text-dark-300 mb-1 block">Context</label>
+            <p className="text-xs text-dark-500 mb-1.5">Optional: audience, key points, tone.</p>
+            <textarea
+              id="studio-context"
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              placeholder="For example: busy parents, 3 quick tips, warm and direct."
+              className="cai-input min-h-[80px]"
+            />
           </div>
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-dark-500 max-w-md">
               <span className="font-semibold text-dark-300">Tip:</span> {pCfg.promptTips}
             </div>
-            <Button onClick={() => generate()} disabled={!title.trim() || generating}>
-              {generating ? <><RefreshCw size={16} className="animate-spin mr-2" />Writing…</> : <><Wand2 size={16} className="mr-2" />Generate faceless script</>}
+            <Button onClick={() => generate()} disabled={!title.trim() || generating || anglesLoading}>
+              {anglesLoading ? <><RefreshCw size={16} className="animate-spin mr-2" />Finding angles...</> : generating ? <><RefreshCw size={16} className="animate-spin mr-2" />Writing…</> : <><Wand2 size={16} className="mr-2" />Generate faceless script</>}
             </Button>
           </div>
         </div>
       </div>
 
-      {thinWarn ? (
-        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-          <p className="font-semibold text-amber-200 mb-1">Can you add a bit more detail?</p>
-          <p className="text-dark-300 mb-3">
-            &quot;{title.trim()}&quot; is very short, so the script may wander off topic. Try a full idea, like
-            &quot;3 phone settings that save battery&quot;, or add details in Context.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => setThinWarn(false)}>I&apos;ll add more</Button>
-            <Button size="sm" variant="ghost" onClick={() => generate(true)}>Write it anyway</Button>
+      {anglesLoading ? (
+        <div role="status" className="cai-card flex items-center gap-3 text-sm text-dark-300">
+          <RefreshCw size={16} className="animate-spin text-brand-400" />
+          Finding sharper angles for &quot;{title.trim()}&quot;...
+        </div>
+      ) : null}
+
+      {angles.length > 0 ? (
+        <div className="cai-card">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles size={16} className="text-brand-400" />
+            <h2 className="text-base font-bold text-white">Pick an angle</h2>
           </div>
+          <p className="text-sm text-dark-400 mb-4">
+            &quot;{anglesFor}&quot; is broad. Tap one to write it now.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {angles.map((angle) => (
+              <button
+                key={angle}
+                onClick={() => pickAngle(angle)}
+                className="text-left rounded-xl border border-dark-700/50 bg-dark-800/40 p-4 hover:border-brand-500/50 hover:bg-brand-500/10 transition-all"
+              >
+                <span className="block text-sm font-semibold text-white leading-snug">{angle}</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs text-brand-300">
+                  <Wand2 size={12} /> Write this
+                </span>
+              </button>
+            ))}
+          </div>
+          <button onClick={keepTitleAsIs} className="mt-3 text-xs text-dark-400 hover:text-white underline underline-offset-2">
+            Use my title as is
+          </button>
+        </div>
+      ) : null}
+
+      {angleNote ? (
+        <div role="status" className="rounded-xl border border-dark-700/50 bg-dark-800/40 p-3 text-sm text-dark-300">
+          {angleNote}
         </div>
       ) : null}
 
