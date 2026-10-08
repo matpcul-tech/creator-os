@@ -37,6 +37,8 @@ type CallOpts = {
   tier?: ModelTier;
   // Label for the usage log, e.g. "script" or "ideas".
   feature?: string;
+  // Turn off extended thinking for small, fast calls like angle ideas.
+  noThinking?: boolean;
 };
 
 function logUsage(model: string, feature: string | undefined, usage: Anthropic.Usage | undefined) {
@@ -136,7 +138,7 @@ export async function complete(opts: CallOpts & {
     model,
     max_tokens: opts.maxTokens ?? 8000,
     system,
-    thinking: { type: "adaptive" },
+    thinking: opts.noThinking ? { type: "disabled" } : { type: "adaptive" },
     output_config: { effort: opts.effort ?? DEFAULT_EFFORT },
     messages: [{ role: "user", content: opts.user }],
   };
