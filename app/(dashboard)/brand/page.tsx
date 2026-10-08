@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cleanVoice } from "@/lib/validation";
 import {
   Brain,
   Shield,
@@ -34,6 +35,10 @@ export default function BrandPage() {
   const [taglines, setTaglines] = useState<string[]>([]);
   const [taglineInput, setTaglineInput] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [editingVoice, setEditingVoice] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState("");
+  const [voiceError, setVoiceError] = useState("");
+  const [voiceSaving, setVoiceSaving] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -68,6 +73,33 @@ export default function BrandPage() {
     }
   }
 
+  // Save Profile.voice. Empty clears it. Non-empty needs a few words.
+  async function saveVoice(value: string) {
+    const v = cleanVoice(value);
+    if (v.error) {
+      setVoiceError(v.error);
+      return;
+    }
+    setVoiceSaving(true);
+    setVoiceError("");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice: v.value }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setVoiceError(json.error || "Couldn't save your voice. Please try again.");
+        return;
+      }
+      setProfile((p) => ({ ...p, voice: v.value }));
+      setEditingVoice(false);
+    } finally {
+      setVoiceSaving(false);
+    }
+  }
+
   async function saveBrand() {
     await fetch("/api/brand", {
       method: "POST",
@@ -91,14 +123,64 @@ export default function BrandPage() {
 
       {/* Voice description */}
       <div className="cai-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Brain size={18} className="text-brand-400" />
-          <h2 className="text-lg font-bold text-white">Your voice</h2>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Brain size={18} className="text-brand-400" />
+            <h2 className="text-lg font-bold text-white">Your voice</h2>
+          </div>
+          {!editingVoice ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setVoiceDraft(profile.voice || ""); setVoiceError(""); setEditingVoice(true); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-dark-300 hover:text-white transition-all"
+              >
+                Edit
+              </button>
+              {profile.voice ? (
+                <button
+                  onClick={() => { if (window.confirm("Clear your saved voice? The AI will fall back to a neutral tone.")) saveVoice(""); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-dark-300 hover:text-red-300 transition-all"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        <p className="text-sm text-dark-300 leading-relaxed">
-          {profile.voice ||
-            "Voice not configured yet. Paste samples below and let the AI analyze your style."}
-        </p>
+        {editingVoice ? (
+          <div className="space-y-3">
+            <label htmlFor="voice-edit" className="sr-only">Your voice</label>
+            <textarea
+              id="voice-edit"
+              value={voiceDraft}
+              onChange={(e) => { setVoiceDraft(e.target.value); setVoiceError(""); }}
+              placeholder="Conversational, data-driven, slightly contrarian. No hype words."
+              className="cai-input min-h-[90px]"
+            />
+            {voiceError ? <p role="alert" className="text-sm text-red-300">{voiceError}</p> : null}
+            <div className="flex gap-2">
+              <button
+                onClick={() => saveVoice(voiceDraft)}
+                disabled={voiceSaving}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-brand-500/20 text-brand-300 hover:bg-brand-500/30 disabled:opacity-50"
+              >
+                {voiceSaving ? "Saving..." : "Save voice"}
+              </button>
+              <button
+                onClick={() => { setEditingVoice(false); setVoiceError(""); }}
+                className="px-4 py-2 rounded-lg text-sm text-dark-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="text-xs text-dark-500">Leave it empty and save to clear it.</p>
+          </div>
+        ) : (
+          <p className="text-sm text-dark-300 leading-relaxed">
+            {profile.voice ||
+              "Voice not configured yet. Describe it with Edit, or paste samples below and let the AI analyze your style."}
+          </p>
+        )}
       </div>
 
       {/* Analyzer */}
