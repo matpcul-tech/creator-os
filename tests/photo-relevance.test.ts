@@ -178,3 +178,112 @@ test("effort is only sent to models that accept it", () => {
   assert.equal(supportsEffort("claude-sonnet-4-6"), true);
   assert.equal(supportsEffort("claude-opus-4-7"), true);
 });
+
+import { fromPixabay, pixabayUrl, searchPixabay } from "../lib/cut/pixabay";
+
+const pixabayPage = (q: string, n = 8) => ({
+  hits: Array.from({ length: n }, (_, i) => ({
+    id: 1000 + i,
+    type: "photo",
+    pageURL: `https://pixabay.com/photos/${encodeURIComponent(q)}-${i}/`,
+    tags: `${q}, people`,
+    webformatURL: `https://pixabay.com/get/${encodeURIComponent(q)}_${i}_640.jpg`,
+    largeImageURL: `https://pixabay.com/get/${encodeURIComponent(q)}_${i}_1280.jpg`,
+    user: `user${i}`,
+  })),
+});
+
+test("Pixabay hits map to our shape with attribution, photos only", () => {
+  const p = fromPixabay({ id: 7, type: "photo", pageURL: "https://pixabay.com/photos/x-7/", tags: "gym, weights", largeImageURL: "https://pixabay.com/get/a_1280.jpg", webformatURL: "https://pixabay.com/get/a_640.jpg", user: "Josch13" });
+  assert.equal(p?.src, "https://pixabay.com/get/a_1280.jpg");
+  assert.equal(p?.attribution, "Image by Josch13 from Pixabay");
+  assert.equal(p?.credit, "https://pixabay.com/photos/x-7/");
+  assert.equal(p?.provider, "pixabay");
+  assert.equal(fromPixabay({ id: 8, type: "illustration", largeImageURL: "https://pixabay.com/get/b.jpg" }), null);
+  assert.ok(allowedImage("https://pixabay.com/get/a_1280.jpg"));
+  assert.ok(allowedImage("https://cdn.pixabay.com/photo/2013/10/15/09/12/flower-195893_150.jpg"));
+});
+
+test("Pixabay requests ask for safe photos and stay inside the limits", () => {
+  const u = new URL(pixabayUrl("k", "x".repeat(150), 0, 500));
+  assert.equal(u.searchParams.get("image_type"), "photo");
+  assert.equal(u.searchParams.get("safesearch"), "true");
+  assert.equal(u.searchParams.get("per_page"), "200");
+  assert.equal(u.searchParams.get("page"), "1");
+  assert.equal(u.searchParams.get("q")?.length, 100);
+});
+
+test("without PIXABAY_API_KEY nothing calls Pixabay", async () => {
+  delete process.env.PIXABAY_API_KEY;
+  assert.deepEqual(await searchPixabay("gym", 1), []);
+});
+
+test("Pixabay is used before Wikimedia, and never logs the key", async () => {
+  process.env.PIXABAY_API_KEY = "secret-pixabay-key";
+  const stamp = Date.now();
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => void warnings.push(args.join(" "));
+  const m = mockFetch((url) => {
+    if (url.includes("pixabay.com/api")) {
+      const q = new URL(url).searchParams.get("q") ?? "";
+      return pixabayPage(q, q.startsWith("sparse") ? 2 : 8);
+    }
+    return { query: { pages: {} } };
+  });
+  try {
+    const r = await pickPhotos({
+      lines: ["Muscle is the second.", "Sleep is the first lever."],
+      queries: { scenes: [[`weightlifting gym ${stamp}`], [`sparse sleep ${stamp}`]], topic: [] },
+    });
+    assert.equal(r.picks[0]?.provider, "pixabay");
+    assert.match(r.picks[0]!.attribution, /from Pixabay$/);
+    // Plenty of Pixabay results: no Wikimedia call for that query. Sparse: Wikimedia fills in.
+    assert.ok(!m.calls.some((u) => u.includes("wikimedia.org") && u.includes(encodeURIComponent(`weightlifting gym ${stamp}`))));
+    assert.ok(m.calls.some((u) => u.includes("wikimedia.org") && u.includes(encodeURIComponent(`sparse sleep ${stamp}`))));
+    // Same search again within 24 hours is served from the cache.
+    const before = m.calls.filter((u) => u.includes("pixabay.com/api")).length;
+    await pickPhotos({ lines: ["Muscle is the second."], queries: { scenes: [[`weightlifting gym ${stamp}`]], topic: [] } });
+    assert.equal(m.calls.filter((u) => u.includes("pixabay.com/api")).length, before);
+  } finally {
+    m.restore();
+    console.warn = warn;
+    delete process.env.PIXABAY_API_KEY;
+  }
+  assert.ok(warnings.every((w) => !w.includes("secret-pixabay-key")));
+});
+
+test("with both keys, Pexels comes first, then Pixabay", async () => {
+  process.env.PEXELS_API_KEY = "p";
+  process.env.PIXABAY_API_KEY = "x";
+  const stamp = Date.now();
+  const m = mockFetch((url) => {
+    if (url.includes("api.pexels.com")) return { photos: [] }; // Pexels has nothing for this query
+    if (url.includes("pixabay.com/api")) return pixabayPage(new URL(url).searchParams.get("q") ?? "");
+    return { query: { pages: {} } };
+  });
+  try {
+    const r = await pickPhotos({ lines: ["Sleep."], queries: { scenes: [[`bedroom night ${stamp}`]], topic: [] } });
+    const order = m.calls.map((u) => (u.includes("pexels") ? "pexels" : u.includes("pixabay") ? "pixabay" : "wikimedia"));
+    assert.deepEqual(order.slice(0, 2), ["pexels", "pixabay"]);
+    assert.equal(r.picks[0]?.provider, "pixabay");
+  } finally {
+    m.restore();
+    delete process.env.PEXELS_API_KEY;
+    delete process.env.PIXABAY_API_KEY;
+  }
+});
+
+test("different stock photos with the same tags are not treated as duplicates", async () => {
+  process.env.PIXABAY_API_KEY = "x";
+  const stamp = Date.now();
+  const m = mockFetch((url) => (url.includes("pixabay.com/api") ? pixabayPage(`same tag ${stamp}`) : { query: { pages: {} } }));
+  try {
+    const r = await pickPhotos({ lines: ["One.", "Two.", "Three."], queries: { scenes: [[`same tag ${stamp}`], [`same tag ${stamp}`], [`same tag ${stamp}`]], topic: [] } });
+    assert.equal(new Set(r.picks.map((p) => p?.src)).size, 3);
+    assert.ok(r.picks.every(Boolean));
+  } finally {
+    m.restore();
+    delete process.env.PIXABAY_API_KEY;
+  }
+});

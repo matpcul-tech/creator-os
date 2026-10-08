@@ -197,8 +197,8 @@ export function FacelessBuilder({
             shown.add(item.src);
             if (item.key) shown.add(item.key);
             const name = item.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "").replace(/_/g, " ");
-            // Pexels photos carry the photographer credit.
-            const label = item.provider === "pexels" && item.attribution ? `${name} (${item.attribution})` : name;
+            // Pexels and Pixabay photos carry the photographer credit.
+            const label = item.provider && item.provider !== "wikimedia" && item.attribution ? `${name} (${item.attribution})` : name;
             return { ...scene, media, credit: item.credit, source: label };
           }
         }

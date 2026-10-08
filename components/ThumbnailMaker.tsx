@@ -172,7 +172,7 @@ export function ThumbnailMaker({
         if (img) {
           setImage(img);
           setPhotoCount(shownPhotos.current.size);
-          setPhotoCredit(next.provider === "pexels" ? next.attribution ?? "Photo from Pexels" : "");
+          setPhotoCredit(next.provider && next.provider !== "wikimedia" ? next.attribution ?? "" : "");
           preloadNext();
           return;
         }
@@ -361,7 +361,7 @@ export function ThumbnailMaker({
             ) : null}
           </div>
           <p className="mt-1.5 text-[11px] text-dark-500">
-            {photoCredit ? `${photoCredit}. ` : ""}Stock photos come from Pexels when it is set up, otherwise Wikimedia Commons. Check the license before commercial use.
+            {photoCredit ? `${photoCredit}. ` : ""}Stock photos come from Pexels or Pixabay when set up, otherwise Wikimedia Commons. Check the license before commercial use.
           </p>
         </div>
 

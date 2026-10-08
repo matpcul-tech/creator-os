@@ -19,7 +19,7 @@ export type ProviderPhoto = {
   title: string;
   credit: string;
   attribution: string;
-  provider: "pexels" | "wikimedia";
+  provider: "pexels" | "pixabay" | "wikimedia";
   text: string;
 };
 

@@ -1,6 +1,7 @@
 import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto, isSceneStock, queryWords, stockScore, type CommonsInfo } from "./photo-filter";
 import { assignUnique, photoKey } from "./photo-pool";
 import { pexelsKey, searchPexels, type ProviderPhoto } from "./pexels";
+import { pixabayKey, searchPixabay } from "./pixabay";
 import { fallbackQueries, visualQueries, type SceneQueries } from "./visual-queries";
 
 // Wikimedia rate-limits (HTTP 429) any client whose User-Agent has no real contact URL or email.
@@ -14,8 +15,8 @@ export type StockPhoto = {
   key: string; // shared by near duplicates (same object or photo series)
   title: string;
   credit: string; // page for the photo on Commons or Pexels
-  attribution: string; // e.g. "Photo by Jane Doe on Pexels"
-  provider: "pexels" | "wikimedia";
+  attribution: string; // e.g. "Photo by Jane Doe on Pexels" or "Image by Jane from Pixabay"
+  provider: "pexels" | "pixabay" | "wikimedia";
   score: number;
 };
 
@@ -24,16 +25,19 @@ type Found = ProviderPhoto & { info?: CommonsInfo };
 const WIKI_PER_QUERY = 30;
 const PEXELS_PER_QUERY = 20;
 const MAX_QUERIES = 36;
+const PIXABAY_PER_QUERY = 30;
 const MAX_PEXELS_QUERIES = 24; // Pexels allows 200 requests an hour
-const PEXELS_ENOUGH = 6; // below this, Wikimedia fills in for that query
+const MAX_PIXABAY_QUERIES = 24; // Pixabay allows 100 requests a minute
+const ENOUGH = 6; // below this, the next source fills in for that query
 
-// Same query, same results for an hour. Saves Pexels quota and speeds up reshuffles.
+// Same query, same results: an hour by default, 24 hours for Pixabay (their
+// terms require it). Saves quota and speeds up reshuffles.
 const resultCache = new Map<string, { at: number; items: Found[] }>();
-const CACHE_MS = 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
 
-async function cached(key: string, run: () => Promise<Found[]>): Promise<Found[]> {
+async function cached(key: string, run: () => Promise<Found[]>, ttl = HOUR): Promise<Found[]> {
   const hit = resultCache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.items;
+  if (hit && Date.now() - hit.at < ttl) return hit.items;
   const items = await run();
   if (resultCache.size > 600) resultCache.delete(resultCache.keys().next().value as string);
   resultCache.set(key, { at: Date.now(), items });
@@ -82,12 +86,13 @@ async function runLimited<T>(tasks: (() => Promise<T>)[], limit: number): Promis
 
 /** Score one result against the query that found it. Null when it does not fit the query. */
 export function scoreFor(item: Found, query: string): number | null {
-  if (item.provider === "pexels") {
-    // Pexels search is relevance ranked already. Keep it first, nudged by its alt text.
+  if (item.provider === "pexels" || item.provider === "pixabay") {
+    // Stock sites rank by relevance already. Keep them ahead of Wikimedia (Pexels,
+    // then Pixabay), nudged by how much of the query shows up in the alt text or tags.
     const words = queryWords(query);
     const alt = item.text.toLowerCase();
     const hits = words.filter((w) => alt.includes(w)).length;
-    return 6 + hits;
+    return (item.provider === "pexels" ? 7 : 6) + hits;
   }
   if (!item.info) return null;
   const { overlap, titleHits, score } = stockScore(item.info, query);
@@ -103,7 +108,9 @@ function toStock(item: Found, score: number): StockPhoto {
   return {
     src: item.src,
     url: `/api/ai/clips?u=${encodeURIComponent(item.src)}`,
-    key: photoKey(item.title, item.src),
+    // Stock site titles are tags or alt text that many photos share, so only
+    // Wikimedia file names are used to spot near duplicates.
+    key: item.provider === "wikimedia" ? photoKey(item.title, item.src) : `u:${item.src}`,
     title: item.title,
     credit: item.credit,
     attribution: item.attribution,
@@ -166,7 +173,9 @@ export async function pickPhotos(opts: {
   topicQueries.forEach(add);
   for (let rank = 0; rank < 3; rank++) sq.scenes.forEach((list) => add(list[rank]));
 
+  // Source order: Pexels if its key is set, then Pixabay if its key is set, then Wikimedia.
   const usePexels = Boolean(pexelsKey());
+  const usePixabay = Boolean(pixabayKey());
   const results = new Map<string, Found[]>();
   const fetchPage = async (page: number) => {
     const lists = await runLimited(
@@ -176,7 +185,12 @@ export async function pickPhotos(opts: {
           const pexelsPage = 1 + Math.floor(offset / PEXELS_PER_QUERY) + page;
           items = await cached(`p|${q}|${pexelsPage}`, () => searchPexels(q, pexelsPage, PEXELS_PER_QUERY)).catch(() => []);
         }
-        if (items.length < PEXELS_ENOUGH) {
+        if (usePixabay && items.length < ENOUGH && qi < MAX_PIXABAY_QUERIES) {
+          const pixabayPage = 1 + Math.floor(offset / PIXABAY_PER_QUERY) + page;
+          const pix = await cached(`x|${q}|${pixabayPage}`, () => searchPixabay(q, pixabayPage, PIXABAY_PER_QUERY), 24 * HOUR).catch(() => []);
+          items = [...items, ...pix];
+        }
+        if (items.length < ENOUGH) {
           const wikiOffset = offset + page * WIKI_PER_QUERY;
           const wiki = await cached(`w|${q}|${wikiOffset}`, () => searchWikimedia(q, wikiOffset)).catch(() => []);
           items = [...items, ...wiki];
@@ -229,7 +243,8 @@ export function allowedImage(raw: string): string | null {
     const target = new URL(raw);
     if (target.protocol !== "https:") return null;
     const host = target.hostname;
-    if (host !== "upload.wikimedia.org" && host !== "thumb.wikimedia.org" && host !== "images.pexels.com") return null;
+    const allowed = ["upload.wikimedia.org", "thumb.wikimedia.org", "images.pexels.com", "pixabay.com", "cdn.pixabay.com"];
+    if (!allowed.includes(host)) return null;
     return target.toString();
   } catch {
     return null;

@@ -155,7 +155,7 @@ export function stockScore(info: CommonsInfo, query: string): { overlap: number;
   if (titleWords.length) score += (2 * titleHits) / Math.max(3, titleWords.length);
   if (BUILDING.test(`${title} ${body}`) && !BUILDING.test(query)) score -= 3;
   // Dated before 1900 in the title: archive photos, rarely modern stock.
-  if (/\b1[5-8]\d\d\b|\blccn\b|\bn\.d\./i.test(title)) score -= 3;
+  if (/\b1[5-8]\d\d\b|\blccn\d*|\bn\.d\./i.test(title)) score -= 3;
   if (LIFE_CATEGORY.test(stripHtml(info.categories))) score += 1;
   score += photoBonus(info);
   return { overlap, titleHits, score };
