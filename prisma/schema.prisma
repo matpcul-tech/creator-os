@@ -140,3 +140,26 @@ model AnalyticsSnapshot {
   followers    Int      @default(0)
   capturedAt   DateTime @default(now())
 }
+
+// Public landing page waitlist. Emails are stored lowercased and unique.
+model WaitlistEntry {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  source    String   @default("landing")
+  createdAt DateTime @default(now())
+}
+
+// One row per paid AI or voice request, used for the daily spending cap.
+// costUsd is an estimate based on published per-token prices.
+model AiUsage {
+  id           Int      @id @default(autoincrement())
+  provider     String   // anthropic | xai | voice
+  model        String   @default("")
+  feature      String   @default("") // script | ideas | hooks | adapt | brand-voice | sharpen | voice
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
