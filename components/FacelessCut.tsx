@@ -103,7 +103,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     fetch("/api/ai/clips", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines: next.map((scene) => scene.narration) }),
+      body: JSON.stringify({ lines: next.map((scene) => scene.narration), topic: title }),
     })
       .then((res) => res.json())
       .then((body: { clips?: (string | null)[] }) => {
@@ -117,6 +117,8 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     return () => {
       cancel = true;
     };
+    // The title only sharpens the photo search, so a title edit alone does not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [script]);
 
   useEffect(() => {

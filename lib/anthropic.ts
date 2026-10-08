@@ -2,8 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "./db";
 import { parseJSON } from "./utils";
 import { PLATFORMS, type PlatformId } from "./platforms";
+import { DONE_MARKER, ERROR_MARKER, continuationMessages, joinContinuation, shouldContinue } from "./stream-protocol";
 import {
   AI_MODELS,
+  BudgetExceededError,
   DEFAULT_EFFORT,
   assertWithinBudget,
   estimateCostUsd,
@@ -39,6 +41,8 @@ type CallOpts = {
   feature?: string;
   // Turn off extended thinking for small, fast calls like angle ideas.
   noThinking?: boolean;
+  // Streaming only: text already written, to pick up where an earlier stream stopped.
+  partial?: string;
 };
 
 function logUsage(model: string, feature: string | undefined, usage: Anthropic.Usage | undefined) {
@@ -169,26 +173,72 @@ export async function streamCompletion(opts: CallOpts): Promise<ReadableStream<U
 
   return new ReadableStream({
     async start(controller) {
+      // Everything written so far, including an earlier partial draft.
+      let written = opts.partial?.trimEnd() ?? "";
+      let round = 0;
       try {
-        const stream = client().messages.stream({
-          model,
-          max_tokens: opts.maxTokens ?? 8000,
-          system,
-          thinking: { type: "adaptive" },
-          output_config: { effort: opts.effort ?? DEFAULT_EFFORT },
-          messages: [{ role: "user", content: opts.user }],
-        });
+        while (true) {
+          const messages = continuationMessages(opts.user, written);
+          const continuing = messages.length > 1;
+          let piece = "";
+          let sentUpTo = 0;
+          const stream = client().messages.stream({
+            model,
+            max_tokens: opts.maxTokens ?? 8000,
+            system,
+            // Thinking shares max_tokens with the answer, so long writing turns it off.
+            thinking: opts.noThinking ? { type: "disabled" } : { type: "adaptive" },
+            output_config: { effort: opts.effort ?? DEFAULT_EFFORT },
+            messages,
+          });
 
-        stream.on("text", (delta) => {
-          controller.enqueue(encoder.encode(delta));
-        });
+          stream.on("text", (delta) => {
+            piece += delta;
+            if (!continuing) {
+              controller.enqueue(encoder.encode(delta));
+              return;
+            }
+            // A continuation repeats the last few words first. Hold the opening
+            // back until the overlap can be trimmed, then stream the rest.
+            if (sentUpTo === 0 && piece.length < 120) return;
+            const joined = joinContinuation(written, piece);
+            const fresh = joined.slice(written.length + sentUpTo);
+            if (fresh) {
+              controller.enqueue(encoder.encode(fresh));
+              sentUpTo += fresh.length;
+            }
+          });
 
-        const final = await stream.finalMessage();
-        await logUsage(model, opts.feature, final.usage);
+          const final = await stream.finalMessage();
+          await logUsage(model, opts.feature, final.usage);
+          if (continuing) {
+            const joined = joinContinuation(written, piece);
+            const fresh = joined.slice(written.length + sentUpTo);
+            if (fresh) controller.enqueue(encoder.encode(fresh));
+            written = joined;
+          } else {
+            written = piece;
+          }
+          if (!shouldContinue(final.stop_reason, round)) {
+            if (final.stop_reason === "max_tokens") {
+              controller.enqueue(encoder.encode(`${ERROR_MARKER} The script is very long and was paused. Press Continue to finish it.`));
+            } else {
+              controller.enqueue(encoder.encode(DONE_MARKER));
+            }
+            break;
+          }
+          round += 1;
+          await assertWithinBudget();
+        }
         controller.close();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        controller.enqueue(encoder.encode(`\n\n[error: ${msg}]`));
+        const raw = err instanceof Error ? err.message : String(err);
+        console.error("stream stopped", opts.feature, raw);
+        const friendly =
+          err instanceof BudgetExceededError || raw === "AI writing isn't connected yet."
+            ? raw
+            : "The writer stopped early. Press Continue to finish the script.";
+        controller.enqueue(encoder.encode(`${ERROR_MARKER} ${friendly}`));
         controller.close();
       }
     },

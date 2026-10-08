@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Mic } from "lucide-react";
-import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto } from "@/lib/cut/photo-filter";
-import { fileNameFor, photoPlan, scorePhoto, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
-import { STILLS } from "@/lib/cut/types";
+import { fileNameFor, photoPlan, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
+import { STILL_WORDS } from "@/lib/cut/direct";
+import { spreadStills } from "@/lib/cut/photo-pool";
+import { STILLS, type StillId } from "@/lib/cut/types";
 
 type Scene = {
   caption: string;
@@ -15,7 +16,7 @@ type Scene = {
   source: string;
   seconds: number;
 };
-type StockInfo = { url: string; thumburl?: string; descriptionurl?: string; title: string };
+type StockItem = { src: string; url: string; title: string; credit: string };
 
 function clean(value: string) {
   return value
@@ -51,7 +52,7 @@ function parseScript(script: string): Scene[] {
     const plan = roll0 ? { ...base, queries: [roll0, ...base.queries], tags: [...new Set([...roll0.toLowerCase().split(/\s+/), ...base.tags])] } : base;
     lines.forEach((caption) => labeled.push({ caption, voice: spoken || caption, plan, media: null, credit: "", source: "", seconds: seconds / lines.length }));
   }
-  if (labeled.length) return labeled.slice(0, 24);
+  if (labeled.length) return labeled.slice(0, 60);
   const lines = script.split(/\n+/).map(clean).filter((line) => line.length > 1 && !isHeading(line));
   return splitCards(lines).map((caption) => ({
     caption,
@@ -63,23 +64,14 @@ function parseScript(script: string): Scene[] {
     seconds: Math.max(2.8, caption.split(/\s+/).length / 2.3),
   }));
 }
-async function commons(q: string): Promise<StockInfo[]> {
-  const url = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=20&${COMMONS_IMAGEINFO}&iiurlwidth=1080&gsrsearch=` + encodeURIComponent(q + " filemime:image/jpeg");
-  const data = await fetch(url).then((r) => r.json());
-  const pages = Object.values(data.query?.pages || {}) as Parameters<typeof commonsInfo>[0][];
-  // Real photographs only. Screenshots, diagrams, maps, logos, and SVGs are dropped.
-  return pages
-    .map(commonsInfo)
-    .filter((info): info is NonNullable<ReturnType<typeof commonsInfo>> => Boolean(info) && isLikelyPhoto(info!))
-    .map((info) => ({ url: info.url, thumburl: info.thumburl, descriptionurl: info.descriptionurl, title: info.title }));
-}
 function loadImage(url: string) {
   return new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = url.split("?")[0];
+    // Same-origin proxy URLs keep their query; direct links drop tracking params.
+    img.src = url.startsWith("/") ? url : url.split("?")[0];
   });
 }
 function cover(ctx: CanvasRenderingContext2D, media: CanvasImageSource, w: number, h: number, dx: number, dy: number, dw: number, dh: number) {
@@ -121,6 +113,7 @@ export function FacelessBuilder({
   const [fileUrl, setFileUrl] = useState("");
   const [voiceName, setVoiceName] = useState("");
   const [busy, setBusy] = useState(false);
+  const shownRef = useRef<Set<string>>(new Set());
   const previewCount = useMemo(() => parseScript(text).length, [text]);
   useEffect(() => {
     setText(script);
@@ -154,50 +147,54 @@ export function FacelessBuilder({
     if (scene?.media) cover(ctx, scene.media, scene.media.naturalWidth || 720, scene.media.naturalHeight || 800, 0, 0, 720, 1280);
     else { ctx.fillStyle = "#1c1b19"; ctx.fillRect(0, 0, 720, 1280); }
   }
-  async function photoFor(scene: Scene, used: Set<string>): Promise<Scene> {
-    let best: { pic: StockInfo; score: number } | null = null;
-    for (const query of scene.plan.queries.slice(0, 2)) {
-      const pics = await commons(query).catch(() => [] as StockInfo[]);
-      for (const pic of pics) {
-        if (used.has(pic.url)) continue;
-        const score = scorePhoto(pic.title, scene.plan);
-        if (!best || score > best.score) best = { pic, score };
-      }
-      if (best && best.score >= 4) break;
-    }
-    // Only take a stock photo that actually mentions what the card is about. Otherwise use a built-in still.
-    if (best && best.score >= 2) {
-      used.add(best.pic.url);
-      const media = await loadImage(best.pic.thumburl || best.pic.url);
-      if (media) {
-        const name = best.pic.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "").replace(/_/g, " ");
-        return { ...scene, media, credit: best.pic.descriptionurl || "Wikimedia Commons", source: name };
-      }
-    }
-    const still = STILLS.find((item) => item.id === scene.plan.still) ?? STILLS[0];
-    const media = await loadImage(still.src);
-    return { ...scene, media, credit: "Built-in still", source: `${still.label} (built-in)` };
-  }
   async function findStock() {
     setBusy(true);
     setStatus("Finding a photo for each card…");
     const parsed = read();
-    const used = new Set<string>();
-    const built: Scene[] = new Array(parsed.length);
-    let next = 0;
-    const worker = async () => {
-      while (next < parsed.length) {
-        const index = next++;
-        built[index] = await photoFor(parsed[index], used);
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(3, parsed.length) }, worker));
+    // Photos shown by an earlier Find photos press are skipped, so pressing it again reshuffles to new ones.
+    const shown = shownRef.current;
+    let items: (StockItem | null)[] = [];
+    try {
+      const res = await fetch("/api/ai/clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines: parsed.map((s) => s.voice), topic: title, exclude: [...shown].slice(-400) }),
+      });
+      const body = (await res.json()) as { items?: (StockItem | null)[] };
+      items = body.items ?? [];
+    } catch {
+      items = [];
+    }
+    const stillIds = Object.keys(STILL_WORDS) as StillId[];
+    const stills = spreadStills(
+      parsed.map((scene) => Object.fromEntries(stillIds.map((id) => [id, id === scene.plan.still ? 1 : 0])) as Record<StillId, number>),
+      stillIds,
+    );
+    const built = await Promise.all(
+      parsed.map(async (scene, index): Promise<Scene> => {
+        const item = items[index];
+        if (item) {
+          const media = await loadImage(item.url);
+          if (media) {
+            shown.add(item.src);
+            const name = item.title.replace(/^File:/, "").replace(/\.[a-z]+$/i, "").replace(/_/g, " ");
+            return { ...scene, media, credit: item.credit, source: name };
+          }
+        }
+        const still = STILLS.find((entry) => entry.id === stills[index]) ?? STILLS[0];
+        const media = await loadImage(still.src);
+        return { ...scene, media, credit: "Built-in still", source: `${still.label} (built-in)` };
+      }),
+    );
     scenesRef.current = built;
     setScenes(built);
     paint(0.2, built);
     setBusy(false);
     const stock = built.filter((s) => s.credit !== "Built-in still").length;
-    setStatus(`${built.length} cards. ${stock} matched a stock photo, ${built.length - stock} use a built-in still.`);
+    const unique = new Set(built.filter((s) => s.credit !== "Built-in still").map((s) => s.media?.src)).size;
+    setStatus(
+      `${built.length} cards. ${stock} matched a stock photo${unique < stock ? ` (${unique} different, the search ran out of new ones)` : ""}, ${built.length - stock} use a built-in still. Press Find photos again for new ones.`,
+    );
     return built;
   }
   async function narrated(list: Scene[]): Promise<HTMLAudioElement | null> {

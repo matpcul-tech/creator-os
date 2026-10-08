@@ -7,7 +7,7 @@ import type { StillId } from "@/lib/cut/types";
 const MIN_WORDS = 6;
 const MAX_WORDS = 18;
 const LONG_SENTENCE = 24;
-const MAX_CARDS = 24;
+const MAX_CARDS = 60;
 
 function words(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);

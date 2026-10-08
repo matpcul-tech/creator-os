@@ -2,8 +2,14 @@
 // also returns screenshots, diagrams, maps, logos, scans, and charts, which
 // make poor video and thumbnail backgrounds.
 
+// Whole words only. Substring matches used to drop real photos: "graph" hit
+// every "photograph", "icon" hit "iconic", "wiki" hit "Wiki Loves Monuments".
 const NOT_A_PHOTO =
-  /screen ?shot|screencap|screen capture|screengrab|diagram|chart|graph|plot|infographic|schematic|blueprint|map\b|maps\b|locator|logo|icon|emblem|coat of arms|\bseal\b|flag of|symbol|\bsvg\b|wikipedia|wiki\b|website|webpage|web page|homepage|user interface|\bgui\b|\bui\b|interface|scan\b|scanned|document|letter\b|page \d|manuscript|newspaper|poster|banner|text\b|table\b|drawing|illustration|cartoon|clip ?art|comic|sketch|painting|engraving|lithograph|render\b|rendering|3d model|montage|collage|chess|keyboard layout|font\b|typeface|signature|stamp\b|banknote|coin\b|book cover|album cover|qr code|barcode/i;
+  /\b(screen ?shots?|screencaps?|screen captures?|screengrabs?|diagrams?|charts?|graphs?|infographics?|schematics?|blueprints?|maps?|locator|logos?|icons?|emblems?|coat of arms|seals?|flag of|svg|website|web ?pages?|homepage|user interface|gui|scanned|scans?|manuscripts?|newspapers?|posters?|cartoons?|clip ?art|comics?|engravings?|lithographs?|3d model|3d render(ing)?|keyboard layout|typeface|banknotes?|book cover|album cover|qr code|barcode)\b/i;
+
+// Checked against the title and description only, since Commons categories
+// mention these words on lots of ordinary photos.
+const NOT_A_PHOTO_TITLE = /\b(drawing|illustration|painting|sketch|collage|montage|signature|stamp|document|letter|page \d+|text|table|chess|font)\b/i;
 
 // Real photos whose subject is a lit screen full of text or UI. They read like
 // screenshots in a thumbnail, so they are ranked last instead of dropped.
@@ -32,12 +38,14 @@ export function isLikelyPhoto(info: CommonsInfo): boolean {
   const w = info.width ?? 0;
   const h = info.height ?? 0;
   if (w && h) {
-    if (Math.min(w, h) < 500) return false; // too small, often icons
+    if (Math.min(w, h) < 400) return false; // too small, often icons
     const ratio = w / h;
     if (ratio < 0.45 || ratio > 2.4) return false; // panoramas, banners, strips
   }
-  const haystack = `${info.title} ${stripHtml(info.categories)} ${stripHtml(info.description)}`;
-  return !NOT_A_PHOTO.test(haystack);
+  const title = info.title.replace(/[_]+/g, " ");
+  const haystack = `${title} ${stripHtml(info.categories)} ${stripHtml(info.description)}`;
+  if (NOT_A_PHOTO.test(haystack)) return false;
+  return !NOT_A_PHOTO_TITLE.test(`${title} ${stripHtml(info.description)}`);
 }
 
 // Small bonus for files that say they are photographs, and a penalty for
