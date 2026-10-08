@@ -18,8 +18,19 @@ export async function POST(
       .filter(([, v]) => v.length > 0),
   );
 
+  // Merge with URLs saved earlier so posting one platform at a time keeps
+  // the others. A new value for the same platform replaces the old one.
+  const existing = await prisma.contentPiece.findUnique({ where: { id }, select: { publishUrls: true } });
+  let previous: Record<string, string> = {};
+  try {
+    previous = JSON.parse(existing?.publishUrls || "{}") as Record<string, string>;
+  } catch {
+    previous = {};
+  }
+  const merged = { ...previous, ...cleaned };
+
   // First non-empty URL becomes the canonical publishUrl.
-  const firstUrl = Object.values(cleaned)[0] ?? "";
+  const firstUrl = Object.values(merged)[0] ?? "";
 
   const item = await prisma.contentPiece.update({
     where: { id },
@@ -27,7 +38,7 @@ export async function POST(
       status: "published",
       publishedAt: new Date(),
       publishUrl: firstUrl,
-      publishUrls: stringifyJSON(cleaned),
+      publishUrls: stringifyJSON(merged),
     },
   });
 

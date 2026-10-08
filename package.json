@@ -12,7 +12,8 @@
     "db:push": "dotenv -c -- prisma db push --skip-generate && prisma generate",
     "db:seed": "dotenv -c -- tsx prisma/seed.ts",
     "db:studio": "dotenv -c -- prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

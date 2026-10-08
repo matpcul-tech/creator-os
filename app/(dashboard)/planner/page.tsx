@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { PLATFORMS, type PlatformId, PLATFORM_LIST } from "@/lib/platforms";
 import { parseJSON, formatDate } from "@/lib/utils";
-import { PublishPanel } from "@/components/PublishPanel";
+import { PostFlow } from "@/components/PostFlow";
 import { FacelessCut } from "@/components/FacelessCut";
 
 type Piece = {
@@ -437,24 +437,15 @@ function PieceDrawer({
             </a>
           </div>
 
-          {platforms.length > 0 && body ? (
-            <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Send size={16} className="text-brand-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Publish
-                </h3>
-              </div>
-              <PublishPanel
-                contentId={piece.id}
-                title={title}
-                body={body}
-                variants={piece.variants}
-                publishUrls={piece.publishUrls}
-                platforms={platforms as PlatformId[]}
-              />
+          <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Send size={16} className="text-brand-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Post
+              </h3>
             </div>
-          ) : null}
+            <PostFlow piece={{ ...piece, title, body, hook }} />
+          </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-dark-800">
             <button

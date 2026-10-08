@@ -13,6 +13,7 @@ import {
   Send,
   TrendingUp,
   Upload,
+  Youtube,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -103,6 +104,8 @@ export default function IntegrationsPage() {
           </pre>
         </details>
       </div>
+
+      <YouTubeConnect />
 
       <HeyGenConnect />
 
@@ -393,4 +396,58 @@ function buildBookmarklet(origin: string): string {
     })();
   `;
   return "javascript:" + encodeURIComponent(code.replace(/\s+/g, " ").trim());
+}
+
+function YouTubeConnect() {
+  const [status, setStatus] = useState<{ configured: boolean; connected: boolean; accountName: string } | null>(null);
+  const [result, setResult] = useState("");
+
+  useEffect(() => {
+    fetch("/api/youtube/status").then((r) => r.json()).then(setStatus).catch(() => setStatus(null));
+    const q = new URLSearchParams(window.location.search).get("youtube") || "";
+    const messages: Record<string, string> = {
+      connected: "YouTube is connected.",
+      denied: "YouTube wasn't connected because access was declined.",
+      failed: "Connecting YouTube didn't work. Please try again.",
+      not_configured: "YouTube posting isn't set up yet.",
+    };
+    setResult(messages[q] || "");
+  }, []);
+
+  return (
+    <div className="cai-card">
+      <div className="flex items-center gap-2 mb-2">
+        <Youtube size={18} className="text-red-400" />
+        <h2 className="text-lg font-bold text-white">YouTube: post from the app</h2>
+      </div>
+      <p className="text-sm text-dark-400">
+        Upload your video, caption, and thumbnail to YouTube from a Planner card.
+      </p>
+      {result ? <p role="status" className="mt-3 text-sm text-amber-200">{result}</p> : null}
+      <div className="mt-4">
+        {!status ? (
+          <div className="flex items-center gap-2 text-sm text-dark-400">
+            <Loader2 size={14} className="animate-spin" /> Checking...
+          </div>
+        ) : status.connected ? (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="inline-flex items-center gap-2 text-emerald-300">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              Connected{status.accountName ? ` as ${status.accountName}` : ""}
+            </span>
+            <a href="/api/youtube/connect" className="text-xs text-dark-400 hover:text-white">Reconnect</a>
+          </div>
+        ) : status.configured ? (
+          <a href="/api/youtube/connect" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-500">
+            <Youtube size={16} /> Connect YouTube
+          </a>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-dark-300 bg-dark-800/40 border border-dark-700/40 rounded-lg px-3 py-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-dark-500" />
+            Not connected. YouTube posting needs a one-time setup by the site owner.
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

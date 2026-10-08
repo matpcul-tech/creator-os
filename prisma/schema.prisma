@@ -176,3 +176,17 @@ model Thumbnail {
 
   @@index([contentId])
 }
+
+// OAuth tokens for publishing connectors (YouTube first). Tokens are stored
+// encrypted with AES-256-GCM (see lib/crypto-box.ts). One row per provider.
+model OAuthToken {
+  id           Int       @id @default(autoincrement())
+  provider     String    @unique // youtube
+  accessToken  String    @default("") // encrypted
+  refreshToken String    @default("") // encrypted
+  expiresAt    DateTime?
+  scope        String    @default("")
+  accountName  String    @default("") // channel title, for display
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
