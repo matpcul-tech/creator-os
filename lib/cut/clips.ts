@@ -1,3 +1,5 @@
+import { COMMONS_IMAGEINFO, commonsInfo, isLikelyPhoto, photoBonus } from "./photo-filter";
+
 const STOP = new Set(
   "the a an and or to for of in on your is it not then with this that from just does have will here what they them their you we our are was were been being be about into over after before than too very really like more most some any can could should would when where who why how its it's don't dont but if so as at by my me".split(
     " ",
@@ -25,7 +27,7 @@ const VISUAL: [RegExp, string][] = [
   [/idea|think|plan|brain/, "person thinking by a window"],
 ];
 
-type Stock = { url: string; title: string };
+type Stock = { url: string; title: string; bonus?: number };
 
 // Wikimedia rate-limits (HTTP 429) any client whose User-Agent has no real contact URL or email.
 // See https://meta.wikimedia.org/wiki/User-Agent_policy
@@ -53,22 +55,19 @@ function score(title: string, query: string): number {
 
 async function search(query: string): Promise<Stock[]> {
   const url =
-    "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url&iiurlwidth=960&gsrsearch=" +
+    `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=20&${COMMONS_IMAGEINFO}&iiurlwidth=960&gsrsearch=` +
     encodeURIComponent(`${query} filemime:image/jpeg`);
   const response = await fetch(url, { headers: { "User-Agent": WIKI_UA, "Api-User-Agent": WIKI_UA } });
   if (!response.ok) console.warn("clip search", response.status, query);
   if (!response.ok) return [];
   const data = (await response.json()) as {
-    query?: { pages?: Record<string, { title?: string; imageinfo?: { thumburl?: string; url?: string }[] }> };
+    query?: { pages?: Record<string, Parameters<typeof commonsInfo>[0]> };
   };
+  // Keep real photographs only. Screenshots, diagrams, maps, logos, and SVGs are dropped.
   return Object.values(data.query?.pages ?? {})
-    .map((page) => {
-      const info = page.imageinfo?.[0];
-      const src = info?.thumburl || info?.url;
-      if (!src || !page.title) return null;
-      return { url: src, title: page.title };
-    })
-    .filter((item): item is Stock => Boolean(item));
+    .map(commonsInfo)
+    .filter((info): info is NonNullable<ReturnType<typeof commonsInfo>> => Boolean(info) && isLikelyPhoto(info!))
+    .map((info) => ({ url: info.thumburl || info.url, title: info.title, bonus: photoBonus(info) }));
 }
 
 export async function matchClips(lines: string[]): Promise<(string | null)[]> {
@@ -78,7 +77,7 @@ export async function matchClips(lines: string[]): Promise<(string | null)[]> {
     const query = clipQuery(line);
     const found = await search(query).catch(() => [] as Stock[]);
     const ranked = found
-      .map((item) => ({ ...item, score: score(item.title, query) }))
+      .map((item) => ({ ...item, score: score(item.title, query) + (item.bonus ?? 0) }))
       .sort((a, b) => b.score - a.score);
     const pick = ranked.find((item) => !used.has(item.url)) ?? null;
     if (pick) used.add(pick.url);
