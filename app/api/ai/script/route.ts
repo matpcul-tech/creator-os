@@ -4,6 +4,9 @@ import { scriptPrompt } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
+// Long scripts can take a while to stream, and may auto-continue. Pro plan allows this.
+export const maxDuration = 300;
+
 export async function POST(req: Request) {
   const limit = rateLimit(`ai:${clientIp(req)}`, 30, 60);
   if (!limit.ok) return rateLimitResponse(limit);
@@ -12,6 +15,8 @@ export async function POST(req: Request) {
   const title: string = body.title ?? "";
   const platform: PlatformId = body.platform ?? "youtube";
   const context: string | undefined = body.context;
+  // Text already written, when the user presses Continue after a stream stopped.
+  const partial: string | undefined = typeof body.partial === "string" ? body.partial.slice(0, 40000) : undefined;
 
   if (!title) {
     return new Response(JSON.stringify({ error: "title required" }), {
@@ -24,7 +29,10 @@ export async function POST(req: Request) {
     stream = await streamCompletion({
       user: scriptPrompt({ title, platform, context: thinTitleNote(title, context) }),
       feature: "script",
+      // No thinking: it shares max_tokens with the script and could starve it.
+      noThinking: true,
       maxTokens: 8000,
+      partial,
     });
   } catch (e) {
     if (e instanceof BudgetExceededError) return budgetErrorResponse(e);

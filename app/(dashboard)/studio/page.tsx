@@ -24,6 +24,7 @@ import { PublishPanel } from "@/components/PublishPanel";
 import { FacelessCut } from "@/components/FacelessCut";
 import { PictorySend } from "@/components/PictorySend";
 import { shapeScript } from "@/lib/cut/direct";
+import { joinContinuation, readStream } from "@/lib/stream-protocol";
 
 type Variants = Partial<Record<PlatformId, string>>;
 
@@ -54,6 +55,9 @@ function StudioInner() {
   const [adapting, setAdapting] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [aiError, setAiError] = useState("");
+  // Set when a script stream stopped before the end, so the user can Continue.
+  const [stopped, setStopped] = useState("");
+  const [scriptTitle, setScriptTitle] = useState("");
   // Angle suggestions for short or broad titles.
   const [angles, setAngles] = useState<string[]>([]);
   const [anglesFor, setAnglesFor] = useState("");
@@ -125,13 +129,19 @@ function StudioInner() {
     writeScript(t);
   }
 
-  async function writeScript(scriptTitle: string) {
+  async function writeScript(scriptTitle: string, partial = "") {
     if (!scriptTitle || generating) return;
     setAiError("");
+    setStopped("");
     setGenerating(true);
-    setDraft("");
-    setVariants({});
-    setSaved(false);
+    if (!partial) {
+      setDraft("");
+      setVariants({});
+      setSaved(false);
+    }
+    setScriptTitle(scriptTitle);
+    const base = partial.trimEnd();
+    let shown = base;
     try {
       const res = await fetch("/api/ai/script", {
         method: "POST",
@@ -140,6 +150,7 @@ function StudioInner() {
           title: scriptTitle,
           platform,
           context: `${context}\n\nHard rule: faceless video. One short sentence per line. A blank line between lines. No em dashes, no en dashes, and no hyphens used as dashes. Use a period. No markdown, no headings, no asterisks, no captions.`,
+          ...(base ? { partial: base } : {}),
         }),
       });
       if (!res.ok || !res.body) {
@@ -151,24 +162,47 @@ function StudioInner() {
         } catch {
           // keep the generic message
         }
-        setAiError(msg);
+        if (base) setStopped(msg);
+        else setAiError(msg);
         return;
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
+      let state = readStream("");
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          state = readStream(buf);
+          shown = base ? joinContinuation(base, state.text) : state.text;
+          setDraft(shown);
+        }
+      } catch {
+        // The connection dropped mid stream. What arrived is kept below.
       }
-      setDraft(shapeScript(buf));
+      state = readStream(buf);
+      shown = base ? joinContinuation(base, state.text) : state.text;
+      setDraft(shapeScript(shown));
+      if (state.error) setStopped(state.error);
+      else if (!state.done) setStopped("The connection dropped before the script finished. Press Continue to finish it.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setAiError(msg || "Something went wrong writing the script. Please try again.");
+      if (shown) {
+        setDraft(shapeScript(shown));
+        setStopped("The connection dropped before the script finished. Press Continue to finish it.");
+      } else {
+        setAiError(msg || "Something went wrong writing the script. Please try again.");
+      }
     } finally {
       setGenerating(false);
     }
+  }
+
+  function continueScript() {
+    if (!draft.trim()) return;
+    writeScript(scriptTitle || title, draft);
   }
 
   async function adapt() {
@@ -326,6 +360,20 @@ function StudioInner() {
         </div>
       ) : null}
 
+      {stopped && !generating ? (
+        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100 flex flex-wrap items-center justify-between gap-3">
+          <span>{stopped}</span>
+          <button
+            type="button"
+            onClick={continueScript}
+            disabled={!draft.trim()}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/20 text-amber-100 hover:bg-amber-500/30 transition-all disabled:opacity-50"
+          >
+            Continue
+          </button>
+        </div>
+      ) : null}
+
       {draft || generating ? (
         <div className="cai-card">
           <div className="flex items-center justify-between mb-4">
@@ -394,7 +442,7 @@ function StudioInner() {
         </div>
       ) : null}
 
-      {draft ? (
+      {draft && !generating ? (
         <div className="cai-card">
           <div className="flex items-center gap-2 mb-4">
             <Film size={18} className="text-brand-400" />
@@ -404,7 +452,7 @@ function StudioInner() {
         </div>
       ) : null}
 
-      {draft ? (
+      {draft && !generating ? (
         <div className="cai-card">
           <div className="flex items-center gap-2 mb-4">
             <Film size={18} className="text-brand-400" />

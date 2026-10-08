@@ -1,3 +1,4 @@
+import { spreadStills } from "@/lib/cut/photo-pool";
 import type { Camera, Layout, Scene, StillId } from "@/lib/cut/types";
 
 const CAMERAS: Camera[] = ["push", "driftL", "rise", "driftR", "hold"];
@@ -94,12 +95,16 @@ Then make the middle prove it. A number, a picture, a sentence someone could rep
 
 When the cut is done, export it. Do not wait on another tab to finish your video.`;
 
-function beats(script: string): string[] {
+// A spoken script is one short sentence per line, so a 60 to 90 second script
+// runs 25 to 40 lines. The old cap of 20 cut longer scripts off mid way.
+export const MAX_BEATS = 60;
+
+export function beats(script: string): string[] {
   return script
     .split(/\n+/)
     .map((part) => part.trim())
     .filter(Boolean)
-    .slice(0, 20);
+    .slice(0, MAX_BEATS);
 }
 
 function layoutFor(text: string, index: number, last: number): Layout {
@@ -141,32 +146,28 @@ function punch(narration: string, layout: Layout): string {
   return chosen.join(" ");
 }
 
-function pickStill(text: string, previous: StillId | null): StillId {
+function stillScores(text: string): Record<StillId, number> {
   const hay = text.toLowerCase();
-  const ranked = (Object.keys(STILL_WORDS) as StillId[])
-    .map((id) => ({
-      id,
-      score: STILL_WORDS[id].reduce((sum, word) => sum + (hay.includes(word) ? 1 : 0), 0),
-    }))
-    .sort((a, b) => b.score - a.score);
-  const top = ranked.find((item) => item.id !== previous) ?? ranked[0];
-  return top?.id ?? "desk";
+  const out = {} as Record<StillId, number>;
+  for (const id of Object.keys(STILL_WORDS) as StillId[]) {
+    out[id] = STILL_WORDS[id].reduce((sum, word) => sum + (hay.includes(word) ? 1 : 0), 0);
+  }
+  return out;
 }
 
 export function directScript(script: string): Scene[] {
   const parts = beats(spokenSource(script.trim() || SAMPLE_SCRIPT));
   const last = parts.length - 1;
-  let previous: StillId | null = null;
+  // Spread the built-in stills evenly instead of bouncing between the top two.
+  const stills = spreadStills(parts.map(stillScores), Object.keys(STILL_WORDS) as StillId[]);
   return parts.map((narration, index) => {
     const layout = layoutFor(narration, index, last);
-    const still = pickStill(narration, previous);
-    previous = still;
     return {
       id: `s${index + 1}-${narration.length}`,
       narration,
       onscreen: punch(narration, layout),
       layout,
-      still,
+      still: stills[index],
       camera: CAMERAS[index % CAMERAS.length],
     };
   });

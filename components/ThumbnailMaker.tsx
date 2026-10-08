@@ -42,8 +42,10 @@ export function ThumbnailMaker({
   const [anchor, setAnchor] = useState(layoutAnchor("bottom", "youtube"));
   const [scale, setScale] = useState(1);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [photoOptions, setPhotoOptions] = useState<string[]>([]);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  // Photos not shown yet, and every photo already shown, so "Try another photo" never repeats one.
+  const [photoQueue, setPhotoQueue] = useState<{ src: string; url: string }[]>([]);
+  const shownPhotos = useRef<Set<string>>(new Set());
+  const [photoCount, setPhotoCount] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [busy, setBusy] = useState<"" | "photo" | "ai" | "attach">("");
   const [note, setNote] = useState("");
@@ -91,11 +93,17 @@ export function ThumbnailMaker({
   }
 
   // Photos come from the same stock source as the Faceless builder.
+  function showPhoto(photo: { src: string; url: string }) {
+    shownPhotos.current.add(photo.src);
+    setPhotoCount(shownPhotos.current.size);
+    loadImage(photo.url);
+  }
+
   async function findPhoto() {
-    if (photoOptions.length > 1) {
-      const next = (photoIndex + 1) % photoOptions.length;
-      setPhotoIndex(next);
-      loadImage(photoOptions[next]);
+    if (photoQueue.length) {
+      const [next, ...rest] = photoQueue;
+      setPhotoQueue(rest);
+      showPhoto(next);
       return;
     }
     setBusy("photo");
@@ -105,17 +113,35 @@ export function ThumbnailMaker({
       const res = await fetch("/api/ai/clips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines }),
+        body: JSON.stringify({
+          lines: lines.slice(0, 1),
+          topic: lines.join(" "),
+          exclude: [...shownPhotos.current].slice(-400),
+          extra: 15,
+        }),
       });
-      const json = (await res.json()) as { clips?: (string | null)[] };
-      const found = (json.clips ?? []).filter((c): c is string => Boolean(c));
+      const json = (await res.json()) as {
+        items?: ({ src: string; url: string } | null)[];
+        pool?: { src: string; url: string }[];
+      };
+      const seen = new Set(shownPhotos.current);
+      const found: { src: string; url: string }[] = [];
+      for (const item of [...(json.items ?? []), ...(json.pool ?? [])]) {
+        if (!item || seen.has(item.src)) continue;
+        seen.add(item.src);
+        found.push(item);
+      }
       if (!found.length) {
-        setNote("No matching photo found. Upload your own, or keep the color background.");
+        setNote(
+          shownPhotos.current.size
+            ? "That's every matching photo we could find. Upload your own, or edit the text to search for something else."
+            : "No matching photo found. Upload your own, or keep the color background.",
+        );
         return;
       }
-      setPhotoOptions(found);
-      setPhotoIndex(0);
-      loadImage(found[0]);
+      const [first, ...rest] = found;
+      setPhotoQueue(rest);
+      showPhoto(first);
     } catch {
       setNote("Photo search didn't answer. Try again or upload your own.");
     } finally {
@@ -285,7 +311,7 @@ export function ThumbnailMaker({
           <div className="flex flex-wrap gap-2">
             <button onClick={findPhoto} disabled={busy === "photo"} className={`${chip(false)} inline-flex items-center gap-1.5`}>
               {busy === "photo" ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
-              {photoOptions.length > 1 ? "Try another photo" : "Find a photo"}
+              {photoCount > 0 ? "Try another photo" : "Find a photo"}
             </button>
             <label className={`${chip(false)} inline-flex items-center gap-1.5 cursor-pointer`}>
               <ImagePlus size={12} /> Upload
