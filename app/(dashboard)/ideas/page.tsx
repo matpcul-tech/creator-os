@@ -101,7 +101,7 @@ export default function IdeasPage() {
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Ideas</h1>
           <p className="text-dark-400">
-            Brainstorm, store, and ship. Generate fresh ideas in your voice with Claude, or add your own.
+            Brainstorm, store, and ship. Generate fresh ideas in your voice with AI, or add your own.
           </p>
         </div>
         <button

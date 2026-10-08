@@ -6,6 +6,10 @@ import { prisma } from "@/lib/db";
 // GET: list the avatars and voices on the connected HeyGen account so the
 // creator can pick their own digital twin and cloned voice once during setup.
 export async function GET() {
+  // Not set up yet: report a clean "not connected" state instead of an error.
+  if (!process.env.HEYGEN_API_KEY) {
+    return NextResponse.json({ connected: false, avatars: [], voices: [] });
+  }
   try {
     const [avatars, voices] = await Promise.all([listAvatars(), listVoices()]);
     const profile = await prisma.profile.findFirst();

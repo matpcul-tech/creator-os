@@ -47,7 +47,7 @@ export default function IntegrationsPage() {
 
       <Section
         icon={Send}
-        title="Publishing — web intents"
+        title="Publishing: web intents"
         body="Click 'Mark as published' on any draft and we route the text to the platform's native composer. X is one-click pre-fill. Other platforms (LinkedIn / Threads / TikTok / IG / YouTube) copy the text and open the platform's compose page."
         link={{ href: "/studio", label: "Open the Studio" }}
       />
@@ -60,7 +60,7 @@ export default function IntegrationsPage() {
         <p className="text-sm text-dark-400 mb-3">
           Drag this button to your bookmarks bar. When you&apos;re viewing your
           own tweet / YouTube / TikTok / IG post, click the bookmarklet and it
-          opens CreatorAI&apos;s capture form with the URL pre-filled — you
+          opens CreatorAI&apos;s capture form with the URL pre-filled, so you
           fill in the numbers and save.
         </p>
 
@@ -108,14 +108,14 @@ export default function IntegrationsPage() {
 
       <Section
         icon={Upload}
-        title="Bulk analytics — CSV import"
+        title="Bulk analytics: CSV import"
         body="Export 'Content' or 'Reach' from YouTube Studio (or any analytics dashboard with views/likes/comments columns) and drop the CSV onto Analytics. Each row becomes a snapshot."
         link={{ href: "/analytics", label: "Open Analytics" }}
       />
 
       <Section
         icon={TrendingUp}
-        title="Trend Radar — Reddit + Hacker News"
+        title="Trend Radar: Reddit and Hacker News"
         body="Live trend feed pulled from Reddit (subreddits matched to your niche) and Hacker News front page. Click the wand icon on any trend to generate ideas in your voice."
         link={{ href: "/dashboard", label: "Open Dashboard" }}
       />
@@ -123,11 +123,11 @@ export default function IntegrationsPage() {
       <div className="cai-card border-amber-500/20">
         <div className="flex items-center gap-2 mb-2">
           <Plug size={18} className="text-amber-400" />
-          <h2 className="text-lg font-bold text-white">Real platform APIs (next)</h2>
+          <h2 className="text-lg font-bold text-white">Platform connections</h2>
         </div>
         <p className="text-sm text-dark-400">
-          These wire up direct OAuth + posting + analytics fetching. Ask Claude
-          to add them when you&apos;re ready — they need API keys you set up.
+          Direct posting and automatic analytics for these platforms are not
+          available yet. Each one shows as not connected for now.
         </p>
         <div className="mt-4 grid sm:grid-cols-2 gap-2">
           {[
@@ -142,10 +142,11 @@ export default function IntegrationsPage() {
               key={name}
               className="flex items-start gap-2 px-3 py-2 rounded-lg bg-dark-800/30 border border-dark-700/40"
             >
-              <span className="w-1.5 h-1.5 mt-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="w-1.5 h-1.5 mt-2 rounded-full bg-dark-500 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-white">{name}</p>
                 <p className="text-xs text-dark-500">{what}</p>
+                <p className="mt-1 text-[11px] font-medium text-dark-400">Not connected</p>
               </div>
             </div>
           ))}
@@ -189,6 +190,7 @@ type Voice = { id: string; name: string; language: string };
 function HeyGenConnect() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [connected, setConnected] = useState(true);
   const [avatars, setAvatars] = useState<Avatar[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [avatarId, setAvatarId] = useState("");
@@ -203,8 +205,12 @@ function HeyGenConnect() {
         const res = await fetch("/api/heygen");
         const json = await res.json();
         if (cancelled) return;
+        if (json.connected === false) {
+          setConnected(false);
+          return;
+        }
         if (!res.ok) {
-          setError(json.error || `HeyGen ${res.status}`);
+          setError("Couldn't load your HeyGen avatars right now. Please try again later.");
           return;
         }
         setAvatars(json.avatars ?? []);
@@ -213,7 +219,7 @@ function HeyGenConnect() {
         setVoiceId(json.selected?.voiceId ?? "");
       } catch (e) {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : String(e));
+        setError("Couldn't load your HeyGen avatars right now. Please try again later.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -245,12 +251,11 @@ function HeyGenConnect() {
     <div className="cai-card">
       <div className="flex items-center gap-2 mb-2">
         <Film size={18} className="text-brand-400" />
-        <h2 className="text-lg font-bold text-white">HeyGen — talking-head video</h2>
+        <h2 className="text-lg font-bold text-white">HeyGen: talking-head video</h2>
       </div>
       <p className="text-sm text-dark-400">
         Render any script as a video of your cloned digital twin speaking in
-        your own voice. Set <code className="text-xs text-brand-300">HEYGEN_API_KEY</code> in
-        your environment, then pick your avatar + voice below.
+        your own voice. Once HeyGen is connected, pick your avatar and voice below.
       </p>
       <a
         href="https://app.heygen.com"
@@ -266,6 +271,11 @@ function HeyGenConnect() {
           <div className="flex items-center gap-2 text-sm text-dark-400">
             <Loader2 size={14} className="animate-spin" />
             Loading your avatars and voices…
+          </div>
+        ) : !connected ? (
+          <div className="flex items-center gap-2 text-sm text-dark-300 bg-dark-800/40 border border-dark-700/40 rounded-lg px-3 py-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-dark-500" />
+            Not connected
           </div>
         ) : error ? (
           <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
@@ -338,7 +348,7 @@ function HeyGenConnect() {
                   {voices.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.name}
-                      {v.language ? ` — ${v.language}` : ""}
+                      {v.language ? ` - ${v.language}` : ""}
                     </option>
                   ))}
                 </select>

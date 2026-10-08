@@ -251,7 +251,7 @@ export default function OnboardingPage() {
                 <div className="space-y-4">
                   <Field
                     label="Paste 3–5 samples of your existing writing (tweets, captions, posts)"
-                    hint="Optional but powerful — Claude will analyze your voice and configure the AI to write like you."
+                    hint="Optional. The AI will study these samples so it writes more like you."
                   >
                     <textarea
                       value={form.voiceSamples}
@@ -273,7 +273,7 @@ export default function OnboardingPage() {
                       </>
                     ) : (
                       <>
-                        <Sparkles size={16} /> Analyze with Claude
+                        <Sparkles size={16} /> Analyze my voice
                       </>
                     )}
                   </button>

@@ -2,7 +2,7 @@ const BASE = "https://api.pictory.ai/pictoryapis";
 
 function key() {
   const value = process.env.PICTORY_API_KEY;
-  if (!value) throw new Error("PICTORY_API_KEY is not set");
+  if (!value) throw new Error("Pictory isn't connected.");
   return value;
 }
 

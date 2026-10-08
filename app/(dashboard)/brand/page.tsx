@@ -97,7 +97,7 @@ export default function BrandPage() {
         </div>
         <p className="text-sm text-dark-300 leading-relaxed">
           {profile.voice ||
-            "Voice not configured yet. Paste samples below and let Claude analyze your style."}
+            "Voice not configured yet. Paste samples below and let the AI analyze your style."}
         </p>
       </div>
 
@@ -108,7 +108,7 @@ export default function BrandPage() {
           <h2 className="text-lg font-bold text-white">Analyze writing samples</h2>
         </div>
         <p className="text-sm text-dark-400 mb-4">
-          Paste 3–5 examples of your existing tweets, captions, or posts. Claude
+          Paste 3 to 5 examples of your existing tweets, captions, or posts. The AI
           extracts your voice traits, keywords, and what NOT to write.
         </p>
         <textarea
@@ -128,7 +128,7 @@ export default function BrandPage() {
             </>
           ) : (
             <>
-              <RefreshCw size={16} /> Analyze with Claude
+              <RefreshCw size={16} /> Analyze my voice
             </>
           )}
         </button>
@@ -188,7 +188,7 @@ export default function BrandPage() {
               <h2 className="text-lg font-bold text-white">Avoid these phrases</h2>
             </div>
             <p className="text-sm text-dark-400 mb-3">
-              These would make you sound generic. Claude will steer clear.
+              These would make you sound generic. The AI will steer clear.
             </p>
             <div className="flex flex-wrap gap-2">
               {analysis.do_not_use.map((k) => (

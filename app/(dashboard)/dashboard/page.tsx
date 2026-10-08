@@ -216,7 +216,7 @@ export default async function DashboardPage() {
             <Link href="/ideas" className="text-sm text-brand-400 hover:text-brand-300">All →</Link>
           </div>
           {s.recentIdeas.length === 0 ? (
-            <Empty title="No ideas yet." hint="Generate a batch with Claude in Ideas." />
+            <Empty title="No ideas yet." hint="Generate a batch with AI in Ideas." />
           ) : (
             <ul className="space-y-3">
               {s.recentIdeas.map((i) => (
