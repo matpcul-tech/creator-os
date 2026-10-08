@@ -30,12 +30,10 @@ test("photos already shown are never picked again", () => {
   assert.deepEqual(picks.map((x) => x?.src), ["b", "d"]);
 });
 
-test("reuse only when the pool is truly exhausted, never back to back", () => {
+test("a photo is never reused, even when the pool runs out", () => {
   const picks = assignUnique([[p("a")], [p("a")], [p("b")], [p("a")], [], []], [p("c")]);
-  const srcs = picks.map((x) => x?.src);
-  assert.deepEqual(srcs.slice(0, 3), ["a", "c", "b"]);
-  assert.ok(srcs.every(Boolean));
-  for (let i = 1; i < srcs.length; i++) assert.notEqual(srcs[i], srcs[i - 1]);
+  const srcs = picks.map((x) => x?.src ?? null);
+  assert.deepEqual(srcs, ["a", "c", "b", null, null, null]);
 });
 
 test("a scene stays empty (built-in still) rather than repeat its neighbor", () => {

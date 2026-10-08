@@ -1,4 +1,5 @@
 import { spreadStills } from "@/lib/cut/photo-pool";
+import { splitClauses, splitSentences } from "@/lib/cut/sentences";
 import type { Camera, Layout, Scene, StillId } from "@/lib/cut/types";
 
 const CAMERAS: Camera[] = ["push", "driftL", "rise", "driftR", "hold"];
@@ -15,40 +16,33 @@ export const STILL_WORDS: Record<StillId, string[]> = {
 };
 
 function tidy(text: string): string {
-  return text
-    .replace(/[\u2012\u2013\u2014\u2015]/g, ". ")
-    .replace(/\s+--\s+/g, ". ")
-    .replace(/\s+-\s+/g, ". ")
-    .replace(/\s+/g, " ")
-    .replace(/\s+([.!?])/g, "$1")
-    .replace(/([.!?])\s*([a-z])/g, (_, mark: string, letter: string) => `${mark} ${letter.toUpperCase()}`)
-    .replace(/(?:\. ){2,}/g, ". ")
-    .trim();
+  return (
+    text
+      // A dash inside a word ("long\u2013term") is a hyphen. A dash between words is a pause, so it
+      // becomes a comma. Nothing else is added, and no sentence is split here.
+      .replace(/(?<=\w)[\u2010\u2011\u2012\u2013](?=\w)/g, "-")
+      .replace(/\s*[\u2012\u2013\u2014\u2015]\s*/g, ", ")
+      .replace(/\s+--?\s+/g, ", ")
+      .replace(/\s+/g, " ")
+      .replace(/\s+([.!?,;:])/g, "$1")
+      .replace(/,(?=[,.!?;:])/g, "")
+      .replace(/^,\s*/, "")
+      .trim()
+  );
 }
 
+/**
+ * One short line per sentence for the voice and the faceless cut. A long sentence is broken only
+ * after a comma, semicolon or colon (or before a joining word when it has none), and the words and
+ * punctuation stay exactly as written.
+ */
 export function shapeScript(script: string): string {
   const lines: string[] = [];
   for (const raw of script.split(/\n+/)) {
     const chunk = tidy(raw);
     if (!chunk) continue;
-    const parts = chunk.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter(Boolean);
-    for (const sentence of parts.length ? parts : [chunk]) {
-      const words = sentence.split(/\s+/);
-      if (words.length <= 12) {
-        lines.push(sentence);
-        continue;
-      }
-      const clauses = sentence.split(/,\s+/);
-      const bits = clauses.length > 1 ? clauses : [];
-      if (!bits.length) {
-        for (let index = 0; index < words.length; index += 10) bits.push(words.slice(index, index + 10).join(" "));
-      }
-      for (const bit of bits) {
-        let line = bit.trim();
-        if (!line) continue;
-        if (!/[.!?]$/.test(line)) line += ".";
-        lines.push(line.charAt(0).toUpperCase() + line.slice(1));
-      }
+    for (const sentence of splitSentences(chunk)) {
+      lines.push(...splitClauses(sentence, { trigger: 12, target: 12, hard: 24 }));
     }
   }
   return lines.join("\n\n");

@@ -5,7 +5,26 @@ import { Download, Pause, Play, Sparkles } from "lucide-react";
 import { CutEngine, type EngineSnapshot } from "@/lib/cut/engine";
 import { directScript, spokenScript, voiceKey } from "@/lib/cut/direct";
 import { marksFromVoice } from "@/lib/cut/timeline";
-import { ASPECTS, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
+import { ASPECTS, STILLS, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
+import { planGaps } from "@/lib/cut/fill";
+import { placePhotos } from "@/lib/cut/place-photos";
+
+// True once the photo has loaded. The engine then finds it in the browser cache.
+function loadOk(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const timer = setTimeout(() => resolve(false), 10000);
+    image.onload = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    image.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    image.src = url;
+  });
+}
 
 type VoicePayload =
   | { ok: false; error: string }
@@ -100,17 +119,28 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     const next = directScript(script);
     setScenes(next);
     let cancel = false;
-    fetch("/api/ai/clips", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines: next.map((scene) => scene.narration), topic: title }),
+    // Same picker as the Faceless builder. No photo repeats anywhere in the video: failed loads take
+    // unused spares, then a deeper search, then each built-in still once.
+    placePhotos<{ src: string; url: string; key?: string }>({
+      lines: next.map((scene) => scene.narration),
+      topic: title,
+      fetchItems: (body) =>
+        fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((res) => res.json()),
+      load: loadOk,
     })
-      .then((res) => res.json())
-      .then((body: { clips?: (string | null)[] }) => {
-        if (cancel || !body.clips?.length) return;
-        setScenes(
-          next.map((scene, index) => (body.clips?.[index] ? { ...scene, clip: body.clips[index] as string } : scene)),
-        );
+      .then(({ picks }) => {
+        if (cancel) return;
+        const gaps = planGaps(picks.map(Boolean), next.map((scene) => scene.still), STILLS.map((still) => still.id));
+        const placed: Scene[] = [];
+        next.forEach((scene, index) => {
+          const pick = picks[index];
+          const gap = gaps[index];
+          if (pick) placed.push({ ...scene, clip: pick.url });
+          else if (gap.kind === "still") placed.push({ ...scene, still: gap.id, clip: undefined });
+          else if (gap.kind === "carry") placed.push({ ...scene, still: placed[gap.from]?.still ?? scene.still, clip: placed[gap.from]?.clip });
+          else placed.push(scene);
+        });
+        setScenes(placed);
         if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
       })
       .catch(() => undefined);

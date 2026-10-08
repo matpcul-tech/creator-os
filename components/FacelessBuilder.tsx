@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Loader2, Mic, RefreshCw } from "lucide-react";
 import { fileNameFor, photoPlan, splitCards, type PhotoPlan } from "@/lib/cut/builder-cards";
-import { STILL_WORDS } from "@/lib/cut/direct";
 import { creditFor, fitsCard } from "@/lib/cut/credit";
-import { spreadStills } from "@/lib/cut/photo-pool";
+import { inBatches, planGaps } from "@/lib/cut/fill";
 import { STILLS, type StillId } from "@/lib/cut/types";
 
 type Scene = {
@@ -25,18 +24,6 @@ type Scene = {
 };
 type StockItem = { src: string; url: string; key?: string; title: string; credit: string; attribution?: string; provider?: string; text?: string };
 
-// Image hosts rate limit bursts, so cards load a few at a time.
-async function inBatches<T>(items: T[], size: number, run: (item: T, index: number) => Promise<void>) {
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(size, items.length) }, async () => {
-      while (next < items.length) {
-        const index = next++;
-        await run(items[index], index);
-      }
-    }),
-  );
-}
 type SceneQueries = { scenes: string[][]; topic: string[] };
 
 function clean(value: string) {
@@ -238,12 +225,8 @@ export function FacelessBuilder({
       items = [];
     }
     setStatus("Loading photos…");
-    const stillIds = Object.keys(STILL_WORDS) as StillId[];
-    const stills = spreadStills(
-      parsed.map((scene) => Object.fromEntries(stillIds.map((id) => [id, id === scene.plan.still ? 1 : 0])) as Record<StillId, number>),
-      stillIds,
-    );
     const sceneQueries = queriesRef.current?.sig === sig ? queriesRef.current.queries.scenes : [];
+    const missing: number[] = [];
     await inBatches(parsed, 3, async (scene, index) => {
       const own = items[index];
       // Try the card's own photo twice (a busy image host often answers the second time),
@@ -265,8 +248,59 @@ export function FacelessBuilder({
           return;
         }
       }
-      updateCard(index, await stillFor(scene, stills[index]));
+      missing.push(index);
     });
+    // Cards still without a photo: one deeper search that skips every photo already used.
+    if (missing.length) {
+      setStatus("Looking deeper for the last few photos…");
+      const deeper = await fetch("/api/ai/clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lines: missing.map((i) => parsed[i].voice),
+          topic: title,
+          exclude: [...new Set([...usedNow(), ...shown])].slice(-500),
+          offset: 50,
+          extra: Math.min(40, missing.length * 2),
+          ...(sceneQueries.length === parsed.length ? { queries: { scenes: missing.map((i) => sceneQueries[i]), topic: queriesRef.current?.queries.topic ?? [] } } : {}),
+        }),
+      })
+        .then((res) => res.json() as Promise<{ items?: (StockItem | null)[]; pool?: StockItem[] }>)
+        .catch(() => ({}) as { items?: (StockItem | null)[]; pool?: StockItem[] });
+      const queue = [...(deeper.items ?? []).map((item, k) => ({ item, k })), ...(deeper.pool ?? []).map((item) => ({ item, k: -1 }))];
+      const taken = new Set(usedNow());
+      for (const [k, index] of missing.slice().entries()) {
+        // The card's own deeper match first, then any unused spare from the deeper search.
+        const order = [...queue.filter((q) => q.k === k), ...queue.filter((q) => q.k === -1)];
+        for (const { item } of order) {
+          if (!item || taken.has(item.src) || (item.key && taken.has(item.key))) continue;
+          taken.add(item.src);
+          if (item.key) taken.add(item.key);
+          const media = await loadImage(item.url);
+          if (media) {
+            shown.add(item.src);
+            if (item.key) shown.add(item.key);
+            updateCard(index, withPhoto(parsed[index], item, media));
+            missing.splice(missing.indexOf(index), 1);
+            break;
+          }
+        }
+      }
+    }
+    // Last resort: each built-in still once, then the card holds the previous card's picture.
+    const gaps = planGaps(
+      scenesRef.current.map((card, index) => !missing.includes(index) && Boolean(card.media)),
+      parsed.map((scene) => scene.plan.still),
+      STILLS.map((still) => still.id),
+    );
+    for (const index of missing) {
+      const gap = gaps[index];
+      if (gap.kind === "still") updateCard(index, await stillFor(parsed[index], gap.id));
+      else if (gap.kind === "carry") {
+        const prev = scenesRef.current[gap.from];
+        updateCard(index, { ...parsed[index], media: prev?.media ?? null, loading: false, credit: "Built-in still", source: "Holds the previous picture", creditLabel: "Holds the previous picture", creditUrl: "", photoSrc: "", photoKey: "" });
+      }
+    }
     const built = scenesRef.current;
     paint(0.2, built);
     setBusy(false);
