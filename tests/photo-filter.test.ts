@@ -23,3 +23,10 @@ test("drops tiny images and extreme strips", () => {
   assert.equal(isLikelyPhoto({ title: "File:Phone.jpg", mime: "image/jpeg", width: 300, height: 200 }), false);
   assert.equal(isLikelyPhoto({ title: "File:Skyline.jpg", mime: "image/jpeg", width: 9000, height: 1500 }), false);
 });
+
+test("photos of screens rank below other photos", async () => {
+  const { photoBonus } = await import("../lib/cut/photo-filter");
+  const screen = photoBonus({ title: "File:Hand holding Smartphone.jpg", categories: "Taken with Nokia 7.2|Front of smartphones" });
+  const plain = photoBonus({ title: "File:Hand holding Smartphone in park.jpg", categories: "Taken with Canon|Hands" });
+  assert.ok(screen < plain);
+});
