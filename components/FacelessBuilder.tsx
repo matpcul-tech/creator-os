@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Image as ImageIcon, Loader2, Mic, RefreshCw } from "lucide-react";
+import { Download, Image as ImageIcon, Link as LinkIcon, Loader2, Mic, RefreshCw, Upload } from "lucide-react";
 import { fileNameFor, photoPlan, planCards, type PhotoPlan } from "@/lib/cut/builder-cards";
 import { creditFor, fitsCard } from "@/lib/cut/credit";
 import { planGaps } from "@/lib/cut/fill";
@@ -27,6 +27,8 @@ type Scene = {
   photoKey?: string;
   creditLabel?: string;
   creditUrl?: string;
+  /** The user picked this picture (upload or URL). Find photos keeps it. */
+  own?: boolean;
 };
 type StockItem = { src: string; url: string; key?: string; title: string; credit: string; attribution?: string; provider?: string; text?: string };
 
@@ -253,9 +255,10 @@ export function FacelessBuilder({
     setFinding(true);
     setStatus("Finding photos…");
     spareRef.current.clear();
-    const parsed = read();
+    const before = scenesRef.current;
+    const parsed = read().map((scene, i) => (before[i]?.own && before[i].caption === scene.caption ? before[i] : scene));
     // Show every card at once with a loading skeleton, then fill each one in as its photo arrives.
-    scenesRef.current = parsed.map((scene) => ({ ...scene, loading: true }));
+    scenesRef.current = parsed.map((scene) => (scene.own ? scene : { ...scene, loading: true }));
     setScenes(scenesRef.current);
     // Photos shown by an earlier Find photos press are skipped, so pressing it again reshuffles to new ones.
     const shown = shownRef.current;
@@ -281,7 +284,7 @@ export function FacelessBuilder({
         shown.add(item.src);
         if (item.key) shown.add(item.key);
         const img = media.get(item.url);
-        if (img) updateCard(index, withPhoto(parsed[index], item, img));
+        if (img && !parsed[index].own) updateCard(index, withPhoto(parsed[index], item, img));
       },
       onProgress: (done, total) => setStatus(done < total ? `Loading photos (${done} of ${total} cards)…` : "Loading the last photos…"),
     }).catch(() => ({ picks: parsed.map(() => null) as (StockItem | null)[], queries: undefined }));
@@ -294,6 +297,7 @@ export function FacelessBuilder({
       STILLS.map((still) => still.id),
     );
     for (const index of missing) {
+      if (parsed[index].own) continue;
       const gap = gaps[index];
       if (gap.kind === "still") updateCard(index, await stillFor(parsed[index], gap.id));
       else if (gap.kind === "carry") {
@@ -305,11 +309,45 @@ export function FacelessBuilder({
     paint(0.2, built);
     setBusy(false);
     setFinding(false);
-    const stock = built.filter((s) => s.credit !== "Built-in still").length;
+    const mine = built.filter((s) => s.own).length;
+    const stock = built.filter((s) => s.credit !== "Built-in still" && !s.own).length;
     setStatus(
-      `${built.length} cards. ${stock} matched a stock photo, ${built.length - stock} use a built-in still. Swap any card, or press Find photos again for a new set.`,
+      `${built.length} cards. ${mine ? `${mine} use your images, ` : ""}${stock} matched a stock photo, ${built.length - stock - mine} use a built-in still. Swap any card, or press Find photos again for a new set.`,
     );
     return built;
+  }
+  function cardsNow() {
+    return scenesRef.current.length ? scenesRef.current : read();
+  }
+  async function setOwnImage(index: number, url: string, label: string) {
+    const scene = cardsNow()[index];
+    if (!scene) return false;
+    const media = await loadImage(url);
+    if (!media) return false;
+    updateCard(index, { ...scene, media, own: true, loading: false, credit: "Your image", source: label, creditLabel: `Your image: ${label}`, creditUrl: "", photoSrc: "", photoKey: "" });
+    paint(0.2);
+    return true;
+  }
+  async function uploadOne(index: number, file?: File) {
+    if (!file) return;
+    const ok = await setOwnImage(index, URL.createObjectURL(file), file.name);
+    setStatus(ok ? `Card ${index + 1} uses your image.` : `Could not open ${file.name}. Try a jpg, png, or webp.`);
+  }
+  async function uploadMany(files: FileList | null) {
+    if (!files?.length) return;
+    const list = cardsNow();
+    const picks = Array.from(files).slice(0, list.length);
+    let ok = 0;
+    for (let i = 0; i < picks.length; i++) if (await setOwnImage(i, URL.createObjectURL(picks[i]), picks[i].name)) ok++;
+    const extra = files.length - picks.length;
+    setStatus(`${ok} of ${list.length} cards use your images, in order.${extra > 0 ? ` ${extra} extra image${extra === 1 ? " was" : "s were"} not used.` : ""} Press Find photos to fill the rest with stock.`);
+  }
+  async function pasteUrl(index: number) {
+    const url = window.prompt(`Image URL for card ${index + 1}`)?.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) return setStatus("That is not a web link. It should start with https://");
+    const ok = await setOwnImage(index, url, url.split("/").pop() || url);
+    setStatus(ok ? `Card ${index + 1} uses the image from that link.` : "That image could not be used. The site may block it. Save it to your device and use Upload image.");
   }
   async function swapPhoto(index: number) {
     const scene = scenesRef.current[index];
@@ -347,7 +385,7 @@ export function FacelessBuilder({
           if (scene.photoKey) shownRef.current.add(scene.photoKey);
           shownRef.current.add(item.src);
           if (item.key) shownRef.current.add(item.key);
-          updateCard(index, withPhoto(scenesRef.current[index] ?? scene, item, media));
+          updateCard(index, { ...withPhoto(scenesRef.current[index] ?? scene, item, media), own: false });
           setStatus(`Card ${index + 1} has a new photo.`);
           return;
         }
@@ -422,7 +460,7 @@ export function FacelessBuilder({
   }
   async function render() {
     if (busy) return;
-    const found = scenesRef.current.some((s) => s.media) ? scenesRef.current : await findStock();
+    const found = scenesRef.current.length && scenesRef.current.every((s) => s.media) ? scenesRef.current : await findStock();
     const canvas = canvasRef.current;
     if (!canvas || !found.length) return;
     setBusy(true);
@@ -538,6 +576,13 @@ export function FacelessBuilder({
           }} />
           {voiceName}
         </label>
+        <label className="mt-3 flex flex-wrap items-center gap-2 text-xs text-dark-300">
+          <Upload size={12} /> Use my images (in card order)
+          <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/*" className="max-w-full text-[11px]" onChange={(e) => {
+            void uploadMany(e.target.files);
+            e.target.value = "";
+          }} />
+        </label>
         <div className="flex flex-wrap gap-2 mt-3">
           <button onClick={read} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white">Read script</button>
           <button onClick={findStock} disabled={busy} aria-busy={finding} className="px-3 py-1.5 rounded-lg text-xs bg-dark-800/40 text-white flex items-center gap-1 disabled:opacity-70">
@@ -569,16 +614,28 @@ export function FacelessBuilder({
                       <a href={s.creditUrl} target="_blank" rel="noreferrer" className="hover:text-dark-300 underline-offset-2 hover:underline">{s.creditLabel}</a>
                     ) : s.creditLabel || ""}
                   </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-dark-700/50 px-2 py-0.5 text-[10px] text-dark-200 hover:text-white">
+                    <Upload size={10} /> Upload image
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/*" className="sr-only" aria-label={`Upload image for card ${i + 1}`} onChange={(e) => {
+                      void uploadOne(i, e.target.files?.[0]);
+                      e.target.value = "";
+                    }} />
+                  </label>
+                  <button type="button" onClick={() => void pasteUrl(i)} className="inline-flex items-center gap-1 rounded-md bg-dark-700/50 px-2 py-0.5 text-[10px] text-dark-200 hover:text-white">
+                    <LinkIcon size={10} /> Paste image URL
+                  </button>
                   {s.media || s.loading ? (
                     <button
                       type="button"
                       onClick={() => void swapPhoto(i)}
                       disabled={s.loading || busy}
-                      className="mt-1 inline-flex items-center gap-1 rounded-md bg-dark-700/50 px-2 py-0.5 text-[10px] text-dark-200 hover:text-white disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-md bg-dark-700/50 px-2 py-0.5 text-[10px] text-dark-200 hover:text-white disabled:opacity-50"
                     >
                       <RefreshCw size={10} className={s.loading && !finding ? "animate-spin" : ""} /> Swap photo
                     </button>
                   ) : null}
+                  </div>
                 </div>
               </li>
             ))}
