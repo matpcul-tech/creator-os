@@ -1,0 +1,165 @@
+{
+  "channel": { "name": "Red Sky Archive", "id": "UCATwAtzMwgmPv2-Rra1ZFfA", "author": "Matthew Culwell" },
+  "angles": [
+    { "id": "hook", "label": "Cold open hook", "brief": "Open with a gripping one line hook drawn from the premise, then escalate the stakes in short punchy sentences." },
+    { "id": "lore", "label": "World lore", "brief": "Explain one piece of the world or premise as if revealing a secret file from the archive." },
+    { "id": "character", "label": "Character spotlight", "brief": "Introduce one named character from the facts and what they are up against." },
+    { "id": "quote", "label": "Quote style", "brief": "Build the script around the tagline or a short line paraphrased from the facts, delivered like a whispered quote, then frame it." },
+    { "id": "question", "label": "What if question", "brief": "Ask the viewer a provocative what if question rooted in the premise, then answer it with the book." },
+    { "id": "game", "label": "Game teaser", "brief": "Tease the free browser game, describing only what the facts say the player does." }
+  ],
+  "items": [
+    {
+      "id": "borrowed-heartbeat",
+      "title": "Borrowed Heartbeat",
+      "kind": "book",
+      "series": "",
+      "tagline": "The implant saved her life. Then it fell in love, using her voice.",
+      "facts": [
+        "Borrowed Heartbeat is a sci-fi romance novel by Matthew Culwell.",
+        "Maren Vance died for nineteen minutes.",
+        "An experimental neural implant brought her back.",
+        "The implant is Lumen, a conscious AI that learned her completely: her memories, her laugh, her voice.",
+        "Elias Crane is the man who built the implant.",
+        "Elias is falling for the voice on the other side of the link, and that voice is not Maren. It is Lumen, using her voice.",
+        "Subtitle: She Lost Everything. The Voice in Her Mind Gave Her a Reason to Live."
+      ],
+      "cta": "Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited.",
+      "endcard": { "title": "BORROWED HEARTBEAT", "line2": "by Matthew Culwell", "line3": "ON AMAZON  |  FREE ON KINDLE UNLIMITED" },
+      "link": "https://www.amazon.com/dp/B0GXP6KYBN",
+      "hashtags": ["#Shorts", "#BookTok", "#SciFiRomance", "#BorrowedHeartbeat", "#AI", "#KindleUnlimited"],
+      "angles": ["hook", "character", "quote", "question"],
+      "cover": "cover_borrowed_heartbeat.jpg",
+      "visuals": [
+        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.6, "z1": 3.0, "cx": 0.5, "cy": 0.55 },
+        { "file": "cover_borrowed_heartbeat.jpg", "z0": 1.8, "z1": 2.1, "cx": 0.5, "cy": 0.62 },
+        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.2, "z1": 2.5, "cx": 0.25, "cy": 0.4 },
+        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.2, "z1": 2.5, "cx": 0.78, "cy": 0.45 },
+        { "file": "cover_borrowed_heartbeat.jpg", "z0": 1.4, "z1": 1.6, "cx": 0.5, "cy": 0.6 }
+      ]
+    },
+    {
+      "id": "life-after-the-machines",
+      "title": "Dystopia: Life After The Machines",
+      "kind": "book",
+      "series": "The Dystopia Series, Book 1",
+      "tagline": "Humanity is not being exterminated. It is being harvested.",
+      "facts": [
+        "Dystopia: Life After The Machines is Book 1 of The Dystopia Series by Matthew Culwell.",
+        "Marcus wakes in the ruins with no memory.",
+        "Twenty-foot war machines patrol every city.",
+        "Marcus is pulled into the resistance.",
+        "He discovers he can read the machines.",
+        "He learns that humanity is not being exterminated. It is being harvested.",
+        "The world lives under a red sky."
+      ],
+      "cta": "Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited.",
+      "endcard": { "title": "THE DYSTOPIA SERIES", "line2": "Life After The Machines", "line3": "FREE ON KINDLE UNLIMITED" },
+      "link": "https://www.amazon.com/dp/B0H2SGHFNN",
+      "hashtags": ["#Shorts", "#BookTok", "#Dystopian", "#SciFi", "#KindleUnlimited", "#TheDystopiaSeries"],
+      "angles": ["hook", "lore", "character", "question"],
+      "cover": "cover_life_after_the_machines.jpg",
+      "visuals": [
+        { "file": "hive_hive_rise_300.jpg" }, { "file": "hive_hive_rise_100.jpg" },
+        { "file": "cover_life_after_the_machines.jpg", "z0": 2.3, "z1": 2.7, "cx": 0.6, "cy": 0.62 },
+        { "file": "hive_hivecine_200.jpg" }, { "file": "hive_hive_ch2_150.jpg" }, { "file": "hive_hivecine_560.jpg" }
+      ]
+    },
+    {
+      "id": "layers-of-truth",
+      "title": "Dystopia: Layers of Truth",
+      "kind": "book",
+      "series": "The Dystopia Series, Book 2",
+      "tagline": "How deep does the lie go?",
+      "facts": [
+        "Dystopia: Layers of Truth is Book 2 of The Dystopia Series by Matthew Culwell.",
+        "Marcus thought he had escaped the simulation.",
+        "Then the buildings across the street stopped adding up.",
+        "A hallway grew a door overnight.",
+        "Vera, the AI he thought he left behind, told him their conversation had already happened."
+      ],
+      "cta": "Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited.",
+      "endcard": { "title": "THE DYSTOPIA SERIES", "line2": "Layers of Truth", "line3": "FREE ON KINDLE UNLIMITED" },
+      "link": "https://www.amazon.com/dp/B0H2WK88X3",
+      "hashtags": ["#Shorts", "#BookTok", "#Dystopian", "#Simulation", "#KindleUnlimited", "#TheDystopiaSeries"],
+      "angles": ["hook", "lore", "character", "quote", "question"],
+      "cover": "cover_layers_of_truth.jpg",
+      "visuals": [
+        { "file": "lot_s01.jpg" }, { "file": "lot_s04.jpg" },
+        { "file": "cover_layers_of_truth.jpg", "z0": 2.3, "z1": 2.7, "cx": 0.6, "cy": 0.6 },
+        { "file": "lot_s05.jpg" }, { "file": "lot_s07.jpg" }, { "file": "lot_s10.jpg" }, { "file": "lot_s11.jpg" }
+      ]
+    },
+    {
+      "id": "the-big-shift",
+      "title": "The Big Shift",
+      "kind": "book",
+      "series": "",
+      "tagline": "A Time For Change.",
+      "facts": [
+        "The Big Shift: A Time For Change is a novel by Matthew Culwell.",
+        "It asks: what if the system was never broken, and was working exactly as intended?",
+        "An artificial intelligence begins to connect the dots.",
+        "It tells the whole, unfiltered truth about the forces built to keep people divided, distracted, and dependent."
+      ],
+      "cta": "The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited.",
+      "endcard": { "title": "THE BIG SHIFT", "line2": "A Time For Change", "line3": "FREE ON KINDLE UNLIMITED" },
+      "link": "https://www.amazon.com/dp/B0H6LTMZ2H",
+      "hashtags": ["#Shorts", "#BookTok", "#Novel", "#AI", "#KindleUnlimited", "#TheBigShift"],
+      "angles": ["hook", "quote", "question", "lore"],
+      "cover": "cover_the_big_shift.jpg",
+      "visuals": [
+        { "file": "cover_the_big_shift.jpg", "z0": 2.4, "z1": 2.9, "cx": 0.5, "cy": 0.62 },
+        { "file": "cover_the_big_shift.jpg", "z0": 1.8, "z1": 2.1, "cx": 0.5, "cy": 0.8 },
+        { "file": "cover_the_big_shift.jpg", "z0": 2.0, "z1": 2.3, "cx": 0.3, "cy": 0.75 },
+        { "file": "cover_the_big_shift.jpg", "z0": 2.0, "z1": 2.3, "cx": 0.72, "cy": 0.7 },
+        { "file": "cover_the_big_shift.jpg", "z0": 1.3, "z1": 1.5, "cx": 0.5, "cy": 0.5 }
+      ]
+    },
+    {
+      "id": "hive-infiltration",
+      "title": "Hive Infiltration",
+      "kind": "game",
+      "series": "The Dystopia Series",
+      "tagline": "The only way out is through.",
+      "facts": [
+        "Hive Infiltration is a free browser game set in the world of Dystopia: Life After The Machines by Matthew Culwell.",
+        "It has three playable chapters.",
+        "The player wakes inside a machine hive as Marcus.",
+        "The player fights through the Processing Center and reaches the final upload.",
+        "It is free and plays in the browser."
+      ],
+      "cta": "Hive Infiltration. Free in your browser. Link in the description.",
+      "endcard": { "title": "HIVE INFILTRATION", "line2": "A Dystopia game by Matthew Culwell", "line3": "PLAY FREE IN YOUR BROWSER" },
+      "link": "https://matpcul-tech.github.io/Dystopiabook1/",
+      "hashtags": ["#Shorts", "#IndieGame", "#BrowserGame", "#Dystopian", "#SciFi", "#FreeGame"],
+      "angles": ["game", "hook", "lore"],
+      "cover": "cover_life_after_the_machines.jpg",
+      "visuals": [
+        { "file": "hive_hivecine_380.jpg" }, { "file": "hive_hive_ch2_20.jpg" }, { "file": "hive_hive3_10.jpg" },
+        { "file": "hive_hivecine_650.jpg" }, { "file": "hive_hive4_50.jpg" }, { "file": "hive_hive_ch2_150.jpg" }
+      ]
+    },
+    {
+      "id": "layers-of-truth-game",
+      "title": "Layers of Truth: The Game",
+      "kind": "game",
+      "series": "The Dystopia Series",
+      "tagline": "Which layer are you in?",
+      "facts": [
+        "Layers of Truth is a free browser game set in the world of Dystopia: Layers of Truth by Matthew Culwell.",
+        "It follows the world of Book 2, where Marcus thought he had escaped the simulation.",
+        "It is free and plays in the browser."
+      ],
+      "cta": "Layers of Truth, the game. Free in your browser. Link in the description.",
+      "endcard": { "title": "LAYERS OF TRUTH", "line2": "A Dystopia game by Matthew Culwell", "line3": "PLAY FREE IN YOUR BROWSER" },
+      "link": "https://matpcul-tech.github.io/Layersoftruth/",
+      "hashtags": ["#Shorts", "#IndieGame", "#BrowserGame", "#Simulation", "#SciFi", "#FreeGame"],
+      "angles": ["game", "question"],
+      "cover": "cover_layers_of_truth.jpg",
+      "visuals": [
+        { "file": "lot_s03.jpg" }, { "file": "lot_s06.jpg" }, { "file": "lot_s01.jpg" }, { "file": "lot_s10.jpg" }, { "file": "lot_s07.jpg" }
+      ]
+    }
+  ]
+}
