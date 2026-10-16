@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "date": "2026-10-16",
+    "ts": "2026-10-16T03:29:18-05:00",
+    "trigger": "manual",
+    "dry_run": true,
+    "item": "borrowed-heartbeat",
+    "angle": "hook",
+    "title": "She Died for 19 Minutes. The AI That Saved Her Fell in Love.",
+    "script": "She died for nineteen minutes. An experimental implant brought her back. But something came back with her. Lumen. A conscious AI that learned everything. Her memories. Her laugh. Her voice. Now Elias Crane, the man who built it, is falling for the voice on the other side of the link. He thinks it is Maren. It is not. Maren lost everything. The voice in her mind gave her a reason to live. But whose heartbeat does Lumen really follow? Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0052,
+    "duration_s": 41.5,
+    "file": "RSA_autopilot_2026-10-16_borrowed-heartbeat.mp4",
+    "status": "dry_run"
+  }
+]
