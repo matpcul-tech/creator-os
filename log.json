@@ -14,5 +14,23 @@
     "duration_s": 41.5,
     "file": "RSA_autopilot_2026-10-16_borrowed-heartbeat.mp4",
     "status": "dry_run"
+  },
+  {
+    "date": "2026-10-16",
+    "ts": "2026-10-16T11:53:35-05:00",
+    "trigger": "manual",
+    "dry_run": false,
+    "item": "life-after-the-machines",
+    "angle": "hook",
+    "title": "They Are Not Killing Us. They Are Harvesting Us.",
+    "script": "Humanity is not being exterminated. It is being harvested. Marcus wakes in the ruins with no memory. Twenty-foot war machines patrol every city beneath a red sky. He has nothing. Then he discovers something that should be impossible. He can read the machines. He joins the resistance. And what he learns about why the machines are here will change everything. The truth is darker than extinction. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0048,
+    "duration_s": 40.5,
+    "file": "RSA_autopilot_2026-10-16_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "V5cZ6SDNATQ",
+    "url": "https://youtube.com/shorts/V5cZ6SDNATQ"
   }
 ]
