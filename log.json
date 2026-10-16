@@ -32,5 +32,23 @@
     "status": "posted",
     "videoId": "V5cZ6SDNATQ",
     "url": "https://youtube.com/shorts/V5cZ6SDNATQ"
+  },
+  {
+    "date": "2026-10-16",
+    "ts": "2026-10-16T16:42:31-05:00",
+    "trigger": "manual",
+    "dry_run": false,
+    "item": "layers-of-truth",
+    "angle": "hook",
+    "title": "He Escaped The Simulation. Or Did He?",
+    "script": "He thought he had escaped the simulation. Then the buildings across the street stopped adding up. A hallway grew a door overnight. Something was wrong. Something had always been wrong. And Vera, the AI he left behind, told him their conversation had already happened. Marcus is not free. He never was. Every answer reveals another layer. Every escape leads deeper in. How deep does the lie go? Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0108,
+    "duration_s": 41.9,
+    "file": "RSA_autopilot_2026-10-16_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "2OzsvctkMtA",
+    "url": "https://youtube.com/shorts/2OzsvctkMtA"
   }
 ]
