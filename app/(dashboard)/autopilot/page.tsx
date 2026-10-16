@@ -9,7 +9,7 @@ type Entry = {
   item?: string; angle?: string; title?: string; url?: string; error?: string; reason?: string; duration_s?: number;
 };
 type Status = {
-  config: { paused: boolean; time_central: string; privacy: string } | null;
+  config: { paused: boolean; time_central: string | string[]; privacy: string } | null;
   log: Entry[]; canWrite: boolean; repo: string;
   items: { id: string; title: string; kind: string; link: string }[];
 };
@@ -57,7 +57,7 @@ export default function AutopilotPage() {
       <div>
         <h1 className="text-2xl font-semibold">Daily autopilot</h1>
         <p className="text-sm text-muted-foreground">
-          Every day at {s?.config?.time_central ?? "11:30"} AM Central, one vertical Short about a book or game is written,
+          Every day at {fmtSlots(s?.config?.time_central)} Central, a vertical Short about a book or game is written,
           voiced, rendered, and posted to Red Sky Archive as a {s?.config?.privacy ?? "public"} Short. Runs on GitHub Actions.
         </p>
       </div>
@@ -131,4 +131,14 @@ export default function AutopilotPage() {
       </Card>
     </div>
   );
+}
+
+function fmtSlots(tc: string | string[] | undefined) {
+  const list = (Array.isArray(tc) ? tc : (tc ?? "11:30,18:30").split(/[,\s]+/)).filter(Boolean);
+  return list
+    .map((t) => {
+      const [h, m] = t.split(":").map(Number);
+      return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    })
+    .join(" and ");
 }
