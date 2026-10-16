@@ -23,6 +23,7 @@ import {
   Home,
   Clapperboard,
   Image as ImageIcon,
+  Timer,
 } from "lucide-react";
 
 const navGroups = [
@@ -57,6 +58,7 @@ const navGroups = [
     label: "Wire it up",
     items: [
       { label: "Integrations", href: "/integrations", icon: Plug },
+      { label: "Daily autopilot", href: "/autopilot", icon: Timer },
     ],
   },
 ];
