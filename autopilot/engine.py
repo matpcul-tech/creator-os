@@ -132,7 +132,7 @@ def over(f,layer,alpha=1.0,glowcol=(0.15,0.15,0.9)):
     return f*(1-m)+rgb*m
 def encode(n,frames_fn,nframes,audio,out):
     p=subprocess.Popen(['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','bgr24','-s',f'{W}x{H}','-r',str(FPS),'-i','-','-i',audio,
-        '-c:v','libx264','-preset','medium','-crf','19','-pix_fmt','yuv420p','-profile:v','high','-movflags','+faststart',
+        '-c:v','libx264','-preset','medium','-crf','23','-pix_fmt','yuv420p','-profile:v','high','-movflags','+faststart',
         '-c:a','aac','-b:a','192k','-ar','48000','-shortest',out],stdin=subprocess.PIPE)
     for i in range(nframes):
         f=frames_fn(i)
