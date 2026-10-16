@@ -1,11 +1,14 @@
 name: Daily autopilot
 
-# 11:30 AM Central. Two crons cover daylight saving (16:30 UTC = CDT, 17:30 UTC = CST);
-# run.py skips the early one and never posts twice in one Central day.
+# Two posts a day: 11:30 AM and 6:30 PM Central. Four crons cover daylight saving:
+# 16:30/17:30 UTC = 11:30 CDT/CST, 23:30/00:30 UTC = 6:30 PM CDT/CST (00:30 UTC is still the
+# previous Central date). run.py works in Central time, posts once per slot, skips the extra run.
 on:
   schedule:
     - cron: "30 16 * * *"
     - cron: "30 17 * * *"
+    - cron: "30 23 * * *"
+    - cron: "30 0 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -13,7 +16,7 @@ on:
         type: boolean
         default: false
       force:
-        description: "Run even if paused or already posted today"
+        description: "Run even if paused or the slot is already filled"
         type: boolean
         default: false
 
@@ -35,7 +38,7 @@ jobs:
           if git fetch origin autopilot-state 2>/dev/null; then
             git worktree add state origin/autopilot-state
           else
-            mkdir state && echo '{"paused": false, "time_central": "11:30", "privacy": "public"}' > state/config.json && echo '[]' > state/log.json
+            mkdir state && echo '{"paused": false, "time_central": ["11:30", "18:30"], "privacy": "public"}' > state/config.json && echo '[]' > state/log.json
           fi
       - uses: actions/setup-python@v5
         with:

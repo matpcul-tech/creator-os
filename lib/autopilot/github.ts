@@ -6,7 +6,7 @@ export const AUTOPILOT_REPO = process.env.AUTOPILOT_REPO || "matpcul-tech/creato
 export const STATE_BRANCH = "autopilot-state";
 export const WORKFLOW_FILE = "daily-autopilot.yml";
 
-export type AutopilotConfig = { paused: boolean; time_central: string; privacy: string };
+export type AutopilotConfig = { paused: boolean; time_central: string | string[]; privacy: string };
 export type AutopilotLogEntry = {
   date: string; ts: string; trigger: string; dry_run: boolean; status: string;
   item?: string; angle?: string; title?: string; script?: string; url?: string; error?: string; reason?: string;
@@ -37,14 +37,14 @@ async function readFile(path: string): Promise<{ text: string; sha: string } | n
 
 export async function readState(): Promise<{ config: AutopilotConfig; log: AutopilotLogEntry[] }> {
   const [c, l] = await Promise.all([readFile("config.json"), readFile("log.json")]);
-  const config = { paused: false, time_central: "11:30", privacy: "public", ...(c ? JSON.parse(c.text) : {}) };
+  const config = { paused: false, time_central: ["11:30", "18:30"], privacy: "public", ...(c ? JSON.parse(c.text) : {}) };
   const log = l ? (JSON.parse(l.text) as AutopilotLogEntry[]) : [];
   return { config, log };
 }
 
 export async function setPaused(paused: boolean): Promise<void> {
   const cur = await readFile("config.json");
-  const config = { time_central: "11:30", privacy: "public", ...(cur ? JSON.parse(cur.text) : {}), paused };
+  const config = { time_central: ["11:30", "18:30"], privacy: "public", ...(cur ? JSON.parse(cur.text) : {}), paused };
   const res = await fetch(`${API}/repos/${AUTOPILOT_REPO}/contents/config.json`, {
     method: "PUT",
     headers: { ...headers(), "Content-Type": "application/json" },
