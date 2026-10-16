@@ -8,7 +8,7 @@ Env:
   OUT_DIR              where the MP4 lands (default ./out)
   DRY_RUN=1            render everything, skip the upload
   AUTOPILOT_TRIGGER    schedule | manual
-  FORCE=1              run even if paused or already posted today
+  FORCE=1              run even if paused or the slot is already filled
   ANTHROPIC_API_KEY    optional; without it a grounded template script is used
   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN   needed for a real upload
 """
@@ -28,7 +28,39 @@ VOICE = "en-US-ChristopherNeural"
 MAX_AI_CALLS = 3  # hard per-run cap, about 2 cents each on Sonnet
 LIB = json.load(open(os.path.join(HERE, "library.json")))
 ANGLES = {a["id"]: a for a in LIB["angles"]}
-DEFAULT_CONFIG = {"paused": False, "time_central": "11:30", "privacy": "public"}
+DEFAULT_CONFIG = {"paused": False, "time_central": ["11:30", "18:30"], "privacy": "public"}
+
+# ---------------------------------------------------------------- slots
+def parse_slots(tc):
+    """time_central may be "11:30" or ["11:30", "18:30"]. Returns sorted "HH:MM" strings."""
+    if isinstance(tc, str): tc = [t for t in re.split(r"[,\s]+", tc) if t]
+    out = []
+    for t in tc or ["11:30"]:
+        hh, mm = map(int, str(t).split(":")); out.append(f"{hh:02d}:{mm:02d}")
+    return sorted(set(out))
+
+def filled_slots(log, day, slots):
+    """Slots already used on a Central date. Old entries without a slot fill the earliest open slot,
+    so a legacy or forced post counts against the schedule (11:53 fills 11:30, a 4:42 PM force fills 18:30)."""
+    filled = set()
+    for e in log:
+        if e.get("date") != day or e.get("status") != "posted": continue
+        sl = e.get("slot")
+        if sl in slots: filled.add(sl); continue
+        if sl: continue  # "extra" or a slot no longer configured
+        open_ = [x for x in slots if x not in filled]
+        if open_: filled.add(open_[0])
+    return filled
+
+def due_slot(now, log, slots):
+    """The slot this run should fill, or None. Uses the latest slot at or before now (Central);
+    a missed earlier slot is not made up, so a day never gets more posts than slots."""
+    day = now.date().isoformat(); hm = now.strftime("%H:%M")
+    due = [x for x in slots if x <= hm]
+    if not due: return None
+    filled = filled_slots(log, day, slots)
+    return None if due[-1] in filled else due[-1]
+
 
 # ---------------------------------------------------------------- text rules
 DASHES = re.compile(r"\s*[\u2012\u2013\u2014\u2015\u2212]\s*")
@@ -304,6 +336,8 @@ def upload(path, body):
 def main():
     cfg, log = load_state()
     now = dt.datetime.now(CHI); today = now.date().isoformat()
+    slots = parse_slots(cfg.get("time_central"))
+    slot = None
     entry = {"date": today, "ts": now.isoformat(timespec="seconds"), "trigger": TRIGGER, "dry_run": DRY}
     def finish(status, **kw):
         entry.update(status=status, **kw); log.append(entry); save_log(log)
@@ -316,12 +350,14 @@ def main():
     if not FORCE:
         if cfg.get("paused"): return finish("skipped", reason="paused")
         if TRIGGER == "schedule":
-            hh, mm = map(int, str(cfg.get("time_central", "11:30")).split(":"))
-            if (now.hour, now.minute) < (hh, mm) and now.hour < hh:
-                print("Before the posting time in Central, this is the other daylight saving cron. Nothing to do.")
+            slot = due_slot(now, log, slots)
+            if not slot:
+                print("No open slot due right now in Central (other daylight saving cron, or already posted). Nothing to do.")
                 return 0
-            if any(e.get("date") == today and e.get("status") == "posted" for e in log):
-                print("Already posted today."); return 0
+    if not slot:  # manual or forced run: take the earliest open slot today, else mark it extra
+        open_ = [x for x in slots if x not in filled_slots(log, today, slots)]
+        slot = open_[0] if open_ else "extra"
+    entry["slot"] = slot
     item, angle = pick(log)
     meta, note = ai_script(item, angle, log)
     if not meta: meta = fallback_script(item, angle)
