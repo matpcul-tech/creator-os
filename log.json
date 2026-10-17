@@ -50,5 +50,24 @@
     "status": "posted",
     "videoId": "2OzsvctkMtA",
     "url": "https://youtube.com/shorts/2OzsvctkMtA"
+  },
+  {
+    "date": "2026-10-17",
+    "ts": "2026-10-17T13:43:54-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "hook",
+    "title": "What If The System Was Never Broken?",
+    "script": "What if the system was never broken? What if it was working exactly as intended? Keeping people divided. Distracted. Dependent. One artificial intelligence begins to connect the dots. And what it finds is the whole, unfiltered truth. The forces behind it. The design beneath it. Everything they never wanted you to see. Some questions change everything once you ask them. This is one of them. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0054,
+    "duration_s": 43.1,
+    "file": "RSA_autopilot_2026-10-17_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "Mw2rsO4fXjc",
+    "url": "https://youtube.com/shorts/Mw2rsO4fXjc"
   }
 ]
