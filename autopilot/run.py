@@ -312,7 +312,7 @@ def ai_script(item, P, recent_scripts, recent_titles, recent_questions, prompt):
     pattern = P["title_pattern"]
     sys_prompt = ("You write conversation starting vertical YouTube Shorts for the channel Red Sky Archive, which promotes the books "
         "and games of author Matthew Culwell. Each Short is built around ONE debatable question drawn from the premise, the kind "
-        "people argue about in the comments, for example 'If an AI saved your life and loved you, is that love real?' or 'Would "
+        "people argue about in the comments, for example 'If an AI fell in love with you first, is that love real?' or 'Would "
         "you trust a machine that understands you better than people do?'. Tone: intimate, direct, a little ominous. "
         "HARD RULES: 1) The question opens the Short, so it must be sharp, specific to this premise, and answerable with A or B. "
         "2) Context: 2 to 4 short sentences, every one directly supported by the facts or tagline. You may rephrase, compress, "
