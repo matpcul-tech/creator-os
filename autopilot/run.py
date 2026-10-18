@@ -12,6 +12,7 @@ Env:
   DRY_RUN=1            render everything, skip the upload
   AUTOPILOT_TRIGGER    schedule | manual
   FORCE=1              run even if paused or the slot is already filled
+  NO_LOG=1             do not write this run to log.json (so it never counts as a recent title or post)
   PICK_ITEM            manual runs only: preview this library item id instead of the rotation pick
   ANTHROPIC_API_KEY    optional; without it a grounded template script is used
   YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN   needed for a real upload
@@ -27,9 +28,11 @@ OUT_DIR = os.environ.get("OUT_DIR", os.path.join(HERE, "out"))
 DRY = os.environ.get("DRY_RUN", "") in ("1", "true", "yes")
 FORCE = os.environ.get("FORCE", "") in ("1", "true", "yes")
 TRIGGER = os.environ.get("AUTOPILOT_TRIGGER", "manual")
+NO_LOG = os.environ.get("NO_LOG", "") in ("1", "true", "yes")
 MODEL = os.environ.get("AI_MODEL", "claude-sonnet-4-6")
 VOICE = "en-US-ChristopherNeural"
-MAX_AI_CALLS = 3  # hard per-run cap, about 2 cents each on Sonnet
+MAX_GENERATIONS = 3  # first draft plus 2 retries, then the facts-only template
+MAX_AI_CALLS = 6  # hard per-run cap (writer plus fact checker), about 1 to 2 cents each on Sonnet
 LIB = json.load(open(os.path.join(HERE, "library.json")))
 ANGLES = {a["id"]: a for a in LIB["angles"]}
 DEFAULT_CONFIG = {"paused": False, "time_central": ["11:30"], "privacy": "public"}
@@ -224,34 +227,85 @@ def fallback_hook(item):
     h = re.split(r"(?<=[.!?])\s+", item["tagline"])[0]
     return " ".join(h.split()[:7])
 
-def fallback_script(item, angle):
-    facts = [f for f in item["facts"] if not re.search(r"\b(is a|is Book|is a free)\b", f)] or item["facts"]
-    if angle == "question": opener = "What if " + facts[0][0].lower() + facts[0][1:].rstrip(".") + "?"
-    elif angle == "quote": opener = item["tagline"]
-    elif angle == "game": opener = "This is not a trailer. You can play it right now."
-    else: opener = facts[0]
-    body = [opener] + [f for f in facts if f != facts[0] or angle in ("question", "quote", "game")]
-    if angle == "quote" and item["tagline"] not in body[1:]: pass
+def fallback_script(item, angle=None):
+    """Conservative facts-only script: the tagline, the facts verbatim, the call to action. Nothing else."""
+    facts = [f for f in item["facts"] if not re.search(r"\b(is a|is Book|is Episode)\b", f)] or item["facts"]
+    body = [item["tagline"]] + [f for f in facts if f.rstrip(".") not in item["tagline"]]
     s = " ".join(body)
-    if len(words_of(s + " " + item["cta"])) < 74 and item["tagline"] not in s: s += " " + item["tagline"]
     if len(words_of(s + " " + item["cta"])) < 74: s += " " + item["facts"][0]
     s = no_dashes(s + " " + item["cta"])
     title = no_dashes(item["tagline"].rstrip(".") + " | " + item["title"])
     return {"title": title, "script": s, "description": item["tagline"], "source": "template"}
 
+def sentences(text):
+    return [x.strip() for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x.strip()]
+
+def _norm(x): return " ".join(w.lower() for w in words_of(x))
+
+def claude(key, system, msgs, max_tokens, usage):
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages", method="POST",
+        data=json.dumps({"model": MODEL, "max_tokens": max_tokens, "system": system, "messages": msgs}).encode(),
+        headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    try:
+        r = json.load(urllib.request.urlopen(req, timeout=90))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Anthropic HTTP {e.code}")
+    except Exception as e:
+        raise RuntimeError(f"Anthropic error {type(e).__name__}")
+    usage["calls"] += 1
+    usage["input"] += r.get("usage", {}).get("input_tokens", 0)
+    usage["output"] += r.get("usage", {}).get("output_tokens", 0)
+    return "".join(b.get("text", "") for b in r.get("content", []))
+
+def _json(text):
+    m = re.search(r"\{.*\}", text, re.S)
+    try: return json.loads(m.group(0)) if m else None
+    except Exception: return None
+
+CHECK_PROMPT = ("You are a strict fact checker for book and game promo narration. You get a list of SOURCE facts and a list of LINES. "
+    "For every line decide if it is supported. A line is supported only if every claim in it is stated in the sources, or is a plain "
+    "restatement, fragment, or emphasis of a stated detail (for example 'Nineteen minutes.' or 'All of it.' after a sourced list). "
+    "A line is UNSUPPORTED if it adds anything the sources do not say: a plot event, outcome, twist, motive, feeling, intention, "
+    "secret, prediction, consequence, threat, setting detail, rule of the world, or a promise to the viewer about what will happen "
+    "(for example 'But love was never part of the design.' or 'You are going to prove them wrong.' when no source says so). "
+    "A rhetorical question is supported only if it just restates sourced premise. Judge meaning, not wording. When in doubt, unsupported. "
+    "Return JSON only: {\"claims\": [{\"line\": the line exactly as given, \"supported\": true or false, "
+    "\"source\": the supporting source text or empty, \"why\": a few words}]} with one entry per line, in order.")
+
+def verify_claims(key, item, out, usage):
+    """Second Claude pass. Returns (unsupported lines, all claims). Lines the checker skips count as unsupported."""
+    cta = _norm(item["cta"])
+    lines = [x for x in sentences(out["script"]) if _norm(x) and _norm(x) not in cta]
+    lines += [x for x in (out["hook"], out["title"], out["description"]) if x.strip()]
+    sources = [item["title"], item["tagline"], *item["facts"]]
+    text = claude(key, CHECK_PROMPT, [{"role": "user", "content": json.dumps({"sources": sources, "lines": lines})}], 1500, usage)
+    res = _json(text)
+    if not res or not isinstance(res.get("claims"), list): raise RuntimeError("fact checker reply unparseable")
+    ok = {_norm(c.get("line", "")) for c in res["claims"] if c.get("supported") is True}
+    unsupported = [x for x in lines if _norm(x) not in ok]
+    return unsupported, res["claims"]
+
 def ai_script(item, angle, log, pattern="statement", style="cinematic"):
+    """Writer pass, local checks, then a fact checker pass. Up to 2 retries, else None (caller uses the facts-only template)."""
     key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key: return None, "no ANTHROPIC_API_KEY, used template"
     recent = [e.get("script", "") for e in log if e.get("script")][-8:]
     recent_titles = [e["title"] for e in log if e.get("title")][-15:]
     sys_prompt = ("You write narration for 30 to 45 second vertical YouTube Shorts for the channel Red Sky Archive, "
         "which promotes the books and games of author Matthew Culwell. Tone: cinematic, ominous, intimate, short sentences. "
-        "HARD RULES: 1) Use ONLY the facts provided. Never invent characters, places, plot events, quotes, awards, prices, "
-        "page counts, or formats. If a fact is not listed, do not say it. 2) Never use em dashes or en dashes. Use periods or commas. "
-        "3) 75 to 105 words total. 4) The script must end with exactly the call to action given. "
+        "HARD RULES: 1) GROUNDING: every narrative line must be directly supported by the facts or tagline provided. You may "
+        "reorder, compress, rephrase, split into fragments, and repeat a fact for emphasis. You may NOT add anything the facts do "
+        "not state: no new plot events, twists, outcomes, motives, feelings, secrets, world rules, settings, predictions, "
+        "threats, or promises to the viewer (lines like 'But love was never part of the design' or 'You are going to prove "
+        "them wrong' are forbidden unless a fact says exactly that). Never invent characters, places, quotes, awards, prices, "
+        "page counts, or formats. A separate fact checker will reject any unsupported line. "
+        "2) Never use em dashes or en dashes. Use periods or commas. "
+        "3) 75 to 105 words total. If the facts run short, repeat or rephrase facts instead of inventing. "
+        "4) The script must end with exactly the call to action given. "
         "5) Plain spoken text only, no stage directions, no emojis, no hashtags in the script. "
         "6) Also write an on screen hook line of 2 to 8 words: bold, specific, built from one concrete detail in the facts, "
-        "readable in under one second, in sentence case. It is the first thing the viewer sees. "
+        "readable in under one second, in sentence case. It is the first thing the viewer sees. The title, hook and description "
+        "follow the same grounding rule. "
         "VARIETY: " + LIB["variety_rules"])
     user = {
         "item": item["title"], "kind": item["kind"], "series": item["series"], "tagline": item["tagline"],
@@ -263,35 +317,32 @@ def ai_script(item, angle, log, pattern="statement", style="cinematic"):
         "avoid_these_recent_titles": recent_titles,
         "return": "JSON only: {\"hook\": the 2 to 8 word on screen hook, \"title\": under 70 characters, follows title_pattern, unlike every recent title, no dashes, \"script\": the narration, \"description\": one or two sentences grounded in the facts}",
     }
-    usage_total, last_err = {"input": 0, "output": 0}, ""
+    usage, last_err, rejected = {"calls": 0, "input": 0, "output": 0}, "", []
     msgs = [{"role": "user", "content": json.dumps(user)}]
-    for attempt in range(MAX_AI_CALLS):
-        req = urllib.request.Request("https://api.anthropic.com/v1/messages", method="POST",
-            data=json.dumps({"model": MODEL, "max_tokens": 700, "system": sys_prompt, "messages": msgs}).encode(),
-            headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
-        try:
-            r = json.load(urllib.request.urlopen(req, timeout=90))
-        except urllib.error.HTTPError as e:
-            last_err = f"Anthropic HTTP {e.code}"; break
-        except Exception as e:
-            last_err = f"Anthropic error {type(e).__name__}"; break
-        usage_total["input"] += r.get("usage", {}).get("input_tokens", 0)
-        usage_total["output"] += r.get("usage", {}).get("output_tokens", 0)
-        text = "".join(b.get("text", "") for b in r.get("content", []))
-        m = re.search(r"\{.*\}", text, re.S)
-        try: out = json.loads(m.group(0)) if m else None
-        except Exception: out = None
+    for gen in range(MAX_GENERATIONS):
+        if usage["calls"] >= MAX_AI_CALLS: break
+        try: text = claude(key, sys_prompt, msgs, 700, usage)
+        except RuntimeError as e: last_err = str(e); break
+        out = _json(text)
         if not out or not out.get("script"):
-            last_err = "unparseable reply"; continue
+            last_err = "unparseable reply"
+            msgs += [{"role": "assistant", "content": text}, {"role": "user", "content": "Return only the JSON object."}]; continue
         out = {k: no_dashes(str(out.get(k, ""))) for k in ("hook", "title", "script", "description")}
         problems = validate(out["script"], item) + check_title(out["title"], pattern, recent_titles) + check_hook(out["hook"], item)
         if not problems:
-            out["source"] = "ai"; out["usage"] = usage_total
-            out["cost_usd"] = round(usage_total["input"] * 3e-6 + usage_total["output"] * 15e-6, 4)
-            return out, ""
+            if usage["calls"] >= MAX_AI_CALLS: last_err = "AI call cap reached before fact check"; break
+            try: unsupported, claims = verify_claims(key, item, out, usage)
+            except RuntimeError as e: last_err = "fact check failed: " + str(e); break
+            if not unsupported:
+                out["source"] = "ai"; out["usage"] = usage; out["claims_checked"] = len(claims); out["rejected_lines"] = rejected
+                out["cost_usd"] = round(usage["input"] * 3e-6 + usage["output"] * 15e-6, 4)
+                return out, f"fact checked {len(claims)} lines, {gen} retries"
+            rejected += unsupported
+            problems = ["these lines are not supported by the facts, remove them or replace them with facts: " + " | ".join(unsupported)]
         last_err = "; ".join(problems)
         msgs += [{"role": "assistant", "content": text}, {"role": "user", "content": "Fix these problems and return the JSON again: " + last_err}]
-    return None, "AI script rejected (" + last_err + "), used template"
+    return None, ("AI script rejected (" + last_err[:400] + "), used facts-only template"
+                  + (f"; rejected lines: {' | '.join(rejected)[:400]}" if rejected else ""))
 
 # ---------------------------------------------------------------- voice
 async def _tts(text, mp3, rate):
@@ -490,7 +541,8 @@ def main():
     slot = None
     entry = {"date": today, "ts": now.isoformat(timespec="seconds"), "trigger": TRIGGER, "dry_run": DRY}
     def finish(status, **kw):
-        entry.update(status=status, **kw); log.append(entry); save_log(log)
+        entry.update(status=status, **kw)
+        if not NO_LOG: log.append(entry); save_log(log)
         print(json.dumps({k: v for k, v in entry.items() if k != "script"}, indent=2))
         summ = os.environ.get("GITHUB_STEP_SUMMARY")
         if summ:
@@ -525,7 +577,8 @@ def main():
     dur, shots, end_t = render(item, meta["script"], mp3, words, vdur, out_mp4, style=P["style"], opener=P["opener"],
                                hook=meta["hook"], footage=P["footage"])
     json.dump({"item": item["id"], "angle": angle, "style": P["style"], "opener": P["opener"], "title_pattern": P["title_pattern"],
-               "hook": meta["hook"], "title": meta["title"], "dur": dur, "end_t": end_t, "vdur": vdur,
+               "hook": meta["hook"], "title": meta["title"], "script_source": meta["source"], "note": note,
+               "rejected_lines": meta.get("rejected_lines", []), "dur": dur, "end_t": end_t, "vdur": vdur,
                "shots": [(round(s[0], 2), s[1] if s[1] == "END" else (s[1][1] if isinstance(s[1][1], str) else s[1][1]["file"])) for s in shots],
                "script": meta["script"]}, open(os.path.join(OUT_DIR, "render.json"), "w"), indent=2)
     body = youtube_metadata(item, meta, cfg.get("privacy", "public"))
