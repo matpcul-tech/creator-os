@@ -155,3 +155,46 @@ def glowline(layer):
     g1=cv2.GaussianBlur(layer,(0,0),4); g2=cv2.GaussianBlur(layer,(0,0),18); g3=cv2.GaussianBlur(layer,(0,0),50)
     return layer+g1*1.2+g2*1.0+g3*0.8
 def xfade(a,b,u): return a*(1-u)+b*u
+# ---------- hook (first second on screen) ----------
+def _wrap(d,txt,fo,maxw):
+    lines=[];cur=''
+    for w in txt.split():
+        t=(cur+' '+w).strip()
+        if d.textlength(t,font=fo)<=maxw or not cur: cur=t
+        else: lines.append(cur); cur=w
+    if cur: lines.append(cur)
+    return lines
+def hook_layer(txt,opener='slam'):
+    """Big bold hook text, up to 3 lines, centered in the upper third. Returns RGBA float (H,W,4)."""
+    img=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(img)
+    size=124
+    while True:
+        fo=font(FONT_MONT,size,'Black')
+        lines=_wrap(d,txt,fo,940)
+        if (len(lines)<=3 and all(d.textlength(l,font=fo)<=960 for l in lines)) or size<=64: break
+        size-=6
+    lh=int(size*1.12); y0=560-lh*len(lines)//2
+    box=opener in ('slam','flash')
+    for k,l in enumerate(lines):
+        y=y0+k*lh+lh//2; tw=d.textlength(l,font=fo)
+        if box: d.rectangle([W/2-tw/2-26,y-lh/2+4,W/2+tw/2+26,y+lh/2-4],fill=(180,18,22,235))
+        col=(255,255,255,255) if box or k!=len(lines)-1 else (255,70,60,255)
+        d.text((W/2,y),l,font=fo,fill=col,anchor='mm',stroke_width=0 if box else 8,stroke_fill=(0,0,0,255))
+    return np.asarray(img).astype(np.float32)/255
+def draw_hook(f,layer,t,end,opener='slam'):
+    """Fully visible on frame 0, animated through the first second, gone by `end`."""
+    out_a=1-ease((t-(end-0.25))/0.25)
+    if opener=='slam': sc=1+0.2*(1-ease(t/0.22)); dx=dy=0
+    elif opener=='drop': sc=1.0; dx=0; dy=-160*(1-ease(t/0.3))
+    elif opener=='flash': sc=1.12-0.12*ease(t/0.5); dx=dy=0
+    else: sc=1.0; dx=(math.sin(t*90)*18 if t<0.5 else 0); dy=0
+    M=cv2.getRotationMatrix2D((W/2,560),0,sc); M[0,2]+=dx; M[1,2]+=dy
+    a=cv2.warpAffine(layer,M,(W,H),flags=cv2.INTER_LINEAR)
+    if opener=='glitch' and t<0.6:  # rgb split
+        s=int(14*(1-t/0.6)); a[...,0]=np.roll(a[...,0],s,1); a[...,2]=np.roll(a[...,2],-s,1)
+    m=a[...,3:4]*out_a
+    sh=cv2.GaussianBlur(m[...,0],(0,0),18)[...,None]
+    if opener=='flash' and t<0.15: f=np.clip(f+(1-t/0.15)*0.45,0,1)  # flash under the text so frame 0 stays readable
+    f=f*(1-0.6*sh)
+    f=f*(1-m)+a[...,2::-1]*m
+    return f

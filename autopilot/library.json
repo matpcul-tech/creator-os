@@ -1,12 +1,40 @@
 {
-  "channel": { "name": "Red Sky Archive", "id": "UCATwAtzMwgmPv2-Rra1ZFfA", "author": "Matthew Culwell" },
+  "channel": {
+    "name": "Red Sky Archive",
+    "id": "UCATwAtzMwgmPv2-Rra1ZFfA",
+    "author": "Matthew Culwell"
+  },
   "angles": [
-    { "id": "hook", "label": "Cold open hook", "brief": "Open with a gripping one line hook drawn from the premise, then escalate the stakes in short punchy sentences." },
-    { "id": "lore", "label": "World lore", "brief": "Explain one piece of the world or premise as if revealing a secret file from the archive." },
-    { "id": "character", "label": "Character spotlight", "brief": "Introduce one named character from the facts and what they are up against." },
-    { "id": "quote", "label": "Quote style", "brief": "Build the script around the tagline or a short line paraphrased from the facts, delivered like a whispered quote, then frame it." },
-    { "id": "question", "label": "What if question", "brief": "Ask the viewer a provocative what if question rooted in the premise, then answer it with the book." },
-    { "id": "game", "label": "Game teaser", "brief": "Tease the free browser game, describing only what the facts say the player does." }
+    {
+      "id": "hook",
+      "label": "Cold open hook",
+      "brief": "Open with a gripping one line hook drawn from the premise, then escalate the stakes in short punchy sentences."
+    },
+    {
+      "id": "lore",
+      "label": "World lore",
+      "brief": "Explain one piece of the world or premise as if revealing a secret file from the archive."
+    },
+    {
+      "id": "character",
+      "label": "Character spotlight",
+      "brief": "Introduce one named character from the facts and what they are up against."
+    },
+    {
+      "id": "quote",
+      "label": "Quote style",
+      "brief": "Build the script around the tagline or a short line paraphrased from the facts, delivered like a whispered quote, then frame it."
+    },
+    {
+      "id": "question",
+      "label": "What if question",
+      "brief": "Ask the viewer a provocative what if question rooted in the premise, then answer it with the book."
+    },
+    {
+      "id": "game",
+      "label": "Game teaser",
+      "brief": "Tease the free browser game, describing only what the facts say the player does."
+    }
   ],
   "items": [
     {
@@ -25,18 +53,65 @@
         "She lost everything. The voice in her mind gave her a reason to live."
       ],
       "cta": "Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited.",
-      "endcard": { "title": "BORROWED HEARTBEAT", "line2": "by Matthew Culwell", "line3": "ON AMAZON  |  FREE ON KINDLE UNLIMITED" },
+      "endcard": {
+        "title": "BORROWED HEARTBEAT",
+        "line2": "by Matthew Culwell",
+        "line3": "ON AMAZON  |  FREE ON KINDLE UNLIMITED"
+      },
       "link": "https://www.amazon.com/dp/B0GXP6KYBN",
-      "hashtags": ["#Shorts", "#BookTok", "#SciFiRomance", "#BorrowedHeartbeat", "#AI", "#KindleUnlimited"],
-      "angles": ["hook", "character", "quote", "question"],
+      "hashtags": [
+        "#Shorts",
+        "#BookTok",
+        "#SciFiRomance",
+        "#BorrowedHeartbeat",
+        "#AI",
+        "#KindleUnlimited"
+      ],
+      "angles": [
+        "hook",
+        "character",
+        "quote",
+        "question"
+      ],
       "cover": "cover_borrowed_heartbeat.jpg",
       "visuals": [
-        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.6, "z1": 3.0, "cx": 0.5, "cy": 0.55 },
-        { "file": "cover_borrowed_heartbeat.jpg", "z0": 1.8, "z1": 2.1, "cx": 0.5, "cy": 0.62 },
-        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.2, "z1": 2.5, "cx": 0.25, "cy": 0.4 },
-        { "file": "cover_borrowed_heartbeat.jpg", "z0": 2.2, "z1": 2.5, "cx": 0.78, "cy": 0.45 },
-        { "file": "cover_borrowed_heartbeat.jpg", "z0": 1.4, "z1": 1.6, "cx": 0.5, "cy": 0.6 }
-      ]
+        {
+          "file": "cover_borrowed_heartbeat.jpg",
+          "z0": 2.6,
+          "z1": 3.0,
+          "cx": 0.5,
+          "cy": 0.55
+        },
+        {
+          "file": "cover_borrowed_heartbeat.jpg",
+          "z0": 1.8,
+          "z1": 2.1,
+          "cx": 0.5,
+          "cy": 0.62
+        },
+        {
+          "file": "cover_borrowed_heartbeat.jpg",
+          "z0": 2.2,
+          "z1": 2.5,
+          "cx": 0.25,
+          "cy": 0.4
+        },
+        {
+          "file": "cover_borrowed_heartbeat.jpg",
+          "z0": 2.2,
+          "z1": 2.5,
+          "cx": 0.78,
+          "cy": 0.45
+        },
+        {
+          "file": "cover_borrowed_heartbeat.jpg",
+          "z0": 1.4,
+          "z1": 1.6,
+          "cx": 0.5,
+          "cy": 0.6
+        }
+      ],
+      "short": "Borrowed Heartbeat"
     },
     {
       "id": "life-after-the-machines",
@@ -54,16 +129,56 @@
         "The world lives under a red sky."
       ],
       "cta": "Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited.",
-      "endcard": { "title": "THE DYSTOPIA SERIES", "line2": "Life After The Machines", "line3": "FREE ON KINDLE UNLIMITED" },
+      "endcard": {
+        "title": "THE DYSTOPIA SERIES",
+        "line2": "Life After The Machines",
+        "line3": "FREE ON KINDLE UNLIMITED"
+      },
       "link": "https://www.amazon.com/dp/B0H2SGHFNN",
-      "hashtags": ["#Shorts", "#BookTok", "#Dystopian", "#SciFi", "#KindleUnlimited", "#TheDystopiaSeries"],
-      "angles": ["hook", "lore", "character", "question"],
+      "hashtags": [
+        "#Shorts",
+        "#BookTok",
+        "#Dystopian",
+        "#SciFi",
+        "#KindleUnlimited",
+        "#TheDystopiaSeries"
+      ],
+      "angles": [
+        "hook",
+        "lore",
+        "character",
+        "question"
+      ],
       "cover": "cover_life_after_the_machines.jpg",
       "visuals": [
-        { "file": "hive_hive_rise_300.jpg" }, { "file": "hive_hive_rise_100.jpg" },
-        { "file": "cover_life_after_the_machines.jpg", "z0": 2.3, "z1": 2.7, "cx": 0.6, "cy": 0.62 },
-        { "file": "hive_hivecine_200.jpg" }, { "file": "hive_hive_ch2_150.jpg" }, { "file": "hive_hivecine_560.jpg" }
-      ]
+        {
+          "file": "hive_hive_rise_300.jpg"
+        },
+        {
+          "file": "hive_hive_rise_100.jpg"
+        },
+        {
+          "file": "cover_life_after_the_machines.jpg",
+          "z0": 2.3,
+          "z1": 2.7,
+          "cx": 0.6,
+          "cy": 0.62
+        },
+        {
+          "file": "hive_hivecine_200.jpg"
+        },
+        {
+          "file": "hive_hive_ch2_150.jpg"
+        },
+        {
+          "file": "hive_hivecine_560.jpg"
+        }
+      ],
+      "footage": [
+        "hive",
+        "waking"
+      ],
+      "short": "Life After The Machines"
     },
     {
       "id": "layers-of-truth",
@@ -79,16 +194,59 @@
         "Vera, the AI he thought he left behind, told him their conversation had already happened."
       ],
       "cta": "Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited.",
-      "endcard": { "title": "THE DYSTOPIA SERIES", "line2": "Layers of Truth", "line3": "FREE ON KINDLE UNLIMITED" },
+      "endcard": {
+        "title": "THE DYSTOPIA SERIES",
+        "line2": "Layers of Truth",
+        "line3": "FREE ON KINDLE UNLIMITED"
+      },
       "link": "https://www.amazon.com/dp/B0H2WK88X3",
-      "hashtags": ["#Shorts", "#BookTok", "#Dystopian", "#Simulation", "#KindleUnlimited", "#TheDystopiaSeries"],
-      "angles": ["hook", "lore", "character", "quote", "question"],
+      "hashtags": [
+        "#Shorts",
+        "#BookTok",
+        "#Dystopian",
+        "#Simulation",
+        "#KindleUnlimited",
+        "#TheDystopiaSeries"
+      ],
+      "angles": [
+        "hook",
+        "lore",
+        "character",
+        "quote",
+        "question"
+      ],
       "cover": "cover_layers_of_truth.jpg",
       "visuals": [
-        { "file": "lot_s01.jpg" }, { "file": "lot_s04.jpg" },
-        { "file": "cover_layers_of_truth.jpg", "z0": 2.3, "z1": 2.7, "cx": 0.6, "cy": 0.6 },
-        { "file": "lot_s05.jpg" }, { "file": "lot_s07.jpg" }, { "file": "lot_s10.jpg" }, { "file": "lot_s11.jpg" }
-      ]
+        {
+          "file": "lot_s01.jpg"
+        },
+        {
+          "file": "lot_s04.jpg"
+        },
+        {
+          "file": "cover_layers_of_truth.jpg",
+          "z0": 2.3,
+          "z1": 2.7,
+          "cx": 0.6,
+          "cy": 0.6
+        },
+        {
+          "file": "lot_s05.jpg"
+        },
+        {
+          "file": "lot_s07.jpg"
+        },
+        {
+          "file": "lot_s10.jpg"
+        },
+        {
+          "file": "lot_s11.jpg"
+        }
+      ],
+      "footage": [
+        "lot"
+      ],
+      "short": "Layers of Truth"
     },
     {
       "id": "the-big-shift",
@@ -103,18 +261,65 @@
         "It tells the whole, unfiltered truth about the forces built to keep people divided, distracted, and dependent."
       ],
       "cta": "The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited.",
-      "endcard": { "title": "THE BIG SHIFT", "line2": "A Time For Change", "line3": "FREE ON KINDLE UNLIMITED" },
+      "endcard": {
+        "title": "THE BIG SHIFT",
+        "line2": "A Time For Change",
+        "line3": "FREE ON KINDLE UNLIMITED"
+      },
       "link": "https://www.amazon.com/dp/B0H6LTMZ2H",
-      "hashtags": ["#Shorts", "#BookTok", "#Novel", "#AI", "#KindleUnlimited", "#TheBigShift"],
-      "angles": ["hook", "quote", "question", "lore"],
+      "hashtags": [
+        "#Shorts",
+        "#BookTok",
+        "#Novel",
+        "#AI",
+        "#KindleUnlimited",
+        "#TheBigShift"
+      ],
+      "angles": [
+        "hook",
+        "quote",
+        "question",
+        "lore"
+      ],
       "cover": "cover_the_big_shift.jpg",
       "visuals": [
-        { "file": "cover_the_big_shift.jpg", "z0": 2.4, "z1": 2.9, "cx": 0.5, "cy": 0.62 },
-        { "file": "cover_the_big_shift.jpg", "z0": 1.8, "z1": 2.1, "cx": 0.5, "cy": 0.8 },
-        { "file": "cover_the_big_shift.jpg", "z0": 2.0, "z1": 2.3, "cx": 0.3, "cy": 0.75 },
-        { "file": "cover_the_big_shift.jpg", "z0": 2.0, "z1": 2.3, "cx": 0.72, "cy": 0.7 },
-        { "file": "cover_the_big_shift.jpg", "z0": 1.3, "z1": 1.5, "cx": 0.5, "cy": 0.5 }
-      ]
+        {
+          "file": "cover_the_big_shift.jpg",
+          "z0": 2.4,
+          "z1": 2.9,
+          "cx": 0.5,
+          "cy": 0.62
+        },
+        {
+          "file": "cover_the_big_shift.jpg",
+          "z0": 1.8,
+          "z1": 2.1,
+          "cx": 0.5,
+          "cy": 0.8
+        },
+        {
+          "file": "cover_the_big_shift.jpg",
+          "z0": 2.0,
+          "z1": 2.3,
+          "cx": 0.3,
+          "cy": 0.75
+        },
+        {
+          "file": "cover_the_big_shift.jpg",
+          "z0": 2.0,
+          "z1": 2.3,
+          "cx": 0.72,
+          "cy": 0.7
+        },
+        {
+          "file": "cover_the_big_shift.jpg",
+          "z0": 1.3,
+          "z1": 1.5,
+          "cx": 0.5,
+          "cy": 0.5
+        }
+      ],
+      "short": "The Big Shift"
     },
     {
       "id": "hive-infiltration",
@@ -130,15 +335,50 @@
         "It is free and plays in the browser."
       ],
       "cta": "Hive Infiltration. Free in your browser. Link in the description.",
-      "endcard": { "title": "HIVE INFILTRATION", "line2": "A Dystopia game by Matthew Culwell", "line3": "PLAY FREE IN YOUR BROWSER" },
+      "endcard": {
+        "title": "HIVE INFILTRATION",
+        "line2": "A Dystopia game by Matthew Culwell",
+        "line3": "PLAY FREE IN YOUR BROWSER"
+      },
       "link": "https://matpcul-tech.github.io/Dystopiabook1/",
-      "hashtags": ["#Shorts", "#IndieGame", "#BrowserGame", "#Dystopian", "#SciFi", "#FreeGame"],
-      "angles": ["game", "hook", "lore"],
+      "hashtags": [
+        "#Shorts",
+        "#IndieGame",
+        "#BrowserGame",
+        "#Dystopian",
+        "#SciFi",
+        "#FreeGame"
+      ],
+      "angles": [
+        "game",
+        "hook",
+        "lore"
+      ],
       "cover": "cover_life_after_the_machines.jpg",
       "visuals": [
-        { "file": "hive_hivecine_380.jpg" }, { "file": "hive_hive_ch2_20.jpg" }, { "file": "hive_hive3_10.jpg" },
-        { "file": "hive_hivecine_650.jpg" }, { "file": "hive_hive4_50.jpg" }, { "file": "hive_hive_ch2_150.jpg" }
-      ]
+        {
+          "file": "hive_hivecine_380.jpg"
+        },
+        {
+          "file": "hive_hive_ch2_20.jpg"
+        },
+        {
+          "file": "hive_hive3_10.jpg"
+        },
+        {
+          "file": "hive_hivecine_650.jpg"
+        },
+        {
+          "file": "hive_hive4_50.jpg"
+        },
+        {
+          "file": "hive_hive_ch2_150.jpg"
+        }
+      ],
+      "footage": [
+        "hive"
+      ],
+      "short": "Hive Infiltration"
     },
     {
       "id": "layers-of-truth-game",
@@ -152,14 +392,223 @@
         "It is free and plays in the browser."
       ],
       "cta": "Layers of Truth, the game. Free in your browser. Link in the description.",
-      "endcard": { "title": "LAYERS OF TRUTH", "line2": "A Dystopia game by Matthew Culwell", "line3": "PLAY FREE IN YOUR BROWSER" },
+      "endcard": {
+        "title": "LAYERS OF TRUTH",
+        "line2": "A Dystopia game by Matthew Culwell",
+        "line3": "PLAY FREE IN YOUR BROWSER"
+      },
       "link": "https://matpcul-tech.github.io/Layersoftruth/",
-      "hashtags": ["#Shorts", "#IndieGame", "#BrowserGame", "#Simulation", "#SciFi", "#FreeGame"],
-      "angles": ["game", "question"],
+      "hashtags": [
+        "#Shorts",
+        "#IndieGame",
+        "#BrowserGame",
+        "#Simulation",
+        "#SciFi",
+        "#FreeGame"
+      ],
+      "angles": [
+        "game",
+        "question"
+      ],
       "cover": "cover_layers_of_truth.jpg",
       "visuals": [
-        { "file": "lot_s03.jpg" }, { "file": "lot_s06.jpg" }, { "file": "lot_s01.jpg" }, { "file": "lot_s10.jpg" }, { "file": "lot_s07.jpg" }
-      ]
+        {
+          "file": "lot_s03.jpg"
+        },
+        {
+          "file": "lot_s06.jpg"
+        },
+        {
+          "file": "lot_s01.jpg"
+        },
+        {
+          "file": "lot_s10.jpg"
+        },
+        {
+          "file": "lot_s07.jpg"
+        }
+      ],
+      "footage": [
+        "lot"
+      ],
+      "short": "Layers of Truth"
+    },
+    {
+      "id": "dystopia-the-waking",
+      "title": "Dystopia: The Waking",
+      "kind": "game",
+      "series": "The Dystopia Series",
+      "tagline": "Humanity is not being exterminated. It is being harvested.",
+      "facts": [
+        "Dystopia: The Waking is Episode One of a free browser game based on Dystopia: Life After The Machines by Matthew Culwell.",
+        "The player is Marcus.",
+        "Marcus tastes copper as he comes to.",
+        "The player carries a pulse rifle and is told to head for the river.",
+        "Humanity is not being exterminated. It is being harvested.",
+        "It is free and plays in the browser."
+      ],
+      "cta": "Dystopia, The Waking. Free in your browser. Link in the description.",
+      "endcard": {
+        "title": "DYSTOPIA",
+        "line2": "Episode One: The Waking",
+        "line3": "PLAY FREE IN YOUR BROWSER"
+      },
+      "link": "https://matpcul-tech.github.io/Dystopia/",
+      "hashtags": [
+        "#Shorts",
+        "#IndieGame",
+        "#BrowserGame",
+        "#Dystopian",
+        "#FPS",
+        "#FreeGame"
+      ],
+      "angles": [
+        "game",
+        "hook",
+        "question"
+      ],
+      "cover": "cover_life_after_the_machines.jpg",
+      "visuals": [
+        {
+          "file": "hive_hivecine_200.jpg"
+        },
+        {
+          "file": "hive_hive_rise_100.jpg"
+        },
+        {
+          "file": "hive_hivecine_560.jpg"
+        },
+        {
+          "file": "hive_hive_rise_300.jpg"
+        }
+      ],
+      "footage": [
+        "waking"
+      ],
+      "short": "The Waking"
+    }
+  ],
+  "styles": [
+    {
+      "id": "gameplay",
+      "label": "Real gameplay",
+      "needs_footage": true
+    },
+    {
+      "id": "mixed",
+      "label": "Gameplay plus key art",
+      "needs_footage": true
+    },
+    {
+      "id": "cinematic",
+      "label": "Key art, slow push",
+      "needs_footage": false
+    }
+  ],
+  "openers": [
+    "slam",
+    "glitch",
+    "drop",
+    "flash"
+  ],
+  "title_patterns": [
+    {
+      "id": "question",
+      "brief": "A direct, specific question to the viewer that ends with a question mark."
+    },
+    {
+      "id": "pov",
+      "brief": "Starts with 'POV:' then a vivid second person situation from the facts."
+    },
+    {
+      "id": "you",
+      "brief": "Starts with 'You' and puts the viewer inside the premise."
+    },
+    {
+      "id": "warning",
+      "brief": "Starts with 'Do not' or 'Never' like a warning label."
+    },
+    {
+      "id": "statement",
+      "brief": "A blunt, specific statement of 3 to 8 words, no question mark."
+    }
+  ],
+  "variety_rules": "Every Short must feel different from the recent ones. Do not reuse their first words, sentence shapes, or title wording. The first sentence is the hook: under 10 words, concrete, a specific image or claim from the facts, never generic like 'Imagine a world'. Change rhythm: mix one or two word sentences with longer ones.",
+  "clips": [
+    {
+      "file": "clips/hive_02.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_03.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_04.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_05.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_06.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_07.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_08.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/hive_10.mp4",
+      "game": "hive",
+      "source": "Hive Infiltration (matpcul-tech.github.io/Dystopiabook1)"
+    },
+    {
+      "file": "clips/lot_01.mp4",
+      "game": "lot",
+      "source": "Layers of Truth (matpcul-tech.github.io/Layersoftruth)"
+    },
+    {
+      "file": "clips/lot_02.mp4",
+      "game": "lot",
+      "source": "Layers of Truth (matpcul-tech.github.io/Layersoftruth)"
+    },
+    {
+      "file": "clips/lot_03.mp4",
+      "game": "lot",
+      "source": "Layers of Truth (matpcul-tech.github.io/Layersoftruth)"
+    },
+    {
+      "file": "clips/waking_01.mp4",
+      "game": "waking",
+      "source": "Dystopia: The Waking (matpcul-tech.github.io/Dystopia)"
+    },
+    {
+      "file": "clips/waking_02.mp4",
+      "game": "waking",
+      "source": "Dystopia: The Waking (matpcul-tech.github.io/Dystopia)"
+    },
+    {
+      "file": "clips/waking_03.mp4",
+      "game": "waking",
+      "source": "Dystopia: The Waking (matpcul-tech.github.io/Dystopia)"
+    },
+    {
+      "file": "clips/waking_04.mp4",
+      "game": "waking",
+      "source": "Dystopia: The Waking (matpcul-tech.github.io/Dystopia)"
     }
   ]
 }
