@@ -17,6 +17,10 @@ on:
         description: "Run even if paused or the slot is already filled"
         type: boolean
         default: false
+      no_log:
+        description: "Do not write this run to the run log (test runs, never counts as a recent title)"
+        type: boolean
+        default: false
       item:
         description: "Optional library item id to preview (manual runs only), e.g. hive-infiltration"
         type: string
@@ -59,6 +63,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
           FORCE: ${{ inputs.force && '1' || '' }}
           PICK_ITEM: ${{ inputs.item }}
+          NO_LOG: ${{ inputs.no_log && '1' || '' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
