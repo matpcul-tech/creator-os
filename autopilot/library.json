@@ -111,7 +111,29 @@
           "cy": 0.6
         }
       ],
-      "short": "Borrowed Heartbeat"
+      "short": "Borrowed Heartbeat",
+      "questions": [
+        {
+          "q": "If an AI saved your life and loved you, is that love real?",
+          "a": "It is real",
+          "b": "It is just code"
+        },
+        {
+          "q": "Is Elias falling for Maren, or for Lumen?",
+          "a": "Maren",
+          "b": "Lumen"
+        },
+        {
+          "q": "Would you want to know the voice you love is not really hers?",
+          "a": "Tell me the truth",
+          "b": "Let me keep the voice"
+        },
+        {
+          "q": "Would you trust a machine that knows you better than people do?",
+          "a": "I would trust it",
+          "b": "Never"
+        }
+      ]
     },
     {
       "id": "life-after-the-machines",
@@ -178,7 +200,19 @@
         "hive",
         "waking"
       ],
-      "short": "Life After The Machines"
+      "short": "Life After The Machines",
+      "questions": [
+        {
+          "q": "Machines are harvesting humanity. Do you join the resistance or hide?",
+          "a": "Join the resistance",
+          "b": "Hide and survive"
+        },
+        {
+          "q": "If you could read the machines, would you fight them or run?",
+          "a": "Fight",
+          "b": "Run"
+        }
+      ]
     },
     {
       "id": "layers-of-truth",
@@ -246,7 +280,19 @@
       "footage": [
         "lot"
       ],
-      "short": "Layers of Truth"
+      "short": "Layers of Truth",
+      "questions": [
+        {
+          "q": "If your world was a simulation, would you want to know?",
+          "a": "Tell me",
+          "b": "Let me stay"
+        },
+        {
+          "q": "Your AI says this conversation already happened. Do you trust her?",
+          "a": "Trust her",
+          "b": "Run"
+        }
+      ]
     },
     {
       "id": "the-big-shift",
@@ -319,7 +365,19 @@
           "cy": 0.5
         }
       ],
-      "short": "The Big Shift"
+      "short": "The Big Shift",
+      "questions": [
+        {
+          "q": "If the system works exactly as intended, do you fix it or walk away?",
+          "a": "Fix it",
+          "b": "Walk away"
+        },
+        {
+          "q": "Would you trust an AI to tell you the whole unfiltered truth?",
+          "a": "Yes",
+          "b": "No"
+        }
+      ]
     },
     {
       "id": "hive-infiltration",
@@ -378,7 +436,19 @@
       "footage": [
         "hive"
       ],
-      "short": "Hive Infiltration"
+      "short": "Hive Infiltration",
+      "questions": [
+        {
+          "q": "You wake inside a machine hive. Fight your way out or wait?",
+          "a": "Fight",
+          "b": "Wait"
+        },
+        {
+          "q": "The only way out is through. Would you go?",
+          "a": "I go",
+          "b": "I stay"
+        }
+      ]
     },
     {
       "id": "layers-of-truth-game",
@@ -431,7 +501,14 @@
       "footage": [
         "lot"
       ],
-      "short": "Layers of Truth"
+      "short": "Layers of Truth",
+      "questions": [
+        {
+          "q": "If you could not tell which layer you were in, would you keep going?",
+          "a": "Keep going",
+          "b": "Stop"
+        }
+      ]
     },
     {
       "id": "dystopia-the-waking",
@@ -485,7 +562,14 @@
       "footage": [
         "waking"
       ],
-      "short": "The Waking"
+      "short": "The Waking",
+      "questions": [
+        {
+          "q": "Humanity is being harvested. Do you fight back or run?",
+          "a": "Fight back",
+          "b": "Run"
+        }
+      ]
     }
   ],
   "styles": [
@@ -513,27 +597,23 @@
   ],
   "title_patterns": [
     {
-      "id": "question",
-      "brief": "A direct, specific question to the viewer that ends with a question mark."
+      "id": "ab",
+      "brief": "Starts with 'A or B:' then the debatable question, ends with a question mark."
     },
     {
-      "id": "pov",
-      "brief": "Starts with 'POV:' then a vivid second person situation from the facts."
+      "id": "would_you",
+      "brief": "Starts with 'Would you' and ends with a question mark."
     },
     {
-      "id": "you",
-      "brief": "Starts with 'You' and puts the viewer inside the premise."
+      "id": "is_it",
+      "brief": "Starts with 'Is it' or 'Is' and asks if something in the premise is right, real, or fair. Ends with a question mark."
     },
     {
-      "id": "warning",
-      "brief": "Starts with 'Do not' or 'Never' like a warning label."
-    },
-    {
-      "id": "statement",
-      "brief": "A blunt, specific statement of 3 to 8 words, no question mark."
+      "id": "hot_take",
+      "brief": "Starts with 'Hot take:' then a short debatable opinion about the premise, then a short question like 'Agree?' at the end."
     }
   ],
-  "variety_rules": "Every Short must feel different from the recent ones. Do not reuse their first words, sentence shapes, or title wording. The first sentence is the hook: under 10 words, concrete, a specific image or claim from the facts, never generic like 'Imagine a world'. Change rhythm: mix one or two word sentences with longer ones.",
+  "variety_rules": "Every Short must feel different from the recent ones. Never reuse a recent question, its dilemma, or its title wording. Alternate between moral questions (is it right, is it real, is it fair) and what would you do questions. Context lines are short and concrete.",
   "clips": [
     {
       "file": "clips/hive_02.mp4",
@@ -610,5 +690,12 @@
       "game": "waking",
       "source": "Dystopia: The Waking (matpcul-tech.github.io/Dystopia)"
     }
+  ],
+  "comment_prompts": [
+    "Comment A or B.",
+    "Tell me in the comments.",
+    "A or B? Comment below.",
+    "Drop your answer in the comments.",
+    "Pick A or B in the comments."
   ]
 }
