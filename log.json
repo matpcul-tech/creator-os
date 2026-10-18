@@ -112,5 +112,34 @@
     "duration_s": 42.9,
     "file": "RSA_autopilot_2026-10-18_borrowed-heartbeat.mp4",
     "status": "dry_run"
+  },
+  {
+    "date": "2026-10-18",
+    "ts": "2026-10-18T00:36:33-05:00",
+    "trigger": "manual",
+    "dry_run": true,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "hook",
+    "style": "mixed",
+    "opener": "drop",
+    "title_pattern": "you",
+    "footage": [
+      "clips/hive_06.mp4",
+      "clips/hive_03.mp4",
+      "clips/hive_10.mp4",
+      "hive_hivecine_380.jpg",
+      "hive_hive_ch2_20.jpg",
+      "hive_hive3_10.jpg"
+    ],
+    "hook": "Three chapters. One way out.",
+    "title": "You Are Marcus. The Hive Is Watching.",
+    "script": "The Processing Center does not care who you are. You are Marcus. You woke up here. You did not choose it. Three chapters. That is all that stands between you and the final upload. Every step forward is a fight. The machines built this place to hold people in. You are going to prove them wrong. The only way out is through. Hive Infiltration, a free browser game set in the world of Dystopia: Life After The Machines by Matthew Culwell. Hive Infiltration. Free in your browser. Link in the description.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0077,
+    "duration_s": 40.5,
+    "file": "RSA_autopilot_2026-10-18_hive-infiltration.mp4",
+    "status": "dry_run"
   }
 ]
