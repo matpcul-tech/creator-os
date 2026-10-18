@@ -114,7 +114,7 @@
       "short": "Borrowed Heartbeat",
       "questions": [
         {
-          "q": "If an AI fell in love with you first, is that love real?",
+          "q": "If an AI fell in love with someone using your voice, is that love real?",
           "a": "It is real",
           "b": "It is just code"
         },
@@ -124,9 +124,9 @@
           "b": "Deception"
         },
         {
-          "q": "If an AI loved you in someone else's voice, would you love it back?",
-          "a": "I would",
-          "b": "Never"
+          "q": "Lumen loved Elias first, in Maren's voice. Should he love it back?",
+          "a": "Yes",
+          "b": "No"
         },
         {
           "q": "Would you trust a machine that knows you better than people do?",
