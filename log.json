@@ -69,5 +69,24 @@
     "status": "posted",
     "videoId": "Mw2rsO4fXjc",
     "url": "https://youtube.com/shorts/Mw2rsO4fXjc"
+  },
+  {
+    "date": "2026-10-17",
+    "ts": "2026-10-17T20:27:35-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "18:30",
+    "item": "hive-infiltration",
+    "angle": "game",
+    "title": "You Wake Inside The Hive. There Is No Easy Way Out.",
+    "script": "You wake up inside a machine hive. You are Marcus. You do not know how you got here. You only know one thing. You have to move. Three chapters stand between you and the final upload. The Processing Center is first. It will not let you through without a fight. The only way out is through. This is Hive Infiltration, a free browser game set in the world of Dystopia: Life After The Machines by Matthew Culwell. Hive Infiltration. Free in your browser. Link in the description.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0057,
+    "duration_s": 41.2,
+    "file": "RSA_autopilot_2026-10-17_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "i4SlQdp6cH4",
+    "url": "https://youtube.com/shorts/i4SlQdp6cH4"
   }
 ]
