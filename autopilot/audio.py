@@ -25,7 +25,7 @@ def drone(dur,seed=1,base=55.0,heartbeat=None,hits=()):
         if i0+L<len(x):
             tl=np.arange(L)/SR; env=np.exp(-tl*1.6)*(1-np.exp(-tl*60))
             x[i0:i0+L]+=1.4*np.sin(2*np.pi*(38+25*np.exp(-tl*4))*tl)*env + 0.3*r.standard_normal(L)*np.exp(-tl*5)*0.3
-    fade=np.minimum(1,np.minimum(t/2.0,(dur-t)/2.5)); x*=np.clip(fade,0,1)
+    fade=np.minimum(1,np.minimum(t/0.05,(dur-t)/2.5))  # instant start so the open hits on frame 0; x*=np.clip(fade,0,1)
     x/=np.abs(x).max()+1e-9
     st=np.stack([x,np.roll(x,int(0.011*SR))],1)*0.8
     return st
