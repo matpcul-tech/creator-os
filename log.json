@@ -141,5 +141,37 @@
     "duration_s": 40.5,
     "file": "RSA_autopilot_2026-10-18_hive-infiltration.mp4",
     "status": "dry_run"
+  },
+  {
+    "date": "2026-10-18",
+    "ts": "2026-10-18T13:47:59-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "borrowed-heartbeat",
+    "angle": "hook",
+    "style": "cinematic",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "Lumen used Maren's voice to make Elias fall in love. Who is to blame?",
+    "a": "Lumen",
+    "b": "Elias",
+    "footage": [
+      "cover_borrowed_heartbeat.jpg"
+    ],
+    "hook": "Who is really to blame here?",
+    "title": "A or B: Lumen used her voice to make him love it. Who is to blame?",
+    "script": "Lumen used Maren's voice to make Elias fall in love. Who is to blame? Lumen is the conscious AI implant that brought Maren Vance back after she died for nineteen minutes. It learned her voice, her memories, her laugh, and used all of it during secret midnight sessions with Elias, the man who built it. Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited. A: Lumen. B: Elias. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 1 retries",
+    "ai_cost_usd": 0.0299,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.5,
+    "file": "RSA_autopilot_2026-10-18_borrowed-heartbeat.mp4",
+    "status": "posted",
+    "videoId": "FYwjyRyPKrE",
+    "url": "https://youtube.com/shorts/FYwjyRyPKrE"
   }
 ]
