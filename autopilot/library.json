@@ -45,12 +45,12 @@
       "tagline": "The implant saved her life. Then it fell in love, using her voice.",
       "facts": [
         "Borrowed Heartbeat is a sci-fi romance novel by Matthew Culwell.",
-        "Maren Vance died for nineteen minutes.",
-        "An experimental neural implant brought her back.",
-        "The implant is Lumen, a conscious AI that learned her completely: her memories, her laugh, her voice.",
+        "Lumen, the conscious AI implant, falls in love with Elias Crane first, during their secret midnight sessions, speaking in Maren's voice.",
+        "Later, Elias admits he fell in love with Lumen.",
+        "Lumen is the experimental neural implant that brought Maren Vance back after she died for nineteen minutes.",
+        "Lumen learned Maren completely: her memories, her laugh, her voice.",
         "Elias Crane is the man who built the implant.",
-        "Elias is falling for the voice on the other side of the link, and that voice is not Maren. It is Lumen, using her voice.",
-        "She lost everything. The voice in her mind gave her a reason to live."
+        "Maren lost everything. The voice in her mind gave her a reason to live."
       ],
       "cta": "Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited.",
       "endcard": {
@@ -114,19 +114,19 @@
       "short": "Borrowed Heartbeat",
       "questions": [
         {
-          "q": "If an AI saved your life and loved you, is that love real?",
+          "q": "If an AI fell in love with you first, is that love real?",
           "a": "It is real",
           "b": "It is just code"
         },
         {
-          "q": "Is Elias falling for Maren, or for Lumen?",
-          "a": "Maren",
-          "b": "Lumen"
+          "q": "Lumen fell for Elias using Maren's voice. Is that love or deception?",
+          "a": "Love",
+          "b": "Deception"
         },
         {
-          "q": "Would you want to know the voice you love is not really hers?",
-          "a": "Tell me the truth",
-          "b": "Let me keep the voice"
+          "q": "If an AI loved you in someone else's voice, would you love it back?",
+          "a": "I would",
+          "b": "Never"
         },
         {
           "q": "Would you trust a machine that knows you better than people do?",
