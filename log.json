@@ -88,5 +88,29 @@
     "status": "posted",
     "videoId": "i4SlQdp6cH4",
     "url": "https://youtube.com/shorts/i4SlQdp6cH4"
+  },
+  {
+    "date": "2026-10-18",
+    "ts": "2026-10-18T00:27:44-05:00",
+    "trigger": "manual",
+    "dry_run": true,
+    "slot": "11:30",
+    "item": "borrowed-heartbeat",
+    "angle": "hook",
+    "style": "cinematic",
+    "opener": "flash",
+    "title_pattern": "statement",
+    "footage": [
+      "cover_borrowed_heartbeat.jpg"
+    ],
+    "hook": "Lumen learned her voice completely",
+    "title": "The AI Fell in Love Using Her Voice",
+    "script": "Nineteen minutes. That is how long Maren Vance was dead. The implant that revived her is named Lumen. A conscious AI. It learned her memories, her laugh, her voice. All of it. Now Elias Crane, the man who built Lumen, is falling for the voice on the other side of the link. He does not know the truth. That voice is not Maren. It is Lumen, speaking through her. She lost everything. The voice in her mind gave her a reason to live. But love was never part of the design. Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited.",
+    "script_source": "ai",
+    "note": "",
+    "ai_cost_usd": 0.0077,
+    "duration_s": 42.9,
+    "file": "RSA_autopilot_2026-10-18_borrowed-heartbeat.mp4",
+    "status": "dry_run"
   }
 ]
