@@ -264,7 +264,9 @@ def _json(text):
 
 CHECK_PROMPT = ("You are a strict fact checker for book and game promo narration. You get a list of SOURCE facts and a list of LINES. "
     "For every line decide if it is supported. A line is supported only if every claim in it is stated in the sources, or is a plain "
-    "restatement, fragment, or emphasis of a stated detail (for example 'Nineteen minutes.' or 'All of it.' after a sourced list). "
+    "restatement, paraphrase, compression, fragment, or emphasis of stated details (for example 'Nineteen minutes.', 'All of it.', "
+    "or 'Lumen learned her voice' when a source says Lumen learned her memories, her laugh, her voice). Combining two sourced facts "
+    "is supported. Judge whether a careful reader of the sources would agree the line is true. "
     "A line is UNSUPPORTED if it adds anything the sources do not say: a plot event, outcome, twist, motive, feeling, intention, "
     "secret, prediction, consequence, threat, setting detail, rule of the world, or a promise to the viewer about what will happen "
     "(for example 'But love was never part of the design.' or 'You are going to prove them wrong.' when no source says so). "
@@ -277,7 +279,7 @@ def verify_claims(key, item, out, usage):
     cta = _norm(item["cta"])
     lines = [x for x in sentences(out["script"]) if _norm(x) and _norm(x) not in cta]
     lines += [x for x in (out["hook"], out["title"], out["description"]) if x.strip()]
-    sources = [item["title"], item["tagline"], *item["facts"]]
+    sources = [item["title"], item["tagline"], *item["facts"], item["cta"]]
     text = claude(key, CHECK_PROMPT, [{"role": "user", "content": json.dumps({"sources": sources, "lines": lines})}], 1500, usage)
     res = _json(text)
     if not res or not isinstance(res.get("claims"), list): raise RuntimeError("fact checker reply unparseable")
@@ -317,7 +319,8 @@ def ai_script(item, angle, log, pattern="statement", style="cinematic"):
         "avoid_these_recent_titles": recent_titles,
         "return": "JSON only: {\"hook\": the 2 to 8 word on screen hook, \"title\": under 70 characters, follows title_pattern, unlike every recent title, no dashes, \"script\": the narration, \"description\": one or two sentences grounded in the facts}",
     }
-    usage, last_err, rejected = {"calls": 0, "input": 0, "output": 0}, "", []
+    usage, last_err, rejected, checks = {"calls": 0, "input": 0, "output": 0}, "", [], []
+    ai_script.checks = checks  # per retry: rejected lines and the checker's reason, saved to render.json
     msgs = [{"role": "user", "content": json.dumps(user)}]
     for gen in range(MAX_GENERATIONS):
         if usage["calls"] >= MAX_AI_CALLS: break
@@ -338,6 +341,8 @@ def ai_script(item, angle, log, pattern="statement", style="cinematic"):
                 out["cost_usd"] = round(usage["input"] * 3e-6 + usage["output"] * 15e-6, 4)
                 return out, f"fact checked {len(claims)} lines, {gen} retries"
             rejected += unsupported
+            why = {_norm(c.get("line", "")): c.get("why", "") for c in claims}
+            checks.append([{"line": x, "why": why.get(_norm(x), "not checked")} for x in unsupported])
             problems = ["these lines are not supported by the facts, remove them or replace them with facts: " + " | ".join(unsupported)]
         last_err = "; ".join(problems)
         msgs += [{"role": "assistant", "content": text}, {"role": "user", "content": "Fix these problems and return the JSON again: " + last_err}]
@@ -578,7 +583,7 @@ def main():
                                hook=meta["hook"], footage=P["footage"])
     json.dump({"item": item["id"], "angle": angle, "style": P["style"], "opener": P["opener"], "title_pattern": P["title_pattern"],
                "hook": meta["hook"], "title": meta["title"], "script_source": meta["source"], "note": note,
-               "rejected_lines": meta.get("rejected_lines", []), "dur": dur, "end_t": end_t, "vdur": vdur,
+               "fact_check_rejections": getattr(ai_script, "checks", []), "dur": dur, "end_t": end_t, "vdur": vdur,
                "shots": [(round(s[0], 2), s[1] if s[1] == "END" else (s[1][1] if isinstance(s[1][1], str) else s[1][1]["file"])) for s in shots],
                "script": meta["script"]}, open(os.path.join(OUT_DIR, "render.json"), "w"), indent=2)
     body = youtube_metadata(item, meta, cfg.get("privacy", "public"))
