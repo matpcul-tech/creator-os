@@ -1,0 +1,61 @@
+name: Manual upload
+
+# Upload one finished video (for example a Borrowed Heartbeat episode) to YouTube
+# with the same OAuth secrets the daily autopilot uses. Run by hand only.
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: "Direct download URL of the mp4 (for example a release asset)"
+        type: string
+        required: true
+      title:
+        description: "YouTube title"
+        type: string
+        required: true
+      description:
+        description: "YouTube description (use \\n for line breaks)"
+        type: string
+        default: ""
+      tags:
+        description: "Comma separated tags"
+        type: string
+        default: ""
+      category_id:
+        description: "YouTube category id (1 = Film and Animation)"
+        type: string
+        default: "1"
+      privacy:
+        description: "public, unlisted or private"
+        type: choice
+        options: [public, unlisted, private]
+        default: public
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: autopilot/requirements.txt
+      - name: Install
+        run: pip install -q -r autopilot/requirements.txt
+      - name: Upload to YouTube
+        env:
+          VIDEO_URL: ${{ inputs.video_url }}
+          TITLE: ${{ inputs.title }}
+          DESCRIPTION: ${{ inputs.description }}
+          TAGS: ${{ inputs.tags }}
+          CATEGORY_ID: ${{ inputs.category_id }}
+          PRIVACY: ${{ inputs.privacy }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python autopilot/manual_upload.py
