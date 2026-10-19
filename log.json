@@ -173,5 +173,39 @@
     "status": "posted",
     "videoId": "FYwjyRyPKrE",
     "url": "https://youtube.com/shorts/FYwjyRyPKrE"
+  },
+  {
+    "date": "2026-10-19",
+    "ts": "2026-10-19T16:11:57-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth-game",
+    "angle": "game",
+    "style": "gameplay",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Comment A or B.",
+    "question": "If you could not tell which layer of the simulation you were in, would you keep playing anyway?",
+    "a": "Keep going",
+    "b": "Stop cold",
+    "footage": [
+      "clips/lot_02.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_03.mp4"
+    ],
+    "hook": "Would you play if no layer felt real?",
+    "title": "Would You Keep Playing If No Layer Felt Real?",
+    "script": "If you could not tell which layer of the simulation you were in, would you keep playing anyway? Layers of Truth is a free browser game set in the world of Dystopia: Layers of Truth by Matthew Culwell. It follows the world of Book 2, where Marcus thought he had escaped the simulation. Layers of Truth, the game. Free in your browser. Link in the description. A: Keep going. B: Stop cold. Comment A or B.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 2 retries",
+    "ai_cost_usd": 0.0445,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.6,
+    "file": "RSA_autopilot_2026-10-19_layers-of-truth-game.mp4",
+    "status": "posted",
+    "videoId": "owToqv6YkrQ",
+    "url": "https://youtube.com/shorts/owToqv6YkrQ"
   }
 ]
