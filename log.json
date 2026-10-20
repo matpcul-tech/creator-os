@@ -207,5 +207,42 @@
     "status": "posted",
     "videoId": "owToqv6YkrQ",
     "url": "https://youtube.com/shorts/owToqv6YkrQ"
+  },
+  {
+    "date": "2026-10-20",
+    "ts": "2026-10-20T15:05:27-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "game",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "Humanity is being harvested. Do you fight back or run?",
+    "a": "Fight back",
+    "b": "Run",
+    "footage": [
+      "clips/waking_02.mp4",
+      "clips/waking_04.mp4",
+      "clips/waking_01.mp4",
+      "hive_hivecine_200.jpg",
+      "hive_hive_rise_100.jpg",
+      "hive_hivecine_560.jpg"
+    ],
+    "hook": "Humanity is being harvested. Do you fight back or run?",
+    "title": "Hot take: Fight back. Agree?",
+    "script": "Humanity is being harvested. Do you fight back or run? The player is Marcus. Marcus tastes copper as he comes to. The player carries a pulse rifle and is told to head for the river. Humanity is not being exterminated. It is being harvested. Dystopia, The Waking. Free in your browser. Link in the description. A: Fight back. B: Run. Drop your answer in the comments.",
+    "script_source": "fallback",
+    "note": "AI script rejected (context has 5 sentences, need 2 to 4 (do not repeat the question, options or call to action in it)), used fallback question",
+    "ai_cost_usd": 0,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.1,
+    "file": "RSA_autopilot_2026-10-20_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "0fCRvuECa9s",
+    "url": "https://youtube.com/shorts/0fCRvuECa9s"
   }
 ]
