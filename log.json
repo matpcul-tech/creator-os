@@ -244,5 +244,40 @@
     "status": "posted",
     "videoId": "0fCRvuECa9s",
     "url": "https://youtube.com/shorts/0fCRvuECa9s"
+  },
+  {
+    "date": "2026-10-21",
+    "ts": "2026-10-21T15:19:00-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "life-after-the-machines",
+    "angle": "lore",
+    "style": "gameplay",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "You can read the machines. Do you use that ability to lead the resistance or disappear?",
+    "a": "Lead the fight",
+    "b": "Disappear",
+    "footage": [
+      "clips/hive_05.mp4",
+      "clips/hive_08.mp4",
+      "clips/hive_07.mp4",
+      "clips/hive_10.mp4"
+    ],
+    "hook": "You can read them. What do you do?",
+    "title": "Is it worth risking everything when you can read them?",
+    "script": "You can read the machines. Do you use that ability to lead the resistance or disappear? Twenty-foot war machines patrol every city under a red sky. Marcus woke in the ruins with no memory, then discovered he can read the machines. Humanity is not being exterminated. It is being harvested. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited. A: Lead the fight. B: Disappear. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.0194,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.0,
+    "file": "RSA_autopilot_2026-10-21_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "l4didZa8Yb0",
+    "url": "https://youtube.com/shorts/l4didZa8Yb0"
   }
 ]

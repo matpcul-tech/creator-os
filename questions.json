@@ -22,5 +22,13 @@
     "a": "Fight back",
     "b": "Run",
     "videoId": "0fCRvuECa9s"
+  },
+  {
+    "date": "2026-10-21",
+    "item": "life-after-the-machines",
+    "question": "You can read the machines. Do you use that ability to lead the resistance or disappear?",
+    "a": "Lead the fight",
+    "b": "Disappear",
+    "videoId": "l4didZa8Yb0"
   }
 ]
