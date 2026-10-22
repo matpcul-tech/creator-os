@@ -24,6 +24,8 @@ import {
   Clapperboard,
   Image as ImageIcon,
   Timer,
+  ShoppingBag,
+  Video,
 } from "lucide-react";
 
 const navGroups = [
@@ -43,6 +45,8 @@ const navGroups = [
       { label: "Faceless builder", href: "/builder", icon: Clapperboard },
       { label: "Thumbnails", href: "/thumbnails", icon: ImageIcon },
       { label: "Brand DNA", href: "/brand", icon: Brain },
+      { label: "Shop research", href: "/shop", icon: ShoppingBag },
+      { label: "Shop video", href: "/shop/video", icon: Video },
     ],
   },
   {
