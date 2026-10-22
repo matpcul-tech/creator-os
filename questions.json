@@ -30,5 +30,13 @@
     "a": "Lead the fight",
     "b": "Disappear",
     "videoId": "l4didZa8Yb0"
+  },
+  {
+    "date": "2026-10-22",
+    "item": "layers-of-truth",
+    "question": "If an AI told you this conversation already happened, would you believe it?",
+    "a": "Believe her",
+    "b": "Reject it",
+    "videoId": "FV_M0ps8wR8"
   }
 ]

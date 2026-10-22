@@ -279,5 +279,42 @@
     "status": "posted",
     "videoId": "l4didZa8Yb0",
     "url": "https://youtube.com/shorts/l4didZa8Yb0"
+  },
+  {
+    "date": "2026-10-22",
+    "ts": "2026-10-22T15:55:49-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "lore",
+    "style": "mixed",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "If an AI told you this conversation already happened, would you believe it?",
+    "a": "Believe her",
+    "b": "Reject it",
+    "footage": [
+      "clips/lot_02.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_03.mp4",
+      "lot_s01.jpg",
+      "lot_s04.jpg",
+      "cover_layers_of_truth.jpg"
+    ],
+    "hook": "Your AI says this already happened. Real?",
+    "title": "A or B: If your AI says this already happened, is it real?",
+    "script": "If an AI told you this conversation already happened, would you believe it? Marcus thought he had escaped the simulation. Then a hallway grew a door overnight, and the buildings across the street stopped adding up. Vera, the AI he thought he left behind, told him their conversation had already happened. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Believe her. B: Reject it. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 0 retries",
+    "ai_cost_usd": 0.0199,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.9,
+    "file": "RSA_autopilot_2026-10-22_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "FV_M0ps8wR8",
+    "url": "https://youtube.com/shorts/FV_M0ps8wR8"
   }
 ]
