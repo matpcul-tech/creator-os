@@ -316,5 +316,37 @@
     "status": "posted",
     "videoId": "FV_M0ps8wR8",
     "url": "https://youtube.com/shorts/FV_M0ps8wR8"
+  },
+  {
+    "date": "2026-10-23",
+    "ts": "2026-10-23T15:42:34-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "quote",
+    "style": "cinematic",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If an AI proved the system was built to divide you, would you share it?",
+    "a": "Share it",
+    "b": "Stay quiet",
+    "footage": [
+      "cover_the_big_shift.jpg"
+    ],
+    "hook": "Would you share what the AI uncovered?",
+    "title": "Would you share what the AI uncovered?",
+    "script": "If an AI proved the system was built to divide you, would you share it? The Big Shift asks what if the system was never broken, just working as intended. An artificial intelligence begins connecting the dots and delivers the whole, unfiltered truth. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited. A: Share it. B: Stay quiet. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 1 retries",
+    "ai_cost_usd": 0.0265,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.3,
+    "file": "RSA_autopilot_2026-10-23_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "B3swle6CFZQ",
+    "url": "https://youtube.com/shorts/B3swle6CFZQ"
   }
 ]
