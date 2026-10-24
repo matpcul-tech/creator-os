@@ -348,5 +348,40 @@
     "status": "posted",
     "videoId": "B3swle6CFZQ",
     "url": "https://youtube.com/shorts/B3swle6CFZQ"
+  },
+  {
+    "date": "2026-10-24",
+    "ts": "2026-10-24T13:55:55-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "hook",
+    "style": "gameplay",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Comment A or B.",
+    "question": "You wake inside a machine hive with no way out but through. Is that fair?",
+    "a": "Fair enough.",
+    "b": "Not even close.",
+    "footage": [
+      "clips/hive_06.mp4",
+      "clips/hive_07.mp4",
+      "clips/hive_02.mp4",
+      "clips/hive_03.mp4"
+    ],
+    "hook": "Is it fair if the only way is through?",
+    "title": "Hot take: No exit should ever look like this. Fair?",
+    "script": "You wake inside a machine hive with no way out but through. Is that fair? Hive Infiltration is a free browser game set in the world of Dystopia: Life After The Machines by Matthew Culwell. You play as Marcus, waking inside a machine hive. Three chapters stand between you and the final upload. Hive Infiltration. Free in your browser. Link in the description. A: Fair enough. B: Not even close. Comment A or B.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 0 retries",
+    "ai_cost_usd": 0.0189,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.4,
+    "file": "RSA_autopilot_2026-10-24_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "Z0pdZQJHNhE",
+    "url": "https://youtube.com/shorts/Z0pdZQJHNhE"
   }
 ]

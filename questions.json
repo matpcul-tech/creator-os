@@ -46,5 +46,13 @@
     "a": "Share it",
     "b": "Stay quiet",
     "videoId": "B3swle6CFZQ"
+  },
+  {
+    "date": "2026-10-24",
+    "item": "hive-infiltration",
+    "question": "You wake inside a machine hive with no way out but through. Is that fair?",
+    "a": "Fair enough.",
+    "b": "Not even close.",
+    "videoId": "Z0pdZQJHNhE"
   }
 ]
