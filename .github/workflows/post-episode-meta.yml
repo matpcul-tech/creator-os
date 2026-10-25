@@ -1,0 +1,46 @@
+name: Post episode meta
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: "New video id"
+        type: string
+        required: true
+      prev_video_id:
+        description: "Previous episode video id to link from (optional)"
+        type: string
+        required: false
+        default: ""
+      comment:
+        description: "First comment text (use \\n for breaks)"
+        type: string
+        required: true
+      playlist_query:
+        description: "Playlist title substring"
+        type: string
+        required: false
+        default: "Borrowed Heartbeat"
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Post comment, playlist, previous link
+        env:
+          VIDEO_ID: ${{ inputs.video_id }}
+          PREV_VIDEO_ID: ${{ inputs.prev_video_id }}
+          COMMENT: ${{ inputs.comment }}
+          PLAYLIST_QUERY: ${{ inputs.playlist_query }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python autopilot/post_episode_meta.py
