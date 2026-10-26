@@ -415,5 +415,42 @@
     "status": "posted",
     "videoId": "rmmLIV7EAbs",
     "url": "https://youtube.com/shorts/rmmLIV7EAbs"
+  },
+  {
+    "date": "2026-10-26",
+    "ts": "2026-10-26T16:27:12-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth-game",
+    "angle": "question",
+    "style": "mixed",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "If you cannot tell which layer is real, is it fair to keep you playing?",
+    "a": "Fair game.",
+    "b": "Not fair.",
+    "footage": [
+      "clips/lot_03.mp4",
+      "clips/lot_02.mp4",
+      "clips/lot_01.mp4",
+      "lot_s03.jpg",
+      "lot_s06.jpg",
+      "lot_s01.jpg"
+    ],
+    "hook": "Is it fair if no layer feels real?",
+    "title": "A or B: Is it fair if no layer feels real?",
+    "script": "If you cannot tell which layer is real, is it fair to keep you playing? Layers of Truth is a free browser game set in the world of Dystopia: Layers of Truth by Matthew Culwell. Marcus thought he had escaped the simulation. The game is free and plays in your browser. Layers of Truth, the game. Free in your browser. Link in the description. A: Fair game. B: Not fair. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0363,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.9,
+    "file": "RSA_autopilot_2026-10-26_layers-of-truth-game.mp4",
+    "status": "posted",
+    "videoId": "dsmjTKPq5Qo",
+    "url": "https://youtube.com/shorts/dsmjTKPq5Qo"
   }
 ]
