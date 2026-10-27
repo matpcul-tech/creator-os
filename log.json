@@ -452,5 +452,40 @@
     "status": "posted",
     "videoId": "dsmjTKPq5Qo",
     "url": "https://youtube.com/shorts/dsmjTKPq5Qo"
+  },
+  {
+    "date": "2026-10-27",
+    "ts": "2026-10-27T15:51:16-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "hook",
+    "style": "gameplay",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "You wake up tasting copper, holding a pulse rifle. Do you follow the orders or trust your gut?",
+    "a": "Follow orders",
+    "b": "Trust your gut",
+    "footage": [
+      "clips/waking_04.mp4",
+      "clips/waking_01.mp4",
+      "clips/waking_03.mp4",
+      "clips/waking_02.mp4"
+    ],
+    "hook": "You wake up armed. Do you follow orders?",
+    "title": "Would You Follow Orders When You Wake Like This?",
+    "script": "You wake up tasting copper, holding a pulse rifle. Do you follow the orders or trust your gut? Marcus comes to tasting copper, a pulse rifle in his hands. Someone has already told him where to go. Humanity is not being exterminated. It is being harvested. Dystopia, The Waking. Free in your browser. Link in the description. A: Follow orders. B: Trust your gut. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.021,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.4,
+    "file": "RSA_autopilot_2026-10-27_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "WZjpsd5qOz8",
+    "url": "https://youtube.com/shorts/WZjpsd5qOz8"
   }
 ]
