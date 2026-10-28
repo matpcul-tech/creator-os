@@ -487,5 +487,42 @@
     "status": "posted",
     "videoId": "WZjpsd5qOz8",
     "url": "https://youtube.com/shorts/WZjpsd5qOz8"
+  },
+  {
+    "date": "2026-10-28",
+    "ts": "2026-10-28T16:15:48-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "life-after-the-machines",
+    "angle": "character",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If humanity is being harvested and not destroyed, is the resistance even fighting the right enemy?",
+    "a": "Right enemy.",
+    "b": "Wrong target.",
+    "footage": [
+      "clips/hive_03.mp4",
+      "clips/hive_02.mp4",
+      "clips/hive_10.mp4",
+      "hive_hive_rise_300.jpg",
+      "hive_hive_rise_100.jpg",
+      "cover_life_after_the_machines.jpg"
+    ],
+    "hook": "Is the resistance fighting the right enemy?",
+    "title": "Hot take: The resistance might be aiming at the wrong thing. Agree?",
+    "script": "If humanity is being harvested and not destroyed, is the resistance even fighting the right enemy? Twenty-foot war machines patrol every city under a red sky. Humanity is not being exterminated. It is being harvested. Marcus, pulled into the resistance, can read the machines. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited. A: Right enemy. B: Wrong target. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.0208,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.3,
+    "file": "RSA_autopilot_2026-10-28_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "ZhrHooTgplQ",
+    "url": "https://youtube.com/shorts/ZhrHooTgplQ"
   }
 ]
