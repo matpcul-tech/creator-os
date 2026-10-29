@@ -86,5 +86,13 @@
     "a": "Right enemy.",
     "b": "Wrong target.",
     "videoId": "ZhrHooTgplQ"
+  },
+  {
+    "date": "2026-10-29",
+    "item": "layers-of-truth",
+    "question": "A door appeared in a hallway overnight. Do you investigate or get out?",
+    "a": "Investigate",
+    "b": "Get out",
+    "videoId": "Zi2Tny8tW2k"
   }
 ]

@@ -524,5 +524,39 @@
     "status": "posted",
     "videoId": "ZhrHooTgplQ",
     "url": "https://youtube.com/shorts/ZhrHooTgplQ"
+  },
+  {
+    "date": "2026-10-29",
+    "ts": "2026-10-29T16:20:00-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "character",
+    "style": "gameplay",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Comment A or B.",
+    "question": "A door appeared in a hallway overnight. Do you investigate or get out?",
+    "a": "Investigate",
+    "b": "Get out",
+    "footage": [
+      "clips/lot_02.mp4",
+      "clips/lot_03.mp4",
+      "clips/lot_01.mp4"
+    ],
+    "hook": "A door appears overnight. What do you do?",
+    "title": "Is It Safer To Leave The Door Alone?",
+    "script": "A door appeared in a hallway overnight. Do you investigate or get out? Marcus thought he had escaped the simulation. Then the buildings stopped adding up. A hallway grew a door overnight. Dystopia: Layers of Truth is Book 2 of The Dystopia Series by Matthew Culwell. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Investigate. B: Get out. Comment A or B.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 1 retries",
+    "ai_cost_usd": 0.0384,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.4,
+    "file": "RSA_autopilot_2026-10-29_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "Zi2Tny8tW2k",
+    "url": "https://youtube.com/shorts/Zi2Tny8tW2k"
   }
 ]
