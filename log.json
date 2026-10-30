@@ -558,5 +558,37 @@
     "status": "posted",
     "videoId": "Zi2Tny8tW2k",
     "url": "https://youtube.com/shorts/Zi2Tny8tW2k"
+  },
+  {
+    "date": "2026-10-30",
+    "ts": "2026-10-30T15:58:26-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "question",
+    "style": "cinematic",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "If the system was never broken, who is actually to blame?",
+    "a": "The builders",
+    "b": "Everyone complicit",
+    "footage": [
+      "cover_the_big_shift.jpg"
+    ],
+    "hook": "If the system was never broken, who's to blame?",
+    "title": "A or B: If the system was never broken, who is to blame?",
+    "script": "If the system was never broken, who is actually to blame? The Big Shift is a novel by Matthew Culwell. It asks what if the system was never broken, and was working exactly as intended. An artificial intelligence begins to connect the dots on the forces built to keep people divided, distracted, and dependent. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited. A: The builders. B: Everyone complicit. Drop your answer in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.04,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.7,
+    "file": "RSA_autopilot_2026-10-30_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "qCvrfimFZiU",
+    "url": "https://youtube.com/shorts/qCvrfimFZiU"
   }
 ]
