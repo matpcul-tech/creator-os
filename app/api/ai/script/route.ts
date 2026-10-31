@@ -4,7 +4,6 @@ import { scriptPrompt } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
-// Long scripts can take a while to stream, and may auto-continue. Pro plan allows this.
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
@@ -15,7 +14,6 @@ export async function POST(req: Request) {
   const title: string = body.title ?? "";
   const platform: PlatformId = body.platform ?? "youtube";
   const context: string | undefined = body.context;
-  // Text already written, when the user presses Continue after a stream stopped.
   const partial: string | undefined = typeof body.partial === "string" ? body.partial.slice(0, 40000) : undefined;
 
   if (!title) {
@@ -24,12 +22,18 @@ export async function POST(req: Request) {
     });
   }
 
+  const hardRules =
+    "Hard rules: The first 20 seconds must state a concrete fact or question. One clear takeaway only. No pure recap. No em dashes. No en dashes. Use a period instead. One short sentence per line.";
+
   let stream: ReadableStream<Uint8Array>;
   try {
     stream = await streamCompletion({
-      user: scriptPrompt({ title, platform, context: thinTitleNote(title, context) }),
+      user: scriptPrompt({
+        title,
+        platform,
+        context: `${context ?? ""}\n\n${hardRules}\n\n${thinTitleNote(title) ?? ""}`.trim(),
+      }),
       feature: "script",
-      // No thinking: it shares max_tokens with the script and could starve it.
       noThinking: true,
       maxTokens: 8000,
       partial,
@@ -48,11 +52,8 @@ export async function POST(req: Request) {
   });
 }
 
-// Short titles make the model drift. Pin it to the literal topic.
-function thinTitleNote(title: string, context?: string): string | undefined {
+function thinTitleNote(title: string): string | undefined {
   const words = title.trim().split(/\s+/).filter(Boolean).length;
-  if (words >= 3) return context;
-  const note =
-    "The title is very short. Stay strictly on the literal topic of the title. Do not switch to a different or broader subject.";
-  return context ? `${context}\n\n${note}` : note;
+  if (words >= 3) return undefined;
+  return "The title is very short. Stay strictly on the literal topic of the title. Do not switch to a different or broader subject.";
 }
