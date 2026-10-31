@@ -590,5 +590,42 @@
     "status": "posted",
     "videoId": "qCvrfimFZiU",
     "url": "https://youtube.com/shorts/qCvrfimFZiU"
+  },
+  {
+    "date": "2026-10-31",
+    "ts": "2026-10-31T15:11:07-05:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "lore",
+    "style": "mixed",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "You wake inside a machine hive. Do you fight through or look for another way?",
+    "a": "Fight through",
+    "b": "Find another way",
+    "footage": [
+      "clips/hive_08.mp4",
+      "clips/hive_05.mp4",
+      "clips/hive_02.mp4",
+      "hive_hivecine_380.jpg",
+      "hive_hive_ch2_20.jpg",
+      "hive_hive3_10.jpg"
+    ],
+    "hook": "Would you fight through the machine hive?",
+    "title": "Would You Fight Through a Machine Hive?",
+    "script": "You wake inside a machine hive. Do you fight through or look for another way? You are Marcus, and you wake inside a machine hive. Three chapters stand between you and the final upload. Hive Infiltration is free and plays in your browser. Hive Infiltration. Free in your browser. Link in the description. A: Fight through. B: Find another way. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0284,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.9,
+    "file": "RSA_autopilot_2026-10-31_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "v1eNf01Npbw",
+    "url": "https://youtube.com/shorts/v1eNf01Npbw"
   }
 ]

@@ -102,5 +102,13 @@
     "a": "The builders",
     "b": "Everyone complicit",
     "videoId": "qCvrfimFZiU"
+  },
+  {
+    "date": "2026-10-31",
+    "item": "hive-infiltration",
+    "question": "You wake inside a machine hive. Do you fight through or look for another way?",
+    "a": "Fight through",
+    "b": "Find another way",
+    "videoId": "v1eNf01Npbw"
   }
 ]
