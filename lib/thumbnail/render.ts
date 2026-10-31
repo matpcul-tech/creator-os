@@ -21,7 +21,17 @@ export type ThumbPalette = {
 };
 
 export function palettes(brand?: { primaryColor?: string; accentColor?: string }): ThumbPalette[] {
-  const list: ThumbPalette[] = [];
+  const list: ThumbPalette[] = [
+    {
+      id: "sovereign",
+      name: "Channel",
+      fill: "#F4F1EA",
+      stroke: "#0B1F33",
+      band: "#F2A900",
+      bgFrom: "#0B1F33",
+      bgTo: "#0B1F33",
+    },
+  ];
   if (brand?.primaryColor && brand?.accentColor) {
     list.push({
       id: "brand",
@@ -48,7 +58,7 @@ export function layoutAnchor(layout: ThumbLayout, format: ThumbFormat): { x: num
   return { x: 0.06, y: format === "youtube" ? 0.86 : 0.8 };
 }
 
-export const FONT = '"Arial Black", "Helvetica Neue", Arial, sans-serif';
+export const FONT = "Inter, sans-serif";
 // Line height and outline as multiples of the font size. Layout and drawing both use these.
 export const LINE_HEIGHT = 1.08;
 export const OUTLINE = 0.14;

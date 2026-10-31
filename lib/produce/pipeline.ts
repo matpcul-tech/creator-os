@@ -11,7 +11,7 @@ import path from "path";
 import { put } from "@vercel/blob";
 import { getDeadline } from "@vercel/functions";
 import { cuesFromAlignment, wordsFromAlignment, type CaptionCue } from "@/lib/produce/captions";
-import { beatsFromVisual, isDescriptive, windowsForBeats } from "@/lib/produce/describe";
+import { beatsFromVisual, isDescriptive, stagesForScene } from "@/lib/produce/describe";
 import { drawBeatPng, drawBeatSvg } from "@/lib/produce/draw";
 import { ElevenLabsAuthError, mapPool, voiceScene } from "@/lib/produce/elevenlabs";
 import { encodeFilm, mediaDuration, sliceAudio } from "@/lib/produce/ffmpeg";
@@ -91,16 +91,16 @@ export async function runProduceJob(jobId: string): Promise<void> {
       } else {
         const beats = beatsFromVisual(scene.visual, scene.title);
         const words = wordsFromAlignment(spoken.alignment);
-        const windows = windowsForBeats(words, beats.length, duration);
+        const stages = stagesForScene(beats, words, duration);
         const fullCues = cuesFromAlignment(spoken.alignment, duration);
-        for (let beatIndex = 0; beatIndex < beats.length; beatIndex++) {
-          const beat = beats[beatIndex];
+        for (let beatIndex = 0; beatIndex < stages.length; beatIndex++) {
+          const stage = stages[beatIndex];
+          const beat = stage.beat;
           if (beat.kind === "generic") generic.push(`${scene.title}: ${beat.body.slice(0, 80)}`);
-          const window = windows[beatIndex] || { start: 0, end: duration };
-          const length = Math.max(0.45, window.end - window.start);
+          const length = Math.max(0.45, stage.end - stage.start);
           const slice = path.join(dir, `audio-${String(index + 1).padStart(2, "0")}-${beatIndex}.wav`);
           const png = path.join(dir, `visual-${String(index + 1).padStart(2, "0")}-${beatIndex}.png`);
-          await sliceAudio(spoken.file, slice, window.start, length, dir);
+          await sliceAudio(spoken.file, slice, stage.start, length, dir);
           const svg = drawBeatSvg({
             beat,
             aspect: input.aspect,
@@ -111,11 +111,11 @@ export async function runProduceJob(jobId: string): Promise<void> {
           });
           await writeFile(png, drawBeatPng(svg, input.aspect));
           const cues = fullCues
-            .filter((cue) => cue.end > window.start && cue.start < window.end)
+            .filter((cue) => cue.end > stage.start && cue.start < stage.end)
             .map((cue) => ({
               text: cue.text,
-              start: Math.max(0, cue.start - window.start),
-              end: Math.min(length, cue.end - window.start),
+              start: Math.max(0, cue.start - stage.start),
+              end: Math.min(length, cue.end - stage.start),
             }))
             .filter((cue) => cue.end - cue.start > 0.05);
           drawn.push({ png, audio: slice, cues, planned: 0 });

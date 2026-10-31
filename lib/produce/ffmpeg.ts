@@ -57,8 +57,69 @@ async function ensureFonts(dir: string): Promise<void> {
   const fonts = fontFiles();
   const dest = path.join(dir, "fonts");
   await mkdir(dest, { recursive: true });
-  await copyFile(fonts.regular, path.join(dest, "DejaVuSans.ttf"));
-  await copyFile(fonts.bold, path.join(dest, "DejaVuSans-Bold.ttf"));
+  await copyFile(fonts.regular, path.join(dest, "Inter-Regular.ttf"));
+  await copyFile(fonts.bold, path.join(dest, "Inter-Bold.ttf"));
+  await copyFile(fonts.black, path.join(dest, "Inter-Black.ttf"));
+  await copyFile(fonts.data, path.join(dest, "IBMPlexSans-Regular.otf"));
+  await copyFile(fonts.dataBold, path.join(dest, "IBMPlexSans-Bold.otf"));
+}
+
+async function joinClips(dir: string, clips: { name: string; length: number }[]): Promise<void> {
+  const bin = ffmpegBin();
+  if (clips.length === 1) {
+    const result = await run(bin, ["-y", "-i", clips[0].name, "-c", "copy", "-movflags", "+faststart", "film.mp4"], dir);
+    if (result.code !== 0) throw new Error(`Saving the film failed. ${result.stderr.slice(-400)}`.trim());
+    return;
+  }
+  const shortest = Math.min(...clips.map((clip) => clip.length));
+  const fade = Math.min(0.28, Math.max(0.12, shortest * 0.22));
+  const args = ["-y"];
+  for (const clip of clips) args.push("-i", clip.name);
+  const parts: string[] = [];
+  let video = "[0:v]";
+  let audio = "[0:a]";
+  let cursor = clips[0].length;
+  for (let index = 1; index < clips.length; index++) {
+    const videoOut = index === clips.length - 1 ? "[v]" : `[vx${index}]`;
+    const audioOut = index === clips.length - 1 ? "[a]" : `[ax${index}]`;
+    const offset = Math.max(0, cursor - fade);
+    parts.push(
+      `${video}[${index}:v]xfade=transition=fade:duration=${fade.toFixed(3)}:offset=${offset.toFixed(3)}${videoOut}`,
+    );
+    parts.push(`${audio}[${index}:a]acrossfade=d=${fade.toFixed(3)}${audioOut}`);
+    video = videoOut;
+    audio = audioOut;
+    cursor = offset + clips[index].length;
+  }
+  args.push(
+    "-filter_complex",
+    parts.join(";"),
+    "-map",
+    "[v]",
+    "-map",
+    "[a]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-pix_fmt",
+    "yuv420p",
+    "-r",
+    "30",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-ar",
+    "44100",
+    "-ac",
+    "2",
+    "-movflags",
+    "+faststart",
+    "film.mp4",
+  );
+  const result = await run(bin, args, dir);
+  if (result.code !== 0) throw new Error(`Joining scenes failed. ${result.stderr.slice(-500)}`.trim());
 }
 
 export async function encodeFilm(opts: {
@@ -68,10 +129,13 @@ export async function encodeFilm(opts: {
   onScene?: (done: number, total: number) => Promise<void> | void;
 }): Promise<string> {
   if (!opts.scenes.length) throw new Error("Nothing to encode.");
+  await mkdir(opts.dir, { recursive: true });
   await ensureFonts(opts.dir);
   const bin = ffmpegBin();
   const { width, height } = frameSize(opts.aspect);
-  const clips: string[] = [];
+  const zoomW = Math.round(width * 1.04);
+  const zoomH = Math.round(height * 1.04);
+  const clips: { name: string; length: number }[] = [];
   for (let index = 0; index < opts.scenes.length; index++) {
     const scene = opts.scenes[index];
     const id = String(index + 1).padStart(3, "0");
@@ -94,7 +158,7 @@ export async function encodeFilm(opts: {
         "-i",
         scene.audio,
         "-filter_complex",
-        `[0:v]fps=30,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,subtitles=${assName}:fontsdir=fonts,setsar=1[v];[1:a]apad,atrim=0:${len},asetpts=PTS-STARTPTS[a]`,
+        `[0:v]scale=${zoomW}:${zoomH},crop=${width}:${height}:x='(in_w-out_w)*min(1\\,0.2+0.6*t/${len})':y='(in_h-out_h)*min(1\\,0.35+0.25*t/${len})',fps=30,subtitles=${assName}:fontsdir=fonts,setsar=1[v];[1:a]apad,atrim=0:${len},asetpts=PTS-STARTPTS[a]`,
         "-map",
         "[v]",
         "-map",
@@ -104,7 +168,7 @@ export async function encodeFilm(opts: {
         "-c:v",
         "libx264",
         "-preset",
-        "veryfast",
+        "ultrafast",
         "-tune",
         "stillimage",
         "-pix_fmt",
@@ -130,26 +194,14 @@ export async function encodeFilm(opts: {
     if (result.code !== 0) {
       throw new Error(`Encoding scene ${index + 1} failed. ${result.stderr.slice(-500)}`.trim());
     }
-    clips.push(clipName);
+    clips.push({ name: clipName, length: Number(len) });
     await opts.onScene?.(index + 1, opts.scenes.length);
     await rm(scene.png, { force: true }).catch(() => undefined);
     await rm(scene.audio, { force: true }).catch(() => undefined);
   }
 
   const film = path.join(opts.dir, "film.mp4");
-  if (clips.length === 1) {
-    const result = await run(bin, ["-y", "-i", clips[0], "-c", "copy", "-movflags", "+faststart", "film.mp4"], opts.dir);
-    if (result.code !== 0) throw new Error(`Saving the film failed. ${result.stderr.slice(-400)}`.trim());
-  } else {
-    const list = clips.map((name) => `file '${name}'`).join("\n");
-    await writeFile(path.join(opts.dir, "concat.txt"), `${list}\n`);
-    const result = await run(
-      bin,
-      ["-y", "-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "-movflags", "+faststart", "film.mp4"],
-      opts.dir,
-    );
-    if (result.code !== 0) throw new Error(`Joining scenes failed. ${result.stderr.slice(-400)}`.trim());
-  }
-  for (const name of clips) await rm(path.join(opts.dir, name), { force: true }).catch(() => undefined);
+  await joinClips(opts.dir, clips);
+  for (const clip of clips) await rm(path.join(opts.dir, clip.name), { force: true }).catch(() => undefined);
   return film;
 }

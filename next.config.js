@@ -17,6 +17,10 @@ const nextConfig = {
         './node_modules/@resvg/resvg-js/**/*',
         './assets/fonts/**/*',
       ],
+      '/api/thumbnails/render': [
+        './node_modules/@resvg/resvg-js/**/*',
+        './assets/fonts/**/*',
+      ],
     },
   },
 };

@@ -88,11 +88,23 @@ export function parseVisual(visual: string, title: string): ParsedVisual {
   return { kind: "big-text", headline };
 }
 
-export function fontFiles(): { regular: string; bold: string } {
+export function fontFiles(): { regular: string; bold: string; black: string; data: string; dataBold: string } {
   const dir = path.join(process.cwd(), "assets", "fonts");
   return {
-    regular: path.join(dir, "DejaVuSans.ttf"),
-    bold: path.join(dir, "DejaVuSans-Bold.ttf"),
+    regular: path.join(dir, "Inter-Regular.ttf"),
+    bold: path.join(dir, "Inter-Bold.ttf"),
+    black: path.join(dir, "Inter-Black.ttf"),
+    data: path.join(dir, "IBMPlexSans-Regular.otf"),
+    dataBold: path.join(dir, "IBMPlexSans-Bold.otf"),
+  };
+}
+
+export function resvgFontConfig(): { fontFiles: string[]; loadSystemFonts: false; defaultFontFamily: string } {
+  const fonts = fontFiles();
+  return {
+    fontFiles: [fonts.regular, fonts.bold, fonts.black, fonts.data, fonts.dataBold],
+    loadSystemFonts: false,
+    defaultFontFamily: "Inter",
   };
 }
 
@@ -100,7 +112,7 @@ function textBlock(lines: string[], x: number, y: number, size: number, fill: st
   const tspans = lines
     .map((line, index) => `<tspan x="${x}" y="${y + index * Math.round(size * 1.18)}">${xml(line)}</tspan>`)
     .join("");
-  return `<text font-family="DejaVu Sans" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${tspans}</text>`;
+  return `<text font-family="Inter" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${tspans}</text>`;
 }
 
 function frame(width: number, height: number, channel: string, index: number, total: number, inner: string, credit = ""): string {
@@ -257,14 +269,9 @@ export function sceneSvg(
 
 export function renderScenePng(svg: string, aspect: Aspect): Buffer {
   const { width } = frameSize(aspect);
-  const fonts = fontFiles();
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: width },
-    font: {
-      fontFiles: [fonts.regular, fonts.bold],
-      loadSystemFonts: false,
-      defaultFontFamily: "DejaVu Sans",
-    },
+    font: resvgFontConfig(),
   });
   return Buffer.from(resvg.render().asPng());
 }
