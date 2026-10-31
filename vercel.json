@@ -1,3 +1,7 @@
 {
+  "fluid": true,
+  "functions": {
+    "app/api/produce/route.ts": { "maxDuration": 800 }
+  },
   "git": { "deploymentEnabled": { "autopilot-state": false } }
 }

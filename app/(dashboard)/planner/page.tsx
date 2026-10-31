@@ -221,7 +221,7 @@ function PieceCard({
       {piece.hook ? (
         <p className="text-xs text-dark-500 mt-1 line-clamp-2">"{piece.hook}"</p>
       ) : null}
-      <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-3 gap-2">
         <div className="flex gap-1">
           {platforms.slice(0, 4).map((p) => {
             const plat = PLATFORMS[p as PlatformId];
@@ -234,12 +234,15 @@ function PieceCard({
             );
           })}
         </div>
-        {piece.scheduledAt ? (
-          <span className="text-[10px] text-dark-500 flex items-center gap-1">
-            <CalIcon size={10} />
-            {formatDate(piece.scheduledAt)}
-          </span>
-        ) : null}
+        <span className="text-[10px] text-dark-500 flex items-center gap-2">
+          {piece.videoUrl ? <span className="text-brand-300">Video ready</span> : piece.videoStatus === "producing" ? <span>Rendering</span> : null}
+          {piece.scheduledAt ? (
+            <span className="flex items-center gap-1">
+              <CalIcon size={10} />
+              {formatDate(piece.scheduledAt)}
+            </span>
+          ) : null}
+        </span>
       </div>
       <div
         className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-dark-700/30"
@@ -411,6 +414,19 @@ function PieceDrawer({
               className="cai-input min-h-[80px]"
             />
           </Field>
+
+          {piece.videoUrl || piece.videoStatus ? (
+            <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5 space-y-3">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Finished video</h3>
+              {piece.videoUrl ? (
+                <video src={piece.videoUrl} controls playsInline className="w-full rounded-xl bg-black" />
+              ) : (
+                <p className="text-sm text-dark-400">
+                  {piece.videoStatus === "failed" ? "The last render failed. Produce the video again from Studio." : "A render is in progress in Studio."}
+                </p>
+              )}
+            </div>
+          ) : null}
 
           {body ? (
             <div className="rounded-2xl bg-dark-900/40 border border-dark-800/60 p-5">
