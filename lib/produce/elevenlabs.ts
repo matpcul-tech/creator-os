@@ -3,6 +3,7 @@
 
 import { writeFile } from "fs/promises";
 import type { Alignment } from "@/lib/produce/captions";
+import { speechText } from "@/lib/produce/text";
 import type { VoiceSettings } from "@/lib/produce/types";
 
 const ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
@@ -67,6 +68,7 @@ async function errorDetail(res: Response): Promise<string> {
 }
 
 async function postSpeech(apiKey: string, voice: VoiceSettings, text: string, outputFormat: boolean): Promise<Response> {
+  text = speechText(text);
   const query = outputFormat ? "?output_format=mp3_44100_128" : "";
   return fetch(`${ENDPOINT}/${encodeURIComponent(voice.voiceId)}/with-timestamps${query}`, {
     method: "POST",

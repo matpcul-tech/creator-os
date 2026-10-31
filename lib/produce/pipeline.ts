@@ -10,13 +10,15 @@ import os from "os";
 import path from "path";
 import { put } from "@vercel/blob";
 import { getDeadline } from "@vercel/functions";
-import { cuesFromAlignment } from "@/lib/produce/captions";
+import { cuesFromAlignment, wordsFromAlignment, type CaptionCue } from "@/lib/produce/captions";
+import { beatsFromVisual, isDescriptive, windowsForBeats } from "@/lib/produce/describe";
+import { drawBeatPng, drawBeatSvg } from "@/lib/produce/draw";
 import { ElevenLabsAuthError, mapPool, voiceScene } from "@/lib/produce/elevenlabs";
-import { encodeFilm, mediaDuration } from "@/lib/produce/ffmpeg";
+import { encodeFilm, mediaDuration, sliceAudio } from "@/lib/produce/ffmpeg";
 import { channelName, failContent, finishContent, patchJob, readJob } from "@/lib/produce/jobs";
 import { stockPlate } from "@/lib/produce/stock";
 import { parseVisual, renderScenePng, sceneSvg } from "@/lib/produce/visuals";
-import type { ProduceInput } from "@/lib/produce/types";
+import { SOVEREIGN_PALETTE, type ProduceInput } from "@/lib/produce/types";
 import { writeFile } from "fs/promises";
 
 function assertTime(): void {
@@ -64,30 +66,68 @@ export async function runProduceJob(jobId: string): Promise<void> {
 
     assertTime();
     await patchJob(jobId, { status: "drawing", progress: 42, message: "Drawing scene 1" });
-    const channel = await channelName();
-    const drawn: { png: string; audio: string; cues: ReturnType<typeof cuesFromAlignment>; planned: number }[] = [];
+    const channel = input.channel || (await channelName());
+    const palette = input.palette || SOVEREIGN_PALETTE;
+    const drawn: { png: string; audio: string; cues: CaptionCue[]; planned: number }[] = [];
+    const generic: string[] = [];
     for (let index = 0; index < input.scenes.length; index++) {
       const scene = input.scenes[index];
       const spoken = audio.find((item) => item.index === index);
       if (!spoken) throw new Error(`Scene ${index + 1} has no audio.`);
-      const parsed = parseVisual(scene.visual, scene.title);
-      const plate = parsed.kind === "stock" ? await stockPlate(parsed.query) : null;
-      const svg = sceneSvg(scene, input.aspect, index, total, channel, plate);
-      const png = path.join(dir, `visual-${String(index + 1).padStart(3, "0")}.png`);
-      await writeFile(png, renderScenePng(svg, input.aspect));
       const duration = await mediaDuration(spoken.file, dir);
-      drawn.push({
-        png,
-        audio: spoken.file,
-        cues: cuesFromAlignment(spoken.alignment, duration),
-        planned: scene.duration,
-      });
+      const described = Boolean(input.palette) || isDescriptive(scene.visual);
+      if (!described) {
+        const parsed = parseVisual(scene.visual, scene.title);
+        const plate = parsed.kind === "stock" ? await stockPlate(parsed.query) : null;
+        const svg = sceneSvg(scene, input.aspect, index, total, channel, plate);
+        const png = path.join(dir, `visual-${String(index + 1).padStart(3, "0")}.png`);
+        await writeFile(png, renderScenePng(svg, input.aspect));
+        drawn.push({
+          png,
+          audio: spoken.file,
+          cues: cuesFromAlignment(spoken.alignment, duration),
+          planned: scene.duration,
+        });
+      } else {
+        const beats = beatsFromVisual(scene.visual, scene.title);
+        const words = wordsFromAlignment(spoken.alignment);
+        const windows = windowsForBeats(words, beats.length, duration);
+        const fullCues = cuesFromAlignment(spoken.alignment, duration);
+        for (let beatIndex = 0; beatIndex < beats.length; beatIndex++) {
+          const beat = beats[beatIndex];
+          if (beat.kind === "generic") generic.push(`${scene.title}: ${beat.body.slice(0, 80)}`);
+          const window = windows[beatIndex] || { start: 0, end: duration };
+          const length = Math.max(0.45, window.end - window.start);
+          const slice = path.join(dir, `audio-${String(index + 1).padStart(2, "0")}-${beatIndex}.wav`);
+          const png = path.join(dir, `visual-${String(index + 1).padStart(2, "0")}-${beatIndex}.png`);
+          await sliceAudio(spoken.file, slice, window.start, length, dir);
+          const svg = drawBeatSvg({
+            beat,
+            aspect: input.aspect,
+            palette,
+            channel,
+            sceneIndex: index,
+            sceneTotal: total,
+          });
+          await writeFile(png, drawBeatPng(svg, input.aspect));
+          const cues = fullCues
+            .filter((cue) => cue.end > window.start && cue.start < window.end)
+            .map((cue) => ({
+              text: cue.text,
+              start: Math.max(0, cue.start - window.start),
+              end: Math.min(length, cue.end - window.start),
+            }))
+            .filter((cue) => cue.end - cue.start > 0.05);
+          drawn.push({ png, audio: slice, cues, planned: 0 });
+        }
+      }
       await patchJob(jobId, {
         status: "drawing",
         progress: 42 + Math.round(((index + 1) / total) * 20),
         message: `Drawing scene ${index + 1} of ${total}`,
       });
     }
+    if (generic.length) console.info("produce generic visuals", generic.join(" || "));
 
     assertTime();
     await patchJob(jobId, { status: "encoding", progress: 64, message: `Encoding scene 1 of ${total}` });
@@ -120,7 +160,7 @@ export async function runProduceJob(jobId: string): Promise<void> {
     await patchJob(jobId, {
       status: "completed",
       progress: 100,
-      message: "Ready",
+      message: generic.length ? `Ready. Generic cards: ${generic.map((item) => item.split(":")[0]).join(", ")}` : "Ready",
       videoUrl: blob.url,
       error: "",
       blocker: "",

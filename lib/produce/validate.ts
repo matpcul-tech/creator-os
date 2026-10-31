@@ -2,7 +2,7 @@
 
 import { cardsFromScript, estimateDuration } from "@/lib/produce/cards";
 import { plain } from "@/lib/produce/text";
-import { DEFAULT_VOICE, type Aspect, type ProduceInput, type SceneCard, type VoiceSettings } from "@/lib/produce/types";
+import { DEFAULT_VOICE, type Aspect, type ChannelPalette, type ProduceInput, type SceneCard, type VoiceSettings } from "@/lib/produce/types";
 
 const MAX_SCENES = 200;
 const MAX_TOTAL_CHARS = 24000;
@@ -53,7 +53,7 @@ function sceneFrom(raw: unknown, index: number): SceneCard {
   if (!narration) throw new Error(`Scene ${index + 1} needs narration.`);
   if (narration.length > 1800) throw new Error(`Scene ${index + 1} narration is too long.`);
   if (title.length > 120) throw new Error(`Scene ${index + 1} title is too long.`);
-  if (visual.length > 400) throw new Error(`Scene ${index + 1} visual is too long.`);
+  if (visual.length > 6000) throw new Error(`Scene ${index + 1} visual is too long.`);
   const duration = num(body.duration, estimateDuration(narration), 0, 180, `Scene ${index + 1} duration`);
   return {
     title: title || narration.split(/\s+/).slice(0, 6).join(" "),
@@ -95,11 +95,30 @@ export function parseProduceBody(raw: unknown): ProduceBody {
   if (total > MAX_TOTAL_CHARS) {
     throw new Error("That script is too long for one render. Split it into two films.");
   }
+  const channel = plain(typeof body.channel === "string" ? body.channel : "").slice(0, 28);
+  const palette = paletteFrom(body.palette);
   let contentId: number | null = null;
   if (body.contentId !== undefined && body.contentId !== null && body.contentId !== "") {
     const id = Number(body.contentId);
     if (!Number.isInteger(id) || id < 1) throw new Error("contentId must be a planner item id.");
     contentId = id;
   }
-  return { title, aspect, voice, scenes, contentId };
+  return { title, aspect, voice, scenes, contentId, ...(channel ? { channel } : {}), ...(palette ? { palette } : {}) };
+}
+
+function paletteFrom(raw: unknown): ChannelPalette | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const body = raw as Record<string, unknown>;
+  const hex = (key: string) => {
+    const value = typeof body[key] === "string" ? body[key].trim() : "";
+    if (!/^#[0-9A-Fa-f]{6}$/.test(value)) throw new Error(`palette.${key} must be a 6 digit hex color.`);
+    return value;
+  };
+  return {
+    navy: hex("navy"),
+    bone: hex("bone"),
+    amber: hex("amber"),
+    teal: hex("teal"),
+    slate: hex("slate"),
+  };
 }

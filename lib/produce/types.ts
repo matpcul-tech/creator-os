@@ -20,11 +20,29 @@ export type VoiceSettings = {
   speed: number;
 };
 
+export type ChannelPalette = {
+  navy: string;
+  bone: string;
+  amber: string;
+  teal: string;
+  slate: string;
+};
+
+export const SOVEREIGN_PALETTE: ChannelPalette = {
+  navy: "#0B1F33",
+  bone: "#F4F1EA",
+  amber: "#F2A900",
+  teal: "#1FA39A",
+  slate: "#5B6B7A",
+};
+
 export type ProduceInput = {
   title: string;
   aspect: Aspect;
   voice: VoiceSettings;
   scenes: SceneCard[];
+  channel?: string;
+  palette?: ChannelPalette;
 };
 
 export const DEFAULT_VOICE: Omit<VoiceSettings, "voiceId"> = {

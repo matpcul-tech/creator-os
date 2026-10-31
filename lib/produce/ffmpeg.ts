@@ -33,6 +33,15 @@ function run(bin: string, args: string[], cwd: string): Promise<{ code: number; 
   });
 }
 
+export async function sliceAudio(src: string, dest: string, start: number, length: number, cwd: string): Promise<void> {
+  const result = await run(
+    ffmpegBin(),
+    ["-y", "-i", src, "-ss", Math.max(0, start).toFixed(3), "-t", Math.max(0.35, length).toFixed(3), "-c:a", "pcm_s16le", dest],
+    cwd,
+  );
+  if (result.code !== 0) throw new Error(`Could not split scene audio. ${result.stderr.slice(-300)}`.trim());
+}
+
 export async function mediaDuration(file: string, cwd: string): Promise<number> {
   const { stderr } = await run(ffmpegBin(), ["-hide_banner", "-i", file, "-f", "null", "-"], cwd);
   const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
