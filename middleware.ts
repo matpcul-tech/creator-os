@@ -14,6 +14,15 @@ export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   if (isPublic(pathname)) return NextResponse.next();
 
+  // Bots call /api/produce with Authorization: Bearer. The route checks the
+  // token. A bad token still gets 401 from the route, not a session redirect.
+  if (
+    (pathname === "/api/produce" || pathname.startsWith("/api/produce/")) &&
+    /^Bearer\s+\S+/.test(req.headers.get("authorization") || "")
+  ) {
+    return NextResponse.next();
+  }
+
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const ok = await verifySession(token).catch(() => false);
   if (ok) return NextResponse.next();

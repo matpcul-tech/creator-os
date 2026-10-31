@@ -177,6 +177,26 @@ model Thumbnail {
   @@index([contentId])
 }
 
+// One faceless render. The finished MP4 url is also copied onto ContentPiece
+// so Planner and Calendar keep using the same item.
+model VideoJob {
+  id         String   @id
+  contentId  Int?
+  status     String   @default("queued") // queued | voicing | drawing | encoding | uploading | completed | failed
+  progress   Int      @default(0)
+  message    String   @default("")
+  error      String   @default("")
+  blocker    String   @default("") // elevenlabs_auth when the voice key is rejected
+  videoUrl   String   @default("")
+  aspect     String   @default("9:16")
+  title      String   @default("")
+  input      String   @default("{}") // scenes, voice settings, title, aspect
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([contentId])
+}
+
 // OAuth tokens for publishing connectors (YouTube first). Tokens are stored
 // encrypted with AES-256-GCM (see lib/crypto-box.ts). One row per provider.
 model OAuthToken {

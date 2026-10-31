@@ -8,7 +8,16 @@ const nextConfig = {
     // When webpack bundles ws, its optional bufferutil hook is replaced with a
     // stub and every send throws "mask is not a function", so the neural voice
     // never answers and Studio waits 20 seconds per request.
-    serverComponentsExternalPackages: ['ws'],
+    // ffmpeg-static and resvg ship native binaries. Leave them external so the
+    // file trace picks up the binary next to the package instead of a webpack stub.
+    serverComponentsExternalPackages: ['ws', 'ffmpeg-static', '@resvg/resvg-js'],
+    outputFileTracingIncludes: {
+      '/api/produce': [
+        './node_modules/ffmpeg-static/**/*',
+        './node_modules/@resvg/resvg-js/**/*',
+        './assets/fonts/**/*',
+      ],
+    },
   },
 };
 
