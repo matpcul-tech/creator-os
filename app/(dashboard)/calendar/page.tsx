@@ -18,6 +18,7 @@ type Piece = {
   platforms: string;
   scheduledAt: string | null;
   publishedAt: string | null;
+  videoUrl?: string;
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -178,6 +179,7 @@ export default function CalendarPage() {
                           className={`block px-2 py-1 rounded text-[10px] font-medium border ${color} hover:scale-[1.02] transition-transform`}
                         >
                           <div className="line-clamp-1">{p.title}</div>
+                          {p.videoUrl ? <div className="opacity-80">Video ready</div> : null}
                           <div className="flex gap-0.5 opacity-70 mt-0.5">
                             {plats.slice(0, 3).map((pl) => {
                               const Icon = PLATFORMS[pl as PlatformId]?.icon;
@@ -228,12 +230,19 @@ export default function CalendarPage() {
                     })}
                   </p>
                 </div>
-                <Link
-                  href={`/planner?id=${p.id}`}
-                  className="text-xs text-brand-400 hover:text-brand-300"
-                >
-                  Open →
-                </Link>
+                <span className="flex items-center gap-3">
+                  {p.videoUrl ? (
+                    <a href={p.videoUrl} className="text-xs text-brand-400 hover:text-brand-300">
+                      Video
+                    </a>
+                  ) : null}
+                  <Link
+                    href={`/planner?id=${p.id}`}
+                    className="text-xs text-brand-400 hover:text-brand-300"
+                  >
+                    Open
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>
