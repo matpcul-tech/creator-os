@@ -1,6 +1,16 @@
 // Shared text cleanup. On screen copy and captions stay free of dash characters
 // that the studio already rejects in scripts.
 
+// Spoken text only. Dashes become a pause, arrows become the word "to".
+export function speechText(text: string): string {
+  return text
+    .replace(/[→➡➔➜⇒]/g, " to ")
+    .replace(/[\u2012\u2013\u2014\u2015]/g, ", ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+,/g, ",")
+    .trim();
+}
+
 export function plain(text: string): string {
   return text
     .replace(/[\u2012\u2013\u2014\u2015]/g, ", ")

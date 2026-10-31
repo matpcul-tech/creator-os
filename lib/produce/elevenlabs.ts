@@ -3,6 +3,7 @@
 
 import { writeFile } from "fs/promises";
 import type { Alignment } from "@/lib/produce/captions";
+import { speechText } from "@/lib/produce/text";
 import type { VoiceSettings } from "@/lib/produce/types";
 
 const ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
@@ -10,9 +11,11 @@ const MODEL = "eleven_multilingual_v2";
 
 export class ElevenLabsAuthError extends Error {
   readonly blocker = "elevenlabs_auth" as const;
-  constructor() {
+  constructor(detail = "") {
     super(
-      "ElevenLabs rejected the API key (401). Video production is blocked until ELEVENLABS_API_KEY is valid for this deployment.",
+      detail
+        ? `ElevenLabs rejected the API key (401). ${detail}`
+        : "ElevenLabs rejected the API key (401). Video production is blocked until ELEVENLABS_API_KEY is valid for this deployment.",
     );
     this.name = "ElevenLabsAuthError";
   }
@@ -64,31 +67,44 @@ async function errorDetail(res: Response): Promise<string> {
   return "";
 }
 
+async function postSpeech(apiKey: string, voice: VoiceSettings, text: string, outputFormat: boolean): Promise<Response> {
+  text = speechText(text);
+  const query = outputFormat ? "?output_format=mp3_44100_128" : "";
+  return fetch(`${ENDPOINT}/${encodeURIComponent(voice.voiceId)}/with-timestamps${query}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: MODEL,
+      voice_settings: {
+        stability: voice.stability,
+        similarity_boost: voice.similarity_boost,
+        style: voice.style,
+        use_speaker_boost: voice.use_speaker_boost,
+        speed: voice.speed,
+      },
+    }),
+    signal: AbortSignal.timeout(90_000),
+  });
+}
+
 export async function voiceScene(text: string, voice: VoiceSettings, file: string): Promise<Alignment> {
   const apiKey = key();
   let lastError = "ElevenLabs voice request failed.";
   for (let attempt = 0; attempt < 4; attempt++) {
-    const res = await fetch(`${ENDPOINT}/${encodeURIComponent(voice.voiceId)}/with-timestamps?output_format=mp3_44100_128`, {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: MODEL,
-        voice_settings: {
-          stability: voice.stability,
-          similarity_boost: voice.similarity_boost,
-          style: voice.style,
-          use_speaker_boost: voice.use_speaker_boost,
-          speed: voice.speed,
-        },
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-    if (res.status === 401) throw new ElevenLabsAuthError();
+    let res = await postSpeech(apiKey, voice, text, true);
+    if (res.status === 401) {
+      const detail = await errorDetail(res);
+      res = await postSpeech(apiKey, voice, text, false);
+      if (res.status === 401) {
+        const again = await errorDetail(res);
+        throw new ElevenLabsAuthError(again || detail);
+      }
+    }
     if (res.status === 429 || res.status >= 500) {
       const waitSec = Number(res.headers.get("retry-after")) || 2 * (attempt + 1);
       lastError = `ElevenLabs voice request failed (${res.status}).`;
