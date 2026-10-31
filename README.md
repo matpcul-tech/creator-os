@@ -13,6 +13,7 @@ The creator's operating system. Plan, write, schedule, and grow — all powered 
 | **Calendar** | Monthly calendar view of every scheduled + published piece, color-coded by platform |
 | **Studio** | Streaming AI script writer: pick a title + platform, Claude streams the script live. One-click adapt to other platforms (write once, post everywhere). Save to planner. |
 | **Avatar video (HeyGen)** | Render any script as a talking-head video of your cloned digital twin + voice. Available from Studio (right after the script is written) and from any piece in the Planner. |
+| **Produce Video** | Turns Studio scene cards into a finished MP4 with voice, pictures, and burned in captions. Saves the file on the planner item. See `docs/produce.md`. |
 | **Brand DNA** | Paste samples → Claude extracts traits (with strength bars), keywords, do-not-use phrases, voice description. All persisted and used in every future generation. |
 | **Analytics** | Manual snapshot entry across platforms. Aggregate view + per-platform cards + history table. |
 | **Monetization** | Sponsor pipeline (7-stage), revenue ledger, monthly total, per-source breakdown. |
