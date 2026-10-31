@@ -40,7 +40,10 @@ export function ThumbnailMaker({
   const [format, setFormat] = useState<ThumbFormat>("youtube");
   const [layout, setLayout] = useState<ThumbLayout>("bottom");
   const [paletteList, setPaletteList] = useState<ThumbPalette[]>(palettes());
-  const [paletteId, setPaletteId] = useState("yellow");
+  const [paletteId, setPaletteId] = useState("sovereign");
+  const previewBlob = useRef<Blob | null>(null);
+  const previewToken = useRef(0);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [text, setText] = useState(() => title.split(/\s+/).slice(0, 5).join(" "));
   const [anchor, setAnchor] = useState(layoutAnchor("bottom", "youtube"));
   const [scale, setScale] = useState(1);
@@ -69,7 +72,6 @@ export function ThumbnailMaker({
       .then((b) => {
         const list = palettes(b);
         setPaletteList(list);
-        if (list[0]?.id === "brand") setPaletteId("brand");
       })
       .catch(() => {});
   }, []);
@@ -85,6 +87,50 @@ export function ThumbnailMaker({
     redraw();
   }, [redraw]);
 
+  const channelCard = palette?.id === "sovereign" && !image;
+
+  useEffect(() => {
+    const faces = [
+      new FontFace("Inter", "url(/fonts/Inter-Regular.ttf)", { weight: "400" }),
+      new FontFace("Inter", "url(/fonts/Inter-Bold.ttf)", { weight: "700" }),
+      new FontFace("Inter", "url(/fonts/Inter-Black.ttf)", { weight: "900" }),
+    ];
+    for (const face of faces) {
+      void face.load().then((loaded) => document.fonts.add(loaded)).catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!channelCard) return;
+    previewBlob.current = null;
+    const token = ++previewToken.current;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      void fetch("/api/thumbnails/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim() || title, format, scale }),
+        signal: ctrl.signal,
+      })
+        .then(async (res) => {
+          if (!res.ok || token !== previewToken.current) return;
+          const blob = await res.blob();
+          if (token !== previewToken.current) return;
+          previewBlob.current = blob;
+          const url = URL.createObjectURL(blob);
+          setPreviewUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return url;
+          });
+        })
+        .catch(() => undefined);
+    }, 160);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [channelCard, text, title, format, scale]);
+
   function pickLayout(next: ThumbLayout) {
     setLayout(next);
     setAnchor(layoutAnchor(next, format));
@@ -94,22 +140,25 @@ export function ThumbnailMaker({
     setAnchor(layoutAnchor(layout, next));
   }
 
+  function localSrc(src: string): string {
+    if (src.startsWith("blob:") || src.startsWith("data:") || src.startsWith("/")) return src;
+    return `/api/thumbnails/proxy?url=${encodeURIComponent(src)}`;
+  }
+
   function loadImage(src: string) {
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => setImage(img);
     img.onerror = () => setNote("That photo didn't load. Try another or upload your own.");
-    img.src = src;
+    img.src = localSrc(src);
   }
 
   // Resolves once the photo has loaded, or with null if it failed.
   function fetchImage(src: string): Promise<HTMLImageElement | null> {
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
-      img.src = src;
+      img.src = localSrc(src);
     });
   }
 
@@ -221,29 +270,70 @@ export function ThumbnailMaker({
     }
   }
 
-  function download() {
+  function saveBlob(blob: Blob) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${slug(text || title)}-${THUMB_SIZES[format].w}x${THUMB_SIZES[format].h}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  async function exportBlob(): Promise<Blob | null> {
+    if (channelCard && previewBlob.current) return previewBlob.current;
+    if (channelCard) {
+      const res = await fetch("/api/thumbnails/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim() || title, format, scale }),
+      });
+      if (!res.ok) return null;
+      return res.blob();
+    }
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${slug(text || title)}-${THUMB_SIZES[format].w}x${THUMB_SIZES[format].h}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    }, "image/png");
+    if (!canvas) return null;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((value) => resolve(value), "image/png"));
+    if (!blob) {
+      setNote("This photo blocked the download. Remove it, or upload your own image.");
+    }
+    return blob;
+  }
+
+  async function download() {
+    setNote("");
+    try {
+      const blob = await exportBlob();
+      if (!blob) {
+        setNote((prev) => prev || "Couldn't export the thumbnail.");
+        return;
+      }
+      saveBlob(blob);
+    } catch {
+      setNote("Couldn't export the thumbnail.");
+    }
   }
 
   async function attach() {
     const canvas = canvasRef.current;
-    if (!canvas || !contentId) return;
+    if (!contentId) return;
+    if (!channelCard && !canvas) return;
     setBusy("attach");
     setNote("");
     try {
+      const blob = await exportBlob();
+      if (!blob) {
+        setNote((prev) => prev || "Couldn't attach the thumbnail.");
+        return;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("read"));
+        reader.readAsDataURL(blob);
+      });
       const res = await fetch("/api/thumbnails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentId, format, text, dataUrl: canvas.toDataURL("image/jpeg", 0.88) }),
+        body: JSON.stringify({ contentId, format, text, dataUrl }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -277,18 +367,22 @@ export function ThumbnailMaker({
     <div className="grid lg:grid-cols-[1fr_320px] gap-6">
       <div className="min-w-0">
         <div className={`mx-auto ${format === "vertical" ? "max-w-[300px]" : ""}`}>
-          <canvas
-            ref={canvasRef}
-            aria-label="Thumbnail preview. Drag to move the text."
-            className="w-full h-auto rounded-xl border border-dark-700/50 touch-none cursor-move bg-dark-900"
-            onPointerDown={(e) => {
-              dragging.current = true;
-              e.currentTarget.setPointerCapture(e.pointerId);
-              moveTo(e);
-            }}
-            onPointerMove={(e) => dragging.current && moveTo(e)}
-            onPointerUp={() => (dragging.current = false)}
-          />
+          {channelCard && previewUrl ? (
+            <img src={previewUrl} alt="Thumbnail preview" className="w-full h-auto rounded-xl border border-dark-700/50 bg-dark-900" />
+          ) : (
+            <canvas
+              ref={canvasRef}
+              aria-label="Thumbnail preview. Drag to move the text."
+              className="w-full h-auto rounded-xl border border-dark-700/50 touch-none cursor-move bg-dark-900"
+              onPointerDown={(e) => {
+                dragging.current = true;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                moveTo(e);
+              }}
+              onPointerMove={(e) => dragging.current && moveTo(e)}
+              onPointerUp={() => (dragging.current = false)}
+            />
+          )}
         </div>
         {photoCredit ? (
           <p className="mt-2 text-center text-xs text-dark-400">
@@ -300,7 +394,9 @@ export function ThumbnailMaker({
             )}
           </p>
         ) : null}
-        <p className="mt-1 text-center text-xs text-dark-500">Drag on the preview to move the text.</p>
+        <p className="mt-1 text-center text-xs text-dark-500">
+          {channelCard ? "Channel card: large type on the left, one GPU on the right." : "Drag on the preview to move the text."}
+        </p>
       </div>
 
       <div className="space-y-5">

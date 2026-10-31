@@ -4,7 +4,7 @@
 import { Resvg } from "@resvg/resvg-js";
 import type { Beat } from "@/lib/produce/describe";
 import { clip, wrapLines, xml } from "@/lib/produce/text";
-import { fontFiles } from "@/lib/produce/visuals";
+import { resvgFontConfig } from "@/lib/produce/visuals";
 import { frameSize, type Aspect, type ChannelPalette } from "@/lib/produce/types";
 
 function lines(text: string, max: number, count: number): string[] {
@@ -12,8 +12,21 @@ function lines(text: string, max: number, count: number): string[] {
   return wrapped.length ? wrapped : [clip(text, max)];
 }
 
-function text(value: string, x: number, y: number, size: number, fill: string, anchor: "start" | "middle" | "end", weight = 700): string {
-  return `<text x="${x}" y="${y}" font-family="DejaVu Sans" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${xml(value)}</text>`;
+function text(
+  value: string,
+  x: number,
+  y: number,
+  size: number,
+  fill: string,
+  anchor: "start" | "middle" | "end",
+  weight = 700,
+  family = "Inter",
+): string {
+  return `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${xml(value)}</text>`;
+}
+
+function data(value: string, x: number, y: number, size: number, fill: string, anchor: "start" | "middle" | "end", weight = 400): string {
+  return text(value, x, y, size, fill, anchor, weight, "IBM Plex Sans");
 }
 
 function block(rows: string[], x: number, y: number, size: number, fill: string, anchor: "start" | "middle" | "end", weight = 700): string {
@@ -30,7 +43,7 @@ function frame(width: number, height: number, palette: ChannelPalette, channel: 
   ${inner}
 </svg>`;
   }
-  const sourceY = height - (width < height ? 250 : 48);
+  const sourceY = 98;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="${width}" height="${height}" fill="${palette.navy}"/>
@@ -38,7 +51,7 @@ function frame(width: number, height: number, palette: ChannelPalette, channel: 
   ${text(clip(channel || "Sovereign", 22).toUpperCase(), 56, 64, 22, palette.teal, "start")}
   ${text(`${String(index + 1).padStart(2, "0")}  /  ${String(total).padStart(2, "0")}`, width - 56, 64, 22, palette.slate, "end", 400)}
   ${inner}
-  ${source ? text(`SOURCE: ${clip(source, width < height ? 42 : 78)}`, width - 56, sourceY, 16, palette.slate, "end", 400) : ""}
+  ${source ? data(`SOURCE: ${clip(source, width < height ? 32 : 42)}`, 56, sourceY, 16, palette.slate, "start") : ""}
 </svg>`;
 }
 
@@ -238,17 +251,94 @@ function ledger(width: number, height: number, palette: ChannelPalette): string 
   return parts.join("");
 }
 
-function compare(width: number, height: number, palette: ChannelPalette): string {
-  const rented = ["YOU", "PROVIDER", "PROVIDER'S LENDERS", "GPU"];
-  const owned = ["YOU", "GPU"];
+function pathColumn(
+  x: number,
+  y: number,
+  w: number,
+  labels: string[],
+  palette: ChannelPalette,
+  arrow: string,
+  accentIndex: number,
+  accentLabel: string,
+): string {
+  const boxH = 88;
+  const gap = 36;
+  const parts: string[] = [];
+  labels.forEach((label, index) => {
+    const top = y + index * (boxH + gap);
+    const accent = index === accentIndex;
+    parts.push(`<rect x="${x}" y="${top}" width="${w}" height="${boxH}" rx="14" fill="${palette.navy}" stroke="${accent ? palette.amber : palette.bone}" stroke-width="3"/>`);
+    parts.push(text(label, x + w / 2, top + (accent ? 38 : 54), accent ? 22 : 24, palette.bone, "middle"));
+    if (accent && accentLabel) parts.push(data(accentLabel, x + w / 2, top + 68, 18, palette.amber, "middle", 700));
+    if (index < labels.length - 1) {
+      const mid = x + w / 2;
+      parts.push(`<path d="M ${mid} ${top + boxH + 6} v ${gap - 12}" stroke="${arrow}" stroke-width="4"/>`);
+    }
+  });
+  return parts.join("");
+}
+
+function compare(width: number, height: number, palette: ChannelPalette, providerState = 0): string {
+  const states = ["ACQUIRED", "RESTRUCTURED", "DEFAULT"];
+  const state = states[Math.min(2, Math.max(0, providerState))];
+  const vertical = width < height;
+  const colW = vertical ? 470 : 760;
+  const leftX = vertical ? 48 : 80;
+  const rightX = width - colW - leftX;
+  const top = vertical ? 190 : 176;
+  const boxH = 88;
+  const gap = 36;
+  const ownedTop = top + boxH + gap;
+  const boundaryH = boxH + gap + boxH + 150;
   return [
-    text("RENTED", width * 0.25, 140, 24, palette.amber, "middle"),
-    text("OWNED", width * 0.75, 140, 24, palette.teal, "middle"),
-    boxes(Math.round(width / 2), height, rented, palette, true).replace(/x="/g, 'x="0" ').length ? "" : "",
-    text("ACQUIRED / RESTRUCTURED / DEFAULT", width * 0.25, Math.round(height * 0.78), 16, palette.amber, "middle", 400),
-    text("Encryption keys, access control, audit logs", width * 0.75, Math.round(height * 0.62), 18, palette.teal, "middle", 400),
-    boxes(width, height, ["YOU", "PROVIDER", "LENDERS"], palette, false),
+    text("RENTED", leftX + colW / 2, top - 28, 26, palette.amber, "middle"),
+    text("OWNED", rightX + colW / 2, top - 28, 26, palette.teal, "middle"),
+    pathColumn(leftX, top, colW, ["YOU", "PROVIDER", "PROVIDER'S LENDERS", "GPU"], palette, palette.amber, 1, state),
+    `<rect x="${rightX - 8}" y="${ownedTop - 16}" width="${colW + 16}" height="${boundaryH}" rx="22" fill="none" stroke="${palette.teal}" stroke-width="3"/>`,
+    pathColumn(rightX, ownedTop, colW, ["YOU", "GPU"], palette, palette.teal, -1, ""),
+    data("Encryption keys", rightX + 36, ownedTop + boxH + gap + boxH + 36, 22, palette.teal, "start", 700),
+    data("Access control", rightX + 36, ownedTop + boxH + gap + boxH + 72, 22, palette.teal, "start", 700),
+    data("Audit logs", rightX + 36, ownedTop + boxH + gap + boxH + 108, 22, palette.teal, "start", 700),
+    data("Inside your boundary", rightX + colW / 2, ownedTop + boundaryH + 28, 16, palette.slate, "middle"),
   ].join("");
+}
+
+function youChain(width: number, height: number, palette: ChannelPalette): string {
+  const vertical = width < height;
+  const labels = ["LENDERS", "NEOCLOUD", "BIG CUSTOMERS"];
+  const gap = vertical ? 24 : 40;
+  const boxW = Math.floor((width - (vertical ? 72 : 140) - gap * 2) / 3);
+  const boxH = vertical ? 96 : 118;
+  const y = vertical ? 210 : 196;
+  const x0 = vertical ? 36 : 70;
+  const parts: string[] = [text("Where you sit on the chain", width / 2, vertical ? 168 : 156, vertical ? 28 : 32, palette.bone, "middle")];
+  labels.forEach((label, index) => {
+    const x = x0 + index * (boxW + gap);
+    parts.push(`<rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" rx="16" fill="none" stroke="${palette.bone}" stroke-width="3"/>`);
+    parts.push(text(label, x + boxW / 2, y + boxH / 2 + 8, vertical ? 18 : 24, palette.bone, "middle"));
+    if (index < labels.length - 1) {
+      parts.push(`<path d="M ${x + boxW + 4} ${y + boxH / 2} h ${gap - 10}" stroke="${palette.amber}" stroke-width="4"/>`);
+    }
+  });
+  const customersX = x0 + 2 * (boxW + gap) + boxW / 2;
+  const youW = Math.min(vertical ? 460 : 520, boxW + 80);
+  const youH = vertical ? 108 : 116;
+  const youX = Math.max(36, Math.min(customersX - youW / 2, width - youW - 36));
+  const youY = y + boxH + (vertical ? 120 : 100);
+  parts.push(`<path d="M ${customersX} ${y + boxH} V ${youY}" fill="none" stroke="${palette.slate}" stroke-width="3"/>`);
+  parts.push(data("service agreement", customersX - 16, y + boxH + 36, vertical ? 16 : 18, palette.slate, "end"));
+  parts.push(`<rect x="${youX}" y="${youY}" width="${youW}" height="${youH}" rx="16" fill="none" stroke="${palette.teal}" stroke-width="3"/>`);
+  parts.push(text("YOU", youX + youW / 2, youY + 46, 30, palette.bone, "middle"));
+  parts.push(data("mid-size customer", youX + youW / 2, youY + 80, 18, palette.slate, "middle"));
+  const itemW = Math.min(420, Math.max(240, youX - (vertical ? 56 : 90)));
+  const itemX = youX - itemW - (vertical ? 20 : 36);
+  const items = ["model", "fine-tuned weights", "data"];
+  const itemH = 48 + items.length * 42;
+  parts.push(`<rect x="${itemX}" y="${youY}" width="${itemW}" height="${itemH}" rx="16" fill="none" stroke="${palette.bone}" stroke-width="2"/>`);
+  items.forEach((item, index) => {
+    parts.push(text(item, itemX + 24, youY + 44 + index * 42, vertical ? 20 : 22, palette.bone, "start", 400));
+  });
+  return parts.join("");
 }
 
 function innerFor(beat: Beat, width: number, height: number, palette: ChannelPalette): { markup: string; bare: boolean } {
@@ -298,13 +388,18 @@ function innerFor(beat: Beat, width: number, height: number, palette: ChannelPal
     return { bare: false, markup: quoteCard(width, height, quote, attribution, palette, beat.kind === "quote") };
   }
   if (beat.kind === "list") {
-    return {
-      bare: false,
-      markup: quoted.slice(0, 4).map((item, index) => text(clip(item, vertical ? 40 : 70), 80, 220 + index * 90, 28, palette.bone, "start")).join(""),
-    };
+    const reveal = beat.reveal ?? quoted.length;
+    const items = quoted.slice(0, 3);
+    const parts = [text("Before the next renewal", vertical ? 72 : 90, vertical ? 200 : 170, vertical ? 32 : 36, palette.bone, "start")];
+    items.forEach((item, index) => {
+      if (index + 1 > reveal) return;
+      const y = (vertical ? 320 : 280) + index * (vertical ? 150 : 120);
+      parts.push(text(clip(item, vertical ? 32 : 64), vertical ? 72 : 90, y, vertical ? 30 : 32, index + 1 === reveal ? palette.amber : palette.bone, "start"));
+    });
+    return { bare: false, markup: parts.join("") };
   }
   if (beat.kind === "ledger") return { bare: false, markup: ledger(width, height, palette) };
-  if (beat.kind === "compare") return { bare: false, markup: compare(width, height, palette) };
+  if (beat.kind === "compare") return { bare: false, markup: compare(width, height, palette, beat.providerState ?? 0) };
   if (beat.kind === "steps") {
     return {
       bare: false,
@@ -337,6 +432,9 @@ function innerFor(beat: Beat, width: number, height: number, palette: ChannelPal
       ].join(""),
     };
   }
+  if (beat.kind === "chain" && /service agreement|mid-size customer/i.test(beat.body)) {
+    return { bare: false, markup: youChain(width, height, palette) };
+  }
   if (beat.kind === "chain" || beat.kind === "flow") {
     const short = quoted.filter((item) => item !== beat.title);
     const labels = short.filter((item) => item.length < 42).slice(0, 3);
@@ -365,14 +463,9 @@ export function drawBeatSvg(opts: {
 
 export function drawBeatPng(svg: string, aspect: Aspect): Buffer {
   const { width } = frameSize(aspect);
-  const fonts = fontFiles();
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: width },
-    font: {
-      fontFiles: [fonts.regular, fonts.bold],
-      loadSystemFonts: false,
-      defaultFontFamily: "DejaVu Sans",
-    },
+    font: resvgFontConfig(),
   });
   return Buffer.from(resvg.render().asPng());
 }

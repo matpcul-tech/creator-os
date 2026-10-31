@@ -30,6 +30,10 @@ export type Beat = {
   quotes: string[];
   body: string;
   source: string;
+  /** Checklist lines visible so far. 0 is the title only. */
+  reveal?: number;
+  /** 0 acquired, 1 restructured, 2 default. The rented provider box cycles these. */
+  providerState?: number;
 };
 
 export function quotesOf(text: string): string[] {
@@ -150,4 +154,103 @@ export function windowsForBeats(words: CaptionCue[], beatCount: number, duration
     start,
     end: index + 1 < starts.length ? starts[index + 1] : total,
   }));
+}
+
+export type BeatStage = {
+  beat: Beat;
+  start: number;
+  end: number;
+};
+
+function wordAt(words: CaptionCue[], pattern: RegExp, from = 0): CaptionCue | undefined {
+  return words.find((word) => word.start >= from - 0.02 && pattern.test(word.text));
+}
+
+function finishStages(stages: BeatStage[], total: number): BeatStage[] {
+  const out: BeatStage[] = [];
+  for (const stage of stages) {
+    const start = out.length ? Math.max(stage.start, out[out.length - 1].end) : Math.max(0, stage.start);
+    if (start >= total - 0.2) break;
+    const end = Math.min(total, Math.max(start + 0.35, stage.end));
+    out.push({ ...stage, beat: stage.beat, start, end });
+  }
+  if (out.length) out[out.length - 1].end = total;
+  return out.length ? out : [{ beat: stages[0]?.beat ?? { kind: "generic", title: "", quotes: [], body: "", source: "" }, start: 0, end: total }];
+}
+
+/**
+ * Lines a scene's beats up with the words. The checklist opens on "lien",
+ * "debt", and "keys" instead of three equal slices of the whole scene.
+ */
+export function stagesForScene(beats: Beat[], words: CaptionCue[], duration: number): BeatStage[] {
+  const total = Math.max(duration, 0.4);
+  if (!beats.length) return [{ beat: { kind: "generic", title: "", quotes: [], body: "", source: "" }, start: 0, end: total }];
+  const listIndex = beats.findIndex((beat) => beat.kind === "list");
+  if (listIndex >= 0) {
+    const lien = wordAt(words, /\bliens?\b/i);
+    const debt = wordAt(words, /\bdebts?\b/i, lien ? lien.end : 0);
+    const keys = wordAt(words, /\bkeys?\b/i, debt ? debt.end : 0);
+    if (lien && debt && keys && lien.start < debt.start && debt.start < keys.start && keys.start < total - 0.4) {
+      const site = words.find((word) => word.start >= keys.end - 0.05 && /sovereign/i.test(word.text));
+      const urlAt = Math.min(total - 0.45, Math.max(keys.end + 0.2, site?.start ?? keys.end + 0.8));
+      const stages: BeatStage[] = [];
+      const before = beats.slice(0, listIndex);
+      if (before.length && lien.start > 0.5) {
+        const leadWords = words
+          .filter((word) => word.start < lien.start)
+          .map((word) => ({ ...word, start: word.start, end: word.end }));
+        const lead = windowsForBeats(leadWords, before.length, lien.start);
+        before.forEach((beat, index) => stages.push({ beat, start: lead[index].start, end: lead[index].end }));
+      } else if (lien.start > 0.45) {
+        stages.push({ beat: { ...beats[listIndex], reveal: 0 }, start: 0, end: lien.start });
+      }
+      const list = beats[listIndex];
+      const cuts = [Math.max(stages.length ? stages[stages.length - 1].end : 0, lien.start), debt.start, keys.start, urlAt];
+      [1, 2, 3].forEach((reveal, index) => {
+        stages.push({ beat: { ...list, reveal }, start: cuts[index], end: cuts[index + 1] });
+      });
+      const after = beats.slice(listIndex + 1);
+      if (after.length) {
+        const restDuration = Math.max(0.45, total - urlAt);
+        const restWords = words
+          .filter((word) => word.start >= urlAt)
+          .map((word) => ({ ...word, start: word.start - urlAt, end: word.end - urlAt }));
+        const rest = windowsForBeats(restWords, after.length, restDuration);
+        after.forEach((beat, index) => {
+          stages.push({ beat, start: urlAt + rest[index].start, end: urlAt + rest[index].end });
+        });
+      }
+      return finishStages(stages, total);
+    }
+  }
+
+  const base = windowsForBeats(words, beats.length, total);
+  const stages: BeatStage[] = [];
+  beats.forEach((beat, index) => {
+    const window = base[index] || { start: 0, end: total };
+    if (beat.kind === "list") {
+      const span = Math.max(0.45, window.end - window.start);
+      for (let reveal = 1; reveal <= 3; reveal++) {
+        stages.push({
+          beat: { ...beat, reveal },
+          start: window.start + ((reveal - 1) * span) / 3,
+          end: window.start + (reveal * span) / 3,
+        });
+      }
+      return;
+    }
+    if (beat.kind === "compare" && /acquired|restructured|default/i.test(beat.body)) {
+      const span = Math.max(0.45, window.end - window.start);
+      [0, 1, 2].forEach((providerState) => {
+        stages.push({
+          beat: { ...beat, providerState },
+          start: window.start + (providerState * span) / 3,
+          end: window.start + ((providerState + 1) * span) / 3,
+        });
+      });
+      return;
+    }
+    stages.push({ beat, start: window.start, end: window.end });
+  });
+  return finishStages(stages, total);
 }
