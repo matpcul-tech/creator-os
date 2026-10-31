@@ -4,6 +4,7 @@ import { scriptPrompt } from "@/lib/prompts";
 import type { PlatformId } from "@/lib/platforms";
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
+// Long scripts can take a while to stream, and may auto-continue. Pro plan allows this.
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
   const title: string = body.title ?? "";
   const platform: PlatformId = body.platform ?? "youtube";
   const context: string | undefined = body.context;
+  // Text already written, when the user presses Continue after a stream stopped.
   const partial: string | undefined = typeof body.partial === "string" ? body.partial.slice(0, 40000) : undefined;
 
   if (!title) {
@@ -22,17 +24,14 @@ export async function POST(req: Request) {
     });
   }
 
-  const hardRules =
-    "Hard rules: The first 20 seconds must state a concrete fact or question. One clear takeaway only. No pure recap. No em dashes. No en dashes. Use a period instead. One short sentence per line.";
+  // Hard rule: context must include performance feedback when available
+  // (injected by analytics feedback layer). Also enforce no em/en dashes in prompt.
+  const enforcedContext = [context, "No em dashes. No en dashes. Opening must state a concrete fact or question. End with one clear takeaway."].filter(Boolean).join("\n\n");
 
   let stream: ReadableStream<Uint8Array>;
   try {
     stream = await streamCompletion({
-      user: scriptPrompt({
-        title,
-        platform,
-        context: `${context ?? ""}\n\n${hardRules}\n\n${thinTitleNote(title) ?? ""}`.trim(),
-      }),
+      user: scriptPrompt({ title, platform, context: thinTitleNote(title, enforcedContext) }),
       feature: "script",
       noThinking: true,
       maxTokens: 8000,
@@ -52,8 +51,11 @@ export async function POST(req: Request) {
   });
 }
 
-function thinTitleNote(title: string): string | undefined {
+// Short titles make the model drift. Pin it to the literal topic.
+function thinTitleNote(title: string, context?: string): string | undefined {
   const words = title.trim().split(/\s+/).filter(Boolean).length;
-  if (words >= 3) return undefined;
-  return "The title is very short. Stay strictly on the literal topic of the title. Do not switch to a different or broader subject.";
+  if (words >= 3) return context;
+  const note =
+    "The title is very short. Stay strictly on the literal topic of the title. Do not switch to a different or broader subject.";
+  return context ? `${context}\n\n${note}` : note;
 }
