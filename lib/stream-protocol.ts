@@ -34,13 +34,19 @@ export const CONTINUE_NUDGE =
   "Do not restart, do not summarize, and do not add any note about continuing.";
 
 /** The conversation for a continuation: the original ask, what was written, and a nudge. */
-export function continuationMessages(user: string, soFar: string): { role: "user" | "assistant"; content: string }[] {
+export function continuationMessages(
+  user: string,
+  soFar: string,
+  extra?: string,
+): { role: "user" | "assistant"; content: string }[] {
   const written = soFar.trimEnd();
   if (!written) return [{ role: "user", content: user }];
+  const note = extra?.trim();
+  const nudge = note ? `${CONTINUE_NUDGE}\n\n${note}` : CONTINUE_NUDGE;
   return [
     { role: "user", content: user },
     { role: "assistant", content: written },
-    { role: "user", content: CONTINUE_NUDGE },
+    { role: "user", content: nudge },
   ];
 }
 

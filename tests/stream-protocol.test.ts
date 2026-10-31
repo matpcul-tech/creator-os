@@ -40,6 +40,14 @@ test("auto continue only on max_tokens and only a few rounds", () => {
   assert.equal(shouldContinue(null, 0), false);
 });
 
+test("an extra continuation note is appended after the nudge", () => {
+  const msgs = continuationMessages("Write a script", "Line one.", "Add an explicit takeaway line.");
+  assert.equal(msgs.length, 3);
+  assert.match(msgs[2].content, /Continue the script/);
+  assert.match(msgs[2].content, /Add an explicit takeaway line/);
+  assert.doesNotMatch(msgs[2].content, /[\u2012\u2013\u2014\u2015]/);
+});
+
 test("continuation sends the ask, the text so far, and a nudge", () => {
   const msgs = continuationMessages("Write a script", "Line one.\n\n");
   assert.equal(msgs.length, 3);

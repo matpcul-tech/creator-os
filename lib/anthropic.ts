@@ -44,6 +44,8 @@ type CallOpts = {
   noThinking?: boolean;
   // Streaming only: text already written, to pick up where an earlier stream stopped.
   partial?: string;
+  // Streaming only: extra instruction appended when continuing a partial draft.
+  continuationNote?: string;
   // complete() only: a short system prompt instead of the creator profile (skips a DB read),
   // and a hard time limit with no retries for calls that have a fallback.
   system?: string;
@@ -187,7 +189,7 @@ export async function streamCompletion(opts: CallOpts): Promise<ReadableStream<U
       let round = 0;
       try {
         while (true) {
-          const messages = continuationMessages(opts.user, written);
+          const messages = continuationMessages(opts.user, written, opts.continuationNote);
           const continuing = messages.length > 1;
           let piece = "";
           let sentUpTo = 0;
