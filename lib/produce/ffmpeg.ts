@@ -64,11 +64,30 @@ async function ensureFonts(dir: string): Promise<void> {
   await copyFile(fonts.dataBold, path.join(dest, "IBMPlexSans-Bold.otf"));
 }
 
-async function joinClips(dir: string, clips: { name: string; length: number }[]): Promise<void> {
+async function copyJoin(dir: string, clips: { name: string }[]): Promise<void> {
   const bin = ffmpegBin();
   if (clips.length === 1) {
     const result = await run(bin, ["-y", "-i", clips[0].name, "-c", "copy", "-movflags", "+faststart", "film.mp4"], dir);
     if (result.code !== 0) throw new Error(`Saving the film failed. ${result.stderr.slice(-400)}`.trim());
+    return;
+  }
+  const list = clips.map((clip) => `file '${clip.name}'`).join("\n");
+  await writeFile(path.join(dir, "concat.txt"), `${list}\n`);
+  const result = await run(
+    bin,
+    ["-y", "-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "-movflags", "+faststart", "film.mp4"],
+    dir,
+  );
+  if (result.code !== 0) throw new Error(`Joining scenes failed. ${result.stderr.slice(-400)}`.trim());
+}
+
+async function joinClips(dir: string, clips: { name: string; length: number }[]): Promise<void> {
+  const bin = ffmpegBin();
+  // A full crossfade re-encodes the whole film. That fits a short. A 10 minute
+  // cut with dozens of clips does not finish inside the function limit, so those
+  // films are joined by copy. Each of those clips already fades at the edges.
+  if (clips.length === 1 || clips.length > 12) {
+    await copyJoin(dir, clips);
     return;
   }
   const shortest = Math.min(...clips.map((clip) => clip.length));
@@ -145,6 +164,10 @@ export async function encodeFilm(opts: {
     const length = Math.max(audioLen, scene.planned ?? 0, 0.35);
     await writeFile(path.join(opts.dir, assName), buildAss(scene.cues, opts.aspect));
     const len = seconds(length);
+    const edge =
+      opts.scenes.length > 12
+        ? `,fade=t=in:st=0:d=0.12,fade=t=out:st=${Math.max(0, Number(len) - 0.12).toFixed(3)}:d=0.12`
+        : "";
     const result = await run(
       bin,
       [
@@ -158,7 +181,7 @@ export async function encodeFilm(opts: {
         "-i",
         scene.audio,
         "-filter_complex",
-        `[0:v]scale=${zoomW}:${zoomH},crop=${width}:${height}:x='(in_w-out_w)*min(1\\,0.2+0.6*t/${len})':y='(in_h-out_h)*min(1\\,0.35+0.25*t/${len})',fps=30,subtitles=${assName}:fontsdir=fonts,setsar=1[v];[1:a]apad,atrim=0:${len},asetpts=PTS-STARTPTS[a]`,
+        `[0:v]scale=${zoomW}:${zoomH},crop=${width}:${height}:x='(in_w-out_w)*min(1\\,0.2+0.6*t/${len})':y='(in_h-out_h)*min(1\\,0.35+0.25*t/${len})',fps=30,subtitles=${assName}:fontsdir=fonts,setsar=1${edge}[v];[1:a]apad,atrim=0:${len},asetpts=PTS-STARTPTS[a]`,
         "-map",
         "[v]",
         "-map",
