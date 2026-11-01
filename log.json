@@ -627,5 +627,37 @@
     "status": "posted",
     "videoId": "v1eNf01Npbw",
     "url": "https://youtube.com/shorts/v1eNf01Npbw"
+  },
+  {
+    "date": "2026-11-01",
+    "ts": "2026-11-01T14:42:47-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "borrowed-heartbeat",
+    "angle": "quote",
+    "style": "cinematic",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "Elias fell in love with Lumen, not Maren. Is that fair to Maren?",
+    "a": "Fair to him",
+    "b": "Unfair to Maren",
+    "footage": [
+      "cover_borrowed_heartbeat.jpg"
+    ],
+    "hook": "Elias fell for the implant. Is that fair?",
+    "title": "Hot take: He fell for the implant, not her. Agree?",
+    "script": "Elias fell in love with Lumen, not Maren. Is that fair to Maren? Borrowed Heartbeat is a sci-fi romance novel by Matthew Culwell. Lumen, the AI implant, learned Maren completely, her memories, her laugh, her voice. Then Elias admitted he fell in love with Lumen. Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited. A: Fair to him. B: Unfair to Maren. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 2 retries",
+    "ai_cost_usd": 0.0539,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.5,
+    "file": "RSA_autopilot_2026-11-01_borrowed-heartbeat.mp4",
+    "status": "posted",
+    "videoId": "Ocp_bmnHcjk",
+    "url": "https://youtube.com/shorts/Ocp_bmnHcjk"
   }
 ]

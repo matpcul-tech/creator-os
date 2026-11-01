@@ -110,5 +110,13 @@
     "a": "Fight through",
     "b": "Find another way",
     "videoId": "v1eNf01Npbw"
+  },
+  {
+    "date": "2026-11-01",
+    "item": "borrowed-heartbeat",
+    "question": "Elias fell in love with Lumen, not Maren. Is that fair to Maren?",
+    "a": "Fair to him",
+    "b": "Unfair to Maren",
+    "videoId": "Ocp_bmnHcjk"
   }
 ]
