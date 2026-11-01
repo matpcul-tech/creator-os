@@ -8,6 +8,7 @@ import {
   TAKEAWAY_RULE,
   continuationRuleNote,
   injectPreviousResult,
+  metricPayload,
   openingText,
   previousResultLine,
   readOptionalFinite,
@@ -139,6 +140,15 @@ test("analytics feedback fills only the metrics that were sent", () => {
   assert.equal(injectPreviousResult("Write it."), "Write it.");
   assert.match(injectPreviousResult("Write it.", 2), /Previous result: last video CTR was 2%\./);
   assert.doesNotMatch(previousResultLine(2, 3) ?? "", DASHES);
+});
+
+test("empty CTR and retention inputs are omitted from the script request", () => {
+  assert.deepEqual(metricPayload("", ""), {});
+  assert.deepEqual(metricPayload("  ", "\n"), {});
+  assert.deepEqual(metricPayload("4.5", ""), { lastCtr: 4.5 });
+  assert.deepEqual(metricPayload("", "31"), { lastRetention: 31 });
+  assert.deepEqual(metricPayload("0", "0"), { lastCtr: 0, lastRetention: 0 });
+  assert.deepEqual(metricPayload("nope", "12"), { lastRetention: 12 });
 });
 
 test("lastCtr and lastRetention must be finite numbers when present", () => {

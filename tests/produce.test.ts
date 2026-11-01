@@ -9,6 +9,7 @@ import { cardsFromScript } from "../lib/produce/cards";
 import { buildAss, cuesFromAlignment, type Alignment } from "../lib/produce/captions";
 import { encodeFilm, ffmpegBin } from "../lib/produce/ffmpeg";
 import { parseProduceBody } from "../lib/produce/validate";
+import { FALLBACK_VOICE_ID, lockedVoiceId } from "../lib/produce/voice-id";
 import { parseVisual, renderScenePng, sceneSvg } from "../lib/produce/visuals";
 
 const alignment: Alignment = {
@@ -29,6 +30,13 @@ test("scene cards keep every spoken line and pick a visual", () => {
   assert.match(cards.map((card) => card.narration).join(" "), /watch what happens/);
   assert.ok(cards.every((card) => card.visual && card.duration >= 2));
   assert.equal(cards.some((card) => card.visual.startsWith("bar:")), true);
+});
+
+test("locked voice uses the env id, or the premade fallback", () => {
+  assert.equal(lockedVoiceId("21m00Tcm4TlvDq8ikWAM"), "21m00Tcm4TlvDq8ikWAM");
+  assert.equal(lockedVoiceId(""), FALLBACK_VOICE_ID);
+  assert.equal(lockedVoiceId("short"), FALLBACK_VOICE_ID);
+  assert.equal(FALLBACK_VOICE_ID, "EXAVITQu4vr4xnSDxMaL");
 });
 
 test("produce body accepts a locked voice and scene cards", () => {

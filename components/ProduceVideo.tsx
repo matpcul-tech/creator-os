@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Film, Loader2 } from "lucide-react";
 import { cardsFromScript } from "@/lib/produce/cards";
+import { FALLBACK_VOICE_ID } from "@/lib/produce/voice-id";
 import { DEFAULT_VOICE, type Aspect, type JobView, type SceneCard, type VoiceSettings } from "@/lib/produce/types";
 
 type Props = {
@@ -10,11 +11,12 @@ type Props = {
   title: string;
   contentId: number | null;
   onContent: (id: number) => void;
+  blocked?: boolean;
 };
 
-const emptyVoice: VoiceSettings = { voiceId: "", ...DEFAULT_VOICE };
+const emptyVoice: VoiceSettings = { voiceId: FALLBACK_VOICE_ID, ...DEFAULT_VOICE };
 
-export function ProduceVideo({ script, title, contentId, onContent }: Props) {
+export function ProduceVideo({ script, title, contentId, onContent, blocked = false }: Props) {
   const [cards, setCards] = useState<SceneCard[]>(() => cardsFromScript(script, title));
   const [voice, setVoice] = useState<VoiceSettings>(emptyVoice);
   const [aspect, setAspect] = useState<Aspect>("9:16");
@@ -27,6 +29,21 @@ export function ProduceVideo({ script, title, contentId, onContent }: Props) {
   useEffect(() => {
     setCards(cardsFromScript(script, title));
   }, [script, title]);
+
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/produce/voice")
+      .then((res) => res.json())
+      .then((body: { voiceId?: string }) => {
+        const voiceId = typeof body.voiceId === "string" ? body.voiceId.trim() : "";
+        if (cancel || !/^[A-Za-z0-9]{10,40}$/.test(voiceId)) return;
+        setVoice((current) => (current.voiceId === FALLBACK_VOICE_ID ? { ...current, voiceId } : current));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!job || job.status === "completed" || job.status === "failed") return;
@@ -120,6 +137,7 @@ export function ProduceVideo({ script, title, contentId, onContent }: Props) {
             placeholder="ElevenLabs voice ID"
             className="cai-input mt-1"
           />
+          <span className="mt-1 block text-[11px] text-dark-500">Filled from this deployment so a render can start. Change it for another voice.</span>
         </label>
         <Num label="Stability" value={voice.stability} min={0} max={1} step={0.05} onChange={(stability) => setVoice({ ...voice, stability })} />
         <Num label="Similarity" value={voice.similarity_boost} min={0} max={1} step={0.05} onChange={(similarity_boost) => setVoice({ ...voice, similarity_boost })} />
@@ -160,7 +178,7 @@ export function ProduceVideo({ script, title, contentId, onContent }: Props) {
       <button
         type="button"
         onClick={produce}
-        disabled={busy || !voice.voiceId.trim() || cards.length === 0}
+        disabled={busy || blocked || !voice.voiceId.trim() || cards.length === 0}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-blue-600 text-white text-sm font-semibold disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Film size={14} />}

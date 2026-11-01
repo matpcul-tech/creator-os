@@ -50,7 +50,16 @@ async function searchWikimedia(query: string, offset: number): Promise<Found[]> 
   const url =
     `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=${WIKI_PER_QUERY}&gsroffset=${offset}&${COMMONS_IMAGEINFO}&iiurlwidth=960&gsrsearch=` +
     encodeURIComponent(`${query} filemime:image/jpeg`);
-  const response = await fetch(url, { headers: { "User-Agent": WIKI_UA, "Api-User-Agent": WIKI_UA } });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { "User-Agent": WIKI_UA, "Api-User-Agent": WIKI_UA },
+      signal: AbortSignal.timeout(6000),
+    });
+  } catch {
+    console.warn("clip search timed out", query);
+    return [];
+  }
   if (!response.ok) {
     console.warn("clip search", response.status, query);
     return [];
@@ -268,9 +277,15 @@ export async function pickPhotos(opts: {
   const usePexels = Boolean(pexelsKey());
   const usePixabay = Boolean(pixabayKey());
   const results = new Map<string, Found[]>();
+  // One short script is a single batch. If a stock host stalls, return what we have
+  // before the platform kills the function and the browser waits forever.
+  const startedAt = Date.now();
+  const SEARCH_BUDGET_MS = 12000;
+  const outOfTime = () => Date.now() - startedAt > SEARCH_BUDGET_MS;
   const fetchPage = async (page: number, only: string[] = queries) => {
     const lists = await runLimited(
       only.map((q) => async () => {
+        if (outOfTime()) return [];
         const qi = queries.indexOf(q);
         let items: Found[] = [];
         if (usePexels && qi < MAX_PEXELS_QUERIES) {
@@ -324,6 +339,7 @@ export async function pickPhotos(opts: {
   const extra = Math.max(0, opts.extra ?? 0);
   let result = { picks: [] as (StockPhoto | null)[], fresh: [] as StockPhoto[], unique: 0 };
   for (let page = 0; page < 3; page++) {
+    if (outOfTime()) break;
     // Later pages only search for scenes still without a photo, plus the topic for spares.
     const missing = result.picks.length
       ? [...new Set([...topicQueries, ...sq.scenes.flatMap((list, i) => (result.picks[i] ? [] : list))])].filter((q) => queries.includes(q))

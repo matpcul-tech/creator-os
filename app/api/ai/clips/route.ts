@@ -33,28 +33,41 @@ export async function POST(req: Request) {
   const extra = typeof body?.extra === "number" ? Math.max(0, Math.min(40, Math.floor(body.extra))) : 0;
   // Queries from an earlier call for the same script skip the AI step.
   const queries = sanitizeQueries(body?.queries, lines);
-  const { picks, pool, queries: used, querySource } = await pickPhotos({
-    lines,
-    topic,
-    exclude,
-    offset,
-    extra,
-    queries,
-    context,
-    // One small call for the whole script. It counts against the daily cap, and
-    // any failure (cap reached, no key, bad answer) falls back to keyword queries.
-    ask: (prompt, maxTokens) =>
-      complete({
-        user: prompt,
-        system: "You write short, concrete stock photo search queries. Answer with JSON only.",
-        tier: "fast",
-        noThinking: true,
-        maxTokens,
-        feature: "photo-queries",
-        timeoutMs: 7500,
-        maxRetries: 0,
-      }),
-  });
+  let picks: Awaited<ReturnType<typeof pickPhotos>>["picks"];
+  let pool: Awaited<ReturnType<typeof pickPhotos>>["pool"];
+  let used: Awaited<ReturnType<typeof pickPhotos>>["queries"];
+  let querySource: string;
+  try {
+    const found = await pickPhotos({
+      lines,
+      topic,
+      exclude,
+      offset,
+      extra,
+      queries,
+      context,
+      // One small call for the whole script. It counts against the daily cap, and
+      // any failure (cap reached, no key, bad answer) falls back to keyword queries.
+      ask: (prompt, maxTokens) =>
+        complete({
+          user: prompt,
+          system: "You write short, concrete stock photo search queries. Answer with JSON only.",
+          tier: "fast",
+          noThinking: true,
+          maxTokens,
+          feature: "photo-queries",
+          timeoutMs: 7500,
+          maxRetries: 0,
+        }),
+    });
+    picks = found.picks;
+    pool = found.pool;
+    used = found.queries;
+    querySource = found.querySource;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Photo search failed.";
+    return Response.json({ error: message, clips: [], items: [], pool: [] }, { status: 500 });
+  }
   const view = (p: (typeof pool)[number]) => ({
     src: p.src,
     url: p.url,

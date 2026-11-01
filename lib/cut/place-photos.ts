@@ -7,6 +7,14 @@
 import { inBatches, PhotoLedger } from "./fill";
 
 export type PlaceItem = { src: string; url: string; key?: string };
+
+// The photo route failed or timed out. Callers stop instead of sending another batch.
+export class PhotoSearchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PhotoSearchError";
+  }
+}
 export type PlaceQueries = { scenes: string[][]; topic: string[] };
 export type PlaceResponse<I extends PlaceItem> = { items?: (I | null)[]; pool?: I[]; queries?: PlaceQueries };
 
@@ -37,7 +45,7 @@ export async function placePhotos<I extends PlaceItem>(opts: {
   retryDelayMs?: number;
   concurrency?: number;
   batchSize?: number;
-}): Promise<{ picks: (I | null)[]; used: string[]; rounds: number; requests: number; queries?: PlaceQueries }> {
+}): Promise<{ picks: (I | null)[]; used: string[]; rounds: number; requests: number; queries?: PlaceQueries; error?: string }> {
   const ledger = new PhotoLedger(opts.exclude ?? []);
   const picks: (I | null)[] = opts.lines.map(() => null);
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -77,9 +85,20 @@ export async function placePhotos<I extends PlaceItem>(opts: {
     });
   };
 
-  const ask = (body: Record<string, unknown>) => {
+  const ask = async (body: Record<string, unknown>): Promise<PlaceResponse<I>> => {
     requests += 1;
-    return opts.fetchItems(body).catch(() => ({}) as PlaceResponse<I>);
+    try {
+      return await opts.fetchItems(body);
+    } catch (error) {
+      // A dead request must not start another one. A normal miss still falls through.
+      if (error instanceof PhotoSearchError) throw error;
+      return {};
+    }
+  };
+
+  const finish = (error?: string) => {
+    const queries = sceneQueries.every(Boolean) ? { scenes: sceneQueries as string[][], topic: topicQueries } : undefined;
+    return { picks, used: ledger.list(), rounds, requests, queries, ...(error ? { error } : {}) };
   };
 
   for (let from = 0; from < opts.lines.length; from += size) {
@@ -88,14 +107,20 @@ export async function placePhotos<I extends PlaceItem>(opts: {
     const lines = indexes.map((i) => opts.lines[i]);
     const context = opts.lines.slice(Math.max(0, from - CONTEXT_LINES), from);
     const given = indexes.every((i) => sceneQueries[i]) ? { scenes: indexes.map((i) => sceneQueries[i]!), topic: topicQueries } : undefined;
-    const first = await ask({
-      lines,
-      topic: opts.topic,
-      context,
-      exclude: ledger.list().slice(-EXCLUDE_MAX),
-      extra: Math.min(40, lines.length),
-      ...(given ? { queries: given } : {}),
-    });
+    let first: PlaceResponse<I>;
+    try {
+      first = await ask({
+        lines,
+        topic: opts.topic,
+        context,
+        exclude: ledger.list().slice(-EXCLUDE_MAX),
+        extra: Math.min(40, lines.length),
+        ...(given ? { queries: given } : {}),
+      });
+    } catch (error) {
+      if (error instanceof PhotoSearchError) return finish(error.message);
+      throw error;
+    }
     if (first.queries && first.queries.scenes.length === lines.length) {
       first.queries.scenes.forEach((list, k) => (sceneQueries[indexes[k]] = list));
       if (!topicQueries.length) topicQueries = first.queries.topic;
@@ -106,19 +131,24 @@ export async function placePhotos<I extends PlaceItem>(opts: {
     if (missing.length && !opts.signal?.aborted) {
       rounds = 2;
       const queries = missing.every((i) => sceneQueries[i]) ? { scenes: missing.map((i) => sceneQueries[i]!), topic: topicQueries } : undefined;
-      const second = await ask({
-        lines: missing.map((i) => opts.lines[i]),
-        topic: opts.topic,
-        context,
-        exclude: ledger.list().slice(-EXCLUDE_MAX),
-        offset: 50,
-        extra: Math.min(40, missing.length * 2),
-        ...(queries ? { queries } : {}),
-      });
+      let second: PlaceResponse<I>;
+      try {
+        second = await ask({
+          lines: missing.map((i) => opts.lines[i]),
+          topic: opts.topic,
+          context,
+          exclude: ledger.list().slice(-EXCLUDE_MAX),
+          offset: 50,
+          extra: Math.min(40, missing.length * 2),
+          ...(queries ? { queries } : {}),
+        });
+      } catch (error) {
+        if (error instanceof PhotoSearchError) return finish(error.message);
+        throw error;
+      }
       await fill(missing, second.items ?? [], second.pool ?? [], false);
     }
     opts.onProgress?.(Math.min(opts.lines.length, from + size), opts.lines.length);
   }
-  const queries = sceneQueries.every(Boolean) ? { scenes: sceneQueries as string[][], topic: topicQueries } : undefined;
-  return { picks, used: ledger.list(), rounds, requests, queries };
+  return finish();
 }

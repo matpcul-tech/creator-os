@@ -9,7 +9,8 @@ import { overLimitNote } from "@/lib/cut/scenes";
 import { voiceTrack } from "@/lib/cut/voice-track";
 import { ASPECTS, STILLS, VOICES, aspectRatio, type Aspect, type Scene } from "@/lib/cut/types";
 import { planGaps } from "@/lib/cut/fill";
-import { placePhotos } from "@/lib/cut/place-photos";
+import { clipsRequest } from "@/lib/cut/photo-request";
+import { placePhotos, type PlaceItem } from "@/lib/cut/place-photos";
 
 // True once the photo has loaded. The engine then finds it in the browser cache.
 function loadOk(url: string): Promise<boolean> {
@@ -31,16 +32,13 @@ function loadOk(url: string): Promise<boolean> {
 // Sharpen rewrites the on-picture lines for up to 8 scenes per request.
 const SHARPEN_BATCH = 8;
 
-// One photo request. A busy server (429) is waited out once, as it asks.
-async function clipsRequest(body: Record<string, unknown>) {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (res.status === 429 && attempt === 0) {
-      await new Promise((resolve) => setTimeout(resolve, Math.min(10, Number(res.headers.get("retry-after")) || 3) * 1000));
-      continue;
-    }
-    return res.json();
-  }
+type PhotoRow = { status: "loading" | "ready" | "failed"; message: string };
+
+const BRANDED = "Using the branded background.";
+
+function missMessage(error?: string): string {
+  if (error) return `${error} ${BRANDED}`;
+  return `No matching photo. ${BRANDED}`;
 }
 
 export function FacelessCut({ script, title }: { script: string; title: string }) {
@@ -57,6 +55,10 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     return { lines: plan.lineCount, limit: overLimitNote(plan) };
   });
   const [photoNote, setPhotoNote] = useState("");
+  const [photoRows, setPhotoRows] = useState<PhotoRow[]>([]);
+  const scenesRef = useRef<Scene[]>([]);
+  const searchGen = useRef(0);
+  const retrying = useRef(new Set<number>());
   const [aspect, setAspect] = useState<Aspect>("9:16");
   const [voiceId, setVoiceId] = useState("orion");
   const [music, setMusic] = useState(true);
@@ -70,56 +72,116 @@ export function FacelessCut({ script, title }: { script: string; title: string }
     sceneIndex: 0,
   });
   const [note, setNote] = useState("No face. The script is spoken, not printed on the picture.");
+  scenesRef.current = scenes;
+
+  function settlePhotos(next: Scene[], picks: (PlaceItem | null)[], error?: string) {
+    const gaps = planGaps(picks.map(Boolean), next.map((scene) => scene.still), STILLS.map((still) => still.id));
+    const placed: Scene[] = [];
+    const rows: PhotoRow[] = [];
+    next.forEach((scene, index) => {
+      const pick = picks[index];
+      const gap = gaps[index];
+      if (pick) {
+        placed.push({ ...scene, clip: pick.url });
+        rows.push({ status: "ready", message: "" });
+      } else if (gap.kind === "still") {
+        placed.push({ ...scene, still: gap.id, clip: undefined });
+        rows.push({ status: "failed", message: missMessage(error) });
+      } else if (gap.kind === "carry") {
+        placed.push({ ...scene, still: placed[gap.from]?.still ?? scene.still, clip: placed[gap.from]?.clip });
+        rows.push({ status: "failed", message: missMessage(error) });
+      } else {
+        placed.push(scene);
+        rows.push({ status: "failed", message: missMessage(error) });
+      }
+    });
+    setScenes(placed);
+    setPhotoRows(rows);
+    const photos = picks.filter(Boolean).length;
+    if (error && photos === 0) setPhotoNote(`${error} Scenes use the branded background. Retry any scene.`);
+    else if (photos === next.length) setPhotoNote("Every scene has its own photo.");
+    else setPhotoNote(`${photos} of ${next.length} scenes have a stock photo. The rest use the branded background.`);
+    if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
+  }
+
+  async function retryScene(index: number) {
+    if (retrying.current.has(index)) return;
+    const gen = searchGen.current;
+    const narration = scenesRef.current[index]?.narration;
+    if (!narration) return;
+    retrying.current.add(index);
+    setPhotoRows((rows) => rows.map((row, i) => (i === index ? { status: "loading", message: "" } : row)));
+    try {
+      const { picks, error } = await placePhotos<PlaceItem>({
+        lines: [narration],
+        topic: title,
+        fetchItems: (body) => clipsRequest(body),
+        load: loadOk,
+        retryDelayMs: 400,
+      });
+      if (gen !== searchGen.current) return;
+      const pick = picks[0];
+      if (pick) {
+        setScenes((current) => current.map((scene, i) => (i === index ? { ...scene, clip: pick.url } : scene)));
+        setPhotoRows((rows) => rows.map((row, i) => (i === index ? { status: "ready", message: "" } : row)));
+        return;
+      }
+      setPhotoRows((rows) => rows.map((row, i) => (i === index ? { status: "failed", message: missMessage(error) } : row)));
+    } catch (error) {
+      if (gen !== searchGen.current) return;
+      const message = error instanceof Error ? error.message : "Photo search failed.";
+      setPhotoRows((rows) => rows.map((row, i) => (i === index ? { status: "failed", message: missMessage(message) } : row)));
+    } finally {
+      retrying.current.delete(index);
+    }
+  }
 
   useEffect(() => {
     const plan = directPlan(script);
     const next = plan.scenes;
+    const gen = ++searchGen.current;
     setScenes(next);
     setCoverage({ lines: plan.lineCount, limit: overLimitNote(plan) });
-    setPhotoNote(next.length > 1 ? `Finding photos (0 of ${next.length} scenes)…` : "Finding photos…");
+    setPhotoRows(next.map(() => ({ status: "loading", message: "" })));
+    setPhotoNote(next.length > 1 ? `Finding photos (0 of ${next.length} scenes)...` : "Finding photos...");
     let cancel = false;
     const stop = new AbortController();
     const found = new Map<number, string>();
     let shown = 0;
-    // Photos show up batch by batch, so a long script is watchable before every photo is in.
+    // Photos show up as each one loads. A single batch used to leave the counter at 0 until the end.
     const showFound = () => {
       if (cancel || found.size === shown) return;
       shown = found.size;
       setScenes((current) => (current.length === next.length ? current.map((scene, index) => (found.has(index) ? { ...scene, clip: found.get(index) } : scene)) : current));
+      setPhotoRows((rows) => rows.map((row, index) => (found.has(index) ? { status: "ready", message: "" } : row)));
+      if (shown < next.length) setPhotoNote(`Finding photos (${shown} of ${next.length} scenes)...`);
     };
     // Same picker as the Faceless builder. No photo repeats anywhere in the video: failed loads take
     // unused spares, then a deeper search, then each built-in still once. Long scripts go in batches.
-    const search = () => placePhotos<{ src: string; url: string; key?: string }>({
+    const search = () => placePhotos<PlaceItem>({
       lines: next.map((scene) => scene.narration),
       topic: title,
       signal: stop.signal,
-      fetchItems: (body) => clipsRequest(body),
+      fetchItems: (body) => clipsRequest(body, stop.signal),
       load: loadOk,
-      onPick: (index, item) => found.set(index, item.url),
-      onProgress: (done, total) => {
+      onPick: (index, item) => {
+        found.set(index, item.url);
+        showFound();
+      },
+      onProgress: () => {
         if (cancel) return;
         showFound();
-        if (done < total) setPhotoNote(`Finding photos (${done} of ${total} scenes)…`);
       },
     })
-      .then(({ picks }) => {
-        if (cancel) return;
-        const gaps = planGaps(picks.map(Boolean), next.map((scene) => scene.still), STILLS.map((still) => still.id));
-        const placed: Scene[] = [];
-        next.forEach((scene, index) => {
-          const pick = picks[index];
-          const gap = gaps[index];
-          if (pick) placed.push({ ...scene, clip: pick.url });
-          else if (gap.kind === "still") placed.push({ ...scene, still: gap.id, clip: undefined });
-          else if (gap.kind === "carry") placed.push({ ...scene, still: placed[gap.from]?.still ?? scene.still, clip: placed[gap.from]?.clip });
-          else placed.push(scene);
-        });
-        setScenes(placed);
-        const photos = picks.filter(Boolean).length;
-        setPhotoNote(photos === next.length ? `Every scene has its own photo.` : `${photos} of ${next.length} scenes have a stock photo. The rest use a built-in still.`);
-        if (!scoring.current && !busy.current) setNote("Clips follow the lines. The script is spoken, not printed.");
+      .then(({ picks, error }) => {
+        if (cancel || gen !== searchGen.current) return;
+        settlePhotos(next, picks, error);
       })
-      .catch(() => setPhotoNote(""));
+      .catch((error: unknown) => {
+        if (cancel || gen !== searchGen.current) return;
+        const message = error instanceof Error ? error.message : "Photo search failed.";
+        settlePhotos(next, next.map(() => null), message);
+      });
     // Typing in the draft changes the script on every key, so the search waits for a pause.
     const timer = setTimeout(() => void search(), 600);
     return () => {
@@ -128,6 +190,7 @@ export function FacelessCut({ script, title }: { script: string; title: string }
       stop.abort();
     };
     // The title only sharpens the photo search, so a title edit alone does not refetch.
+    // settlePhotos is recreated each render and only reads the latest scenes for this script.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [script]);
 
@@ -399,6 +462,35 @@ export function FacelessCut({ script, title }: { script: string; title: string }
         </div>
         <p role="status" className="text-xs text-dark-500 mt-3">{note}</p>
         {photoNote ? <p className="text-xs text-dark-500 mt-1">{photoNote}</p> : null}
+        {photoRows.length ? (
+          <ul className="mt-3 space-y-2">
+            {scenes.map((scene, index) => {
+              const row = photoRows[index];
+              return (
+                <li key={`${scene.id}-${index}`} className="flex flex-wrap items-center gap-2 text-xs text-dark-300">
+                  <span className="font-medium text-white">Scene {index + 1}</span>
+                  <span className="min-w-0 max-w-[18rem] truncate text-dark-500">{scene.narration}</span>
+                  {row?.status === "failed" ? (
+                    <>
+                      <span role="alert" className="text-amber-200">{row.message}</span>
+                      <button
+                        type="button"
+                        onClick={() => void retryScene(index)}
+                        className="px-2 py-1 rounded-lg border border-dark-700/40 text-dark-200 hover:text-white"
+                      >
+                        Retry
+                      </button>
+                    </>
+                  ) : row?.status === "ready" ? (
+                    <span className="text-emerald-300">Photo ready</span>
+                  ) : (
+                    <span>Finding photo...</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { directPlan, directScript } from "../lib/cut/direct";
 import { planCards, splitCards } from "../lib/cut/builder-cards";
 import { layoutParts, voiceBatches, voiceLimitNote, VOICE_BATCH_CHARS } from "../lib/cut/voice-plan";
 import { marksFromSpans, sceneWindows } from "../lib/cut/timeline";
-import { placePhotos, PHOTO_BATCH, type PlaceItem } from "../lib/cut/place-photos";
+import { PhotoSearchError, placePhotos, PHOTO_BATCH, type PlaceItem } from "../lib/cut/place-photos";
 import { voiceTrack } from "../lib/cut/voice-track";
 import { MAX_VOICE_CHARS } from "../lib/cut/narrate";
 
@@ -219,6 +219,41 @@ test("when today's voice limit cannot cover the script, nothing is voiced and th
   }
   assert.equal(voiceLimitNote(3, 5, 100), "");
   assert.equal(voiceLimitNote(3, null, 100), "");
+});
+
+test("a failed photo search stops after one request and keeps photos already placed", async () => {
+  let calls = 0;
+  const result = await placePhotos<PlaceItem>({
+    lines: ["Owning the card", "Renting the card"],
+    topic: "GPU",
+    fetchItems: async () => {
+      calls += 1;
+      if (calls === 1) return { items: [{ src: "a", url: "/u/a" }, null] };
+      throw new PhotoSearchError("Photo search timed out.");
+    },
+    load: async () => true,
+    retryDelayMs: 1,
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.picks[0]?.src, "a");
+  assert.equal(result.picks[1], null);
+  assert.equal(result.error, "Photo search timed out.");
+});
+
+test("the first photo request timing out does not start a second request", async () => {
+  let calls = 0;
+  const result = await placePhotos<PlaceItem>({
+    lines: ["Owning the card"],
+    topic: "GPU",
+    fetchItems: async () => {
+      calls += 1;
+      throw new PhotoSearchError("Photo search timed out.");
+    },
+    load: async () => true,
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.picks[0], null);
+  assert.equal(result.error, "Photo search timed out.");
 });
 
 test("an old photo search stops once the script changes", async () => {

@@ -1,5 +1,6 @@
 import { clientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { BudgetExceededError, assertWithinVoiceLimit, recordUsage } from "@/lib/ai-budget";
+import { lockedVoiceId } from "@/lib/produce/voice-id";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "Script and at least one scene card required" }, { status: 400 });
   }
 
-  const voiceId = body.voiceId || process.env.ELEVENLABS_VOICE_ID || "EXAVITQu4vr4xnSDxMaL";
+  const voiceId = body.voiceId || lockedVoiceId(process.env.ELEVENLABS_VOICE_ID);
   const apiKey = process.env.ELEVENLABS_API_KEY;
 
   if (!apiKey) {

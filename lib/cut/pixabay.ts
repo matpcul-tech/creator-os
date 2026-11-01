@@ -58,7 +58,14 @@ export async function searchPixabay(query: string, page: number, perPage = 30): 
   const key = pixabayKey();
   if (!key) return [];
   // The key rides in the URL, so the URL is never logged.
-  const response = await fetch(pixabayUrl(key, query, page, perPage));
+  let response: Response;
+  try {
+    // A stalled host must not hold the whole photo route open. The key stays in the URL and is not logged.
+    response = await fetch(pixabayUrl(key, query, page, perPage), { signal: AbortSignal.timeout(6000) });
+  } catch {
+    console.warn("pixabay search timed out");
+    return [];
+  }
   if (!response.ok) {
     console.warn("pixabay search", response.status, query);
     return [];

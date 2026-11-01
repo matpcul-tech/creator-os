@@ -47,7 +47,14 @@ export async function searchPexels(query: string, page: number, perPage = 20): P
   const key = pexelsKey();
   if (!key) return [];
   const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=${perPage}&page=${Math.max(1, page)}`;
-  const response = await fetch(url, { headers: { Authorization: key } });
+  let response: Response;
+  try {
+    // A stalled host must not hold the whole photo route open.
+    response = await fetch(url, { headers: { Authorization: key }, signal: AbortSignal.timeout(6000) });
+  } catch {
+    console.warn("pexels search timed out", query);
+    return [];
+  }
   if (!response.ok) {
     console.warn("pexels search", response.status, query);
     return [];

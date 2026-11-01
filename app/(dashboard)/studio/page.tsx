@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Wand2,
@@ -25,6 +25,7 @@ import { FacelessCut } from "@/components/FacelessCut";
 import { ProduceVideo } from "@/components/ProduceVideo";
 import { PictorySend } from "@/components/PictorySend";
 import { shapeScript } from "@/lib/cut/direct";
+import { metricPayload, ruleRejection, scriptRuleViolations } from "@/lib/script-rules";
 import { joinContinuation, readStream } from "@/lib/stream-protocol";
 
 type Variants = Partial<Record<PlatformId, string>>;
@@ -64,6 +65,10 @@ function StudioInner() {
   const [anglesFor, setAnglesFor] = useState("");
   const [anglesLoading, setAnglesLoading] = useState(false);
   const [angleNote, setAngleNote] = useState("");
+  const [lastCtr, setLastCtr] = useState("");
+  const [lastRetention, setLastRetention] = useState("");
+  // Set when the script route rejects a draft. Cleared once the text changes.
+  const [serverReject, setServerReject] = useState("");
 
   useEffect(() => {
     if (initialTitle) setTitle(initialTitle);
@@ -134,6 +139,7 @@ function StudioInner() {
     if (!scriptTitle || generating) return;
     setAiError("");
     setStopped("");
+    setServerReject("");
     setGenerating(true);
     if (!partial) {
       setDraft("");
@@ -152,6 +158,7 @@ function StudioInner() {
           platform,
           context: `${context}\n\nHard rule: faceless video. One short sentence per line. A blank line between lines. No em dashes, no en dashes, and no hyphens used as dashes. Use a period. No markdown, no headings, no asterisks, no captions.`,
           ...(base ? { partial: base } : {}),
+          ...metricPayload(lastCtr, lastRetention),
         }),
       });
       if (!res.ok || !res.body) {
@@ -162,6 +169,10 @@ function StudioInner() {
           if (parsed.error) msg = parsed.error;
         } catch {
           // keep the generic message
+        }
+        if (res.status === 422) {
+          setServerReject(msg);
+          return;
         }
         if (base) setStopped(msg);
         else setAiError(msg);
@@ -223,7 +234,7 @@ function StudioInner() {
   }
 
   async function saveDraft() {
-    if (!title || !draft) return;
+    if (!title || !draft || rulesFailed) return;
     const res = await fetch("/api/content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -254,6 +265,15 @@ function StudioInner() {
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
   }
+
+  const localRule = useMemo(() => {
+    if (generating || !draft.trim()) return null;
+    const violations = scriptRuleViolations(draft);
+    if (!violations.length) return { ok: true as const, message: "Hook and takeaway check passed" };
+    return { ok: false as const, message: ruleRejection(violations).error };
+  }, [draft, generating]);
+  const ruleBanner = generating ? null : serverReject ? { ok: false as const, message: serverReject } : localRule;
+  const rulesFailed = ruleBanner?.ok === false;
 
   const pCfg = PLATFORMS[platform];
 
@@ -290,6 +310,34 @@ function StudioInner() {
                 );
               })}
             </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label htmlFor="studio-last-ctr" className="text-sm font-medium text-dark-300 block">
+              Last CTR (%)
+              <input
+                id="studio-last-ctr"
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={lastCtr}
+                onChange={(e) => setLastCtr(e.target.value)}
+                placeholder="Optional"
+                className="cai-input mt-1.5"
+              />
+            </label>
+            <label htmlFor="studio-last-retention" className="text-sm font-medium text-dark-300 block">
+              30-second retention (%)
+              <input
+                id="studio-last-retention"
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={lastRetention}
+                onChange={(e) => setLastRetention(e.target.value)}
+                placeholder="Optional"
+                className="cai-input mt-1.5"
+              />
+            </label>
           </div>
           <div>
             <label htmlFor="studio-context" className="text-sm font-medium text-dark-300 mb-1 block">Context</label>
@@ -361,6 +409,12 @@ function StudioInner() {
         </div>
       ) : null}
 
+      {ruleBanner && !draft ? (
+        <div role="status" className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+          {ruleBanner.message}
+        </div>
+      ) : null}
+
       {stopped && !generating ? (
         <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100 flex flex-wrap items-center justify-between gap-3">
           <span>{stopped}</span>
@@ -383,16 +437,36 @@ function StudioInner() {
               <button onClick={() => copy(draft)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-800/40 text-dark-400 hover:text-white transition-all flex items-center gap-1">
                 {copied ? <><Check size={12} className="text-emerald-400" />Copied</> : <><Copy size={12} />Copy</>}
               </button>
-              <button onClick={saveDraft} disabled={!draft} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 hover:bg-brand-500/25 transition-all flex items-center gap-1 disabled:opacity-50">
+              <button onClick={saveDraft} disabled={!draft || generating || rulesFailed} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500/15 text-brand-400 hover:bg-brand-500/25 transition-all flex items-center gap-1 disabled:opacity-50">
                 {saved ? <><Check size={12} /> Saved</> : <><Save size={12} /> Save to planner</>}
               </button>
             </div>
           </div>
-          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className="cai-input min-h-[400px] font-mono text-sm leading-relaxed" placeholder="Your draft will stream here…" />
+          <textarea
+            value={draft}
+            onChange={(e) => {
+              setServerReject("");
+              setDraft(e.target.value);
+            }}
+            className="cai-input min-h-[400px] font-mono text-sm leading-relaxed"
+            placeholder="Your draft will stream here…"
+          />
           <div className="mt-3 text-xs text-dark-500 flex items-center gap-3">
             <span>{draft.length} chars</span>
             <span>{draft.split(/\s+/).filter(Boolean).length} words</span>
           </div>
+          {ruleBanner ? (
+            <div
+              role="status"
+              className={`mt-3 rounded-xl border p-3 text-sm ${
+                ruleBanner.ok
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                  : "border-red-500/30 bg-red-500/10 text-red-100"
+              }`}
+            >
+              {ruleBanner.message}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -464,6 +538,7 @@ function StudioInner() {
             title={title}
             contentId={savedId}
             onContent={(id) => setSavedId(id)}
+            blocked={rulesFailed}
           />
         </div>
       ) : null}

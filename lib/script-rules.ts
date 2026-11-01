@@ -85,6 +85,23 @@ export function previousResultLine(lastCtr?: number, lastRetention?: number): st
   return `Previous result: ${parts.join(" / ")}. ${RESULT_TAIL}`;
 }
 
+// Empty inputs are omitted. A half typed value is omitted too, so the route is not sent NaN.
+export function metricPayload(lastCtr: string, lastRetention: string): { lastCtr?: number; lastRetention?: number } {
+  const payload: { lastCtr?: number; lastRetention?: number } = {};
+  const ctr = readMetric(lastCtr);
+  const retention = readMetric(lastRetention);
+  if (ctr !== undefined) payload.lastCtr = ctr;
+  if (retention !== undefined) payload.lastRetention = retention;
+  return payload;
+}
+
+function readMetric(raw: string): number | undefined {
+  if (raw.trim() === "") return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  return value;
+}
+
 export function injectPreviousResult(prompt: string, lastCtr?: number, lastRetention?: number): string {
   const line = previousResultLine(lastCtr, lastRetention);
   if (!line) return prompt;

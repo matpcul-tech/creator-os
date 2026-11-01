@@ -5,6 +5,7 @@ import { Download, Image as ImageIcon, Loader2, Mic, RefreshCw } from "lucide-re
 import { fileNameFor, photoPlan, planCards, type PhotoPlan } from "@/lib/cut/builder-cards";
 import { creditFor, fitsCard } from "@/lib/cut/credit";
 import { planGaps } from "@/lib/cut/fill";
+import { clipsRequest } from "@/lib/cut/photo-request";
 import { placePhotos } from "@/lib/cut/place-photos";
 import { MAX_SCENES, overLimitNote } from "@/lib/cut/scenes";
 import { fmtTime } from "@/lib/cut/timeline";
@@ -135,18 +136,6 @@ function cover(ctx: CanvasRenderingContext2D, media: CanvasImageSource, w: numbe
   const scale = Math.max(dw / w, dh / h);
   ctx.drawImage(media, dx + (dw - w * scale) / 2, dy + (dh - h * scale) / 2, w * scale, h * scale);
 }
-// One photo request. A busy server (429) is waited out once, as it asks.
-async function clipsRequest(body: Record<string, unknown>) {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch("/api/ai/clips", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (res.status === 429 && attempt === 0) {
-      await new Promise((resolve) => setTimeout(resolve, Math.min(10, Number(res.headers.get("retry-after")) || 3) * 1000));
-      continue;
-    }
-    return res.json();
-  }
-}
-
 export function FacelessBuilder({
   script,
   title,
