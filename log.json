@@ -659,5 +659,39 @@
     "status": "posted",
     "videoId": "Ocp_bmnHcjk",
     "url": "https://youtube.com/shorts/Ocp_bmnHcjk"
+  },
+  {
+    "date": "2026-11-02",
+    "ts": "2026-11-02T17:40:16-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth-game",
+    "angle": "game",
+    "style": "gameplay",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If you escaped the simulation but could not prove it, would you go back in to check?",
+    "a": "Go back in",
+    "b": "Stay out",
+    "footage": [
+      "clips/lot_02.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_03.mp4"
+    ],
+    "hook": "Would you go back in to check?",
+    "title": "Is it worth going back in if you can't prove you escaped?",
+    "script": "If you escaped the simulation but could not prove it, would you go back in to check? Marcus thought he had escaped the simulation. Layers of Truth is a free browser game built around that world. It is free and plays in your browser. Layers of Truth, the game. Free in your browser. Link in the description. A: Go back in. B: Stay out. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0399,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.1,
+    "file": "RSA_autopilot_2026-11-02_layers-of-truth-game.mp4",
+    "status": "posted",
+    "videoId": "UcLwMlAOc50",
+    "url": "https://youtube.com/shorts/UcLwMlAOc50"
   }
 ]
