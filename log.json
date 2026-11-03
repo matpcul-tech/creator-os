@@ -693,5 +693,42 @@
     "status": "posted",
     "videoId": "UcLwMlAOc50",
     "url": "https://youtube.com/shorts/UcLwMlAOc50"
+  },
+  {
+    "date": "2026-11-03",
+    "ts": "2026-11-03T15:54:04-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "question",
+    "style": "mixed",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Comment A or B.",
+    "question": "Marcus wakes tasting copper with a pulse rifle in his hands. Is he a soldier or a victim?",
+    "a": "Soldier",
+    "b": "Victim",
+    "footage": [
+      "clips/waking_03.mp4",
+      "clips/waking_01.mp4",
+      "clips/waking_04.mp4",
+      "hive_hivecine_200.jpg",
+      "hive_hive_rise_100.jpg",
+      "hive_hivecine_560.jpg"
+    ],
+    "hook": "Pulse rifle, copper taste. Soldier or victim?",
+    "title": "A or B: Is Marcus a soldier or a victim?",
+    "script": "Marcus wakes tasting copper with a pulse rifle in his hands. Is he a soldier or a victim? Humanity is not being exterminated. It is being harvested. Marcus comes to tasting copper, carrying a pulse rifle, with orders to head for the river. Dystopia, The Waking. Free in your browser. Link in the description. A: Soldier. B: Victim. Comment A or B.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 2 retries",
+    "ai_cost_usd": 0.0534,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.2,
+    "file": "RSA_autopilot_2026-11-03_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "RAXR9wfUJ2k",
+    "url": "https://youtube.com/shorts/RAXR9wfUJ2k"
   }
 ]
