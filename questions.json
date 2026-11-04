@@ -134,5 +134,13 @@
     "a": "Soldier",
     "b": "Victim",
     "videoId": "RAXR9wfUJ2k"
+  },
+  {
+    "date": "2026-11-04",
+    "item": "life-after-the-machines",
+    "question": "You can read the machines patrolling your city. Do you tell the resistance or keep it secret?",
+    "a": "Tell the resistance",
+    "b": "Keep it secret",
+    "videoId": "QmpzTxjsAl8"
   }
 ]

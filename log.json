@@ -730,5 +730,40 @@
     "status": "posted",
     "videoId": "RAXR9wfUJ2k",
     "url": "https://youtube.com/shorts/RAXR9wfUJ2k"
+  },
+  {
+    "date": "2026-11-04",
+    "ts": "2026-11-04T16:03:45-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "life-after-the-machines",
+    "angle": "question",
+    "style": "gameplay",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "You can read the machines patrolling your city. Do you tell the resistance or keep it secret?",
+    "a": "Tell the resistance",
+    "b": "Keep it secret",
+    "footage": [
+      "clips/hive_07.mp4",
+      "clips/hive_02.mp4",
+      "clips/hive_04.mp4",
+      "clips/hive_03.mp4"
+    ],
+    "hook": "You can read the machines. Who do you tell?",
+    "title": "Would you share that ability or protect yourself?",
+    "script": "You can read the machines patrolling your city. Do you tell the resistance or keep it secret? Twenty-foot war machines patrol every city under a red sky. Marcus discovers he can read them. Humanity is not being exterminated. It is being harvested. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited. A: Tell the resistance. B: Keep it secret. Drop your answer in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.0202,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.1,
+    "file": "RSA_autopilot_2026-11-04_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "QmpzTxjsAl8",
+    "url": "https://youtube.com/shorts/QmpzTxjsAl8"
   }
 ]
