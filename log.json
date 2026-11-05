@@ -765,5 +765,42 @@
     "status": "posted",
     "videoId": "QmpzTxjsAl8",
     "url": "https://youtube.com/shorts/QmpzTxjsAl8"
+  },
+  {
+    "date": "2026-11-05",
+    "ts": "2026-11-05T16:11:42-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "quote",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "If a hallway grew a door overnight, is that proof the world is not real?",
+    "a": "Proof it's fake",
+    "b": "Not proof enough",
+    "footage": [
+      "clips/lot_03.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_02.mp4",
+      "lot_s01.jpg",
+      "lot_s04.jpg",
+      "cover_layers_of_truth.jpg"
+    ],
+    "hook": "Does a new door prove your world is fake?",
+    "title": "Hot take: One impossible door should be enough. Agree?",
+    "script": "If a hallway grew a door overnight, is that proof the world is not real? Dystopia: Layers of Truth is Book 2 of The Dystopia Series by Matthew Culwell. Marcus believed he had escaped the simulation. Then a hallway grew a door overnight and the buildings stopped adding up. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Proof it's fake. B: Not proof enough. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 2 retries",
+    "ai_cost_usd": 0.0498,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.7,
+    "file": "RSA_autopilot_2026-11-05_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "b4daEVjA61I",
+    "url": "https://youtube.com/shorts/b4daEVjA61I"
   }
 ]
