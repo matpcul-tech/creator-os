@@ -834,5 +834,40 @@
     "status": "posted",
     "videoId": "zZrVc9L4vTU",
     "url": "https://youtube.com/shorts/zZrVc9L4vTU"
+  },
+  {
+    "date": "2026-11-07",
+    "ts": "2026-11-07T14:25:01-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "game",
+    "style": "gameplay",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "Marcus fights through a machine hive to reach the final upload. Is that heroic or just desperate?",
+    "a": "Heroic",
+    "b": "Just desperate",
+    "footage": [
+      "clips/hive_06.mp4",
+      "clips/hive_05.mp4",
+      "clips/hive_10.mp4",
+      "clips/hive_07.mp4"
+    ],
+    "hook": "Fighting to the final upload. Hero or desperate?",
+    "title": "A or B: Is fighting to the final upload heroic or desperate?",
+    "script": "Marcus fights through a machine hive to reach the final upload. Is that heroic or just desperate? Hive Infiltration is a free browser game in the world of Dystopia: Life After The Machines by Matthew Culwell. You play as Marcus, waking inside a machine hive. The only way out is through three chapters ending at the final upload. Hive Infiltration. Free in your browser. Link in the description. A: Heroic. B: Just desperate. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.0219,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.0,
+    "file": "RSA_autopilot_2026-11-07_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "2TB6D--Wc5Y",
+    "url": "https://youtube.com/shorts/2TB6D--Wc5Y"
   }
 ]
