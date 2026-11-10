@@ -901,5 +901,42 @@
     "status": "posted",
     "videoId": "alo51VpJbWE",
     "url": "https://youtube.com/shorts/alo51VpJbWE"
+  },
+  {
+    "date": "2026-11-09",
+    "ts": "2026-11-09T18:22:09-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth-game",
+    "angle": "question",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "If Marcus never actually escaped the simulation, is it fair to call what he did real?",
+    "a": "Real enough",
+    "b": "Nothing counts",
+    "footage": [
+      "clips/lot_02.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_03.mp4",
+      "lot_s03.jpg",
+      "lot_s06.jpg",
+      "lot_s01.jpg"
+    ],
+    "hook": "Was anything Marcus did even real?",
+    "title": "Hot take: Escaping a fake layer still counts. Agree?",
+    "script": "If Marcus never actually escaped the simulation, is it fair to call what he did real? Layers of Truth is a free browser game in the world of Dystopia: Layers of Truth by Matthew Culwell. Marcus believed he had escaped the simulation, but the tagline asks one question: which layer are you in. Layers of Truth, the game. Free in your browser. Link in the description. A: Real enough. B: Nothing counts. Drop your answer in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 1 retries",
+    "ai_cost_usd": 0.0288,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.8,
+    "file": "RSA_autopilot_2026-11-09_layers-of-truth-game.mp4",
+    "status": "posted",
+    "videoId": "NzJZTObioq8",
+    "url": "https://youtube.com/shorts/NzJZTObioq8"
   }
 ]
