@@ -938,5 +938,40 @@
     "status": "posted",
     "videoId": "NzJZTObioq8",
     "url": "https://youtube.com/shorts/NzJZTObioq8"
+  },
+  {
+    "date": "2026-11-10",
+    "ts": "2026-11-10T15:53:22-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "game",
+    "style": "gameplay",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "You wake up tasting copper with orders to move. Do you follow them or find your own way?",
+    "a": "Follow the orders",
+    "b": "Find my own way",
+    "footage": [
+      "clips/waking_04.mp4",
+      "clips/waking_03.mp4",
+      "clips/waking_01.mp4",
+      "clips/waking_02.mp4"
+    ],
+    "hook": "Would you follow orders or go your own way?",
+    "title": "Is it ever right to trust orders in a harvested world?",
+    "script": "You wake up tasting copper with orders to move. Do you follow them or find your own way? Marcus comes to tasting copper, pulse rifle in hand. The orders are simple: head for the river. Humanity is not being exterminated. It is being harvested. Dystopia, The Waking. Free in your browser. Link in the description. A: Follow the orders. B: Find my own way. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 2 retries",
+    "ai_cost_usd": 0.0421,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.4,
+    "file": "RSA_autopilot_2026-11-10_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "eORs5RcoXYg",
+    "url": "https://youtube.com/shorts/eORs5RcoXYg"
   }
 ]

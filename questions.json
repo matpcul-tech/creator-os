@@ -182,5 +182,13 @@
     "a": "Real enough",
     "b": "Nothing counts",
     "videoId": "NzJZTObioq8"
+  },
+  {
+    "date": "2026-11-10",
+    "item": "dystopia-the-waking",
+    "question": "You wake up tasting copper with orders to move. Do you follow them or find your own way?",
+    "a": "Follow the orders",
+    "b": "Find my own way",
+    "videoId": "eORs5RcoXYg"
   }
 ]
