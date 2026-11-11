@@ -190,5 +190,13 @@
     "a": "Follow the orders",
     "b": "Find my own way",
     "videoId": "eORs5RcoXYg"
+  },
+  {
+    "date": "2026-11-11",
+    "item": "life-after-the-machines",
+    "question": "If humanity is being harvested and not destroyed, is the harvesting actually worse?",
+    "a": "Worse",
+    "b": "Destruction is worse",
+    "videoId": "MeqZ48yv8Kg"
   }
 ]

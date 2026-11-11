@@ -973,5 +973,42 @@
     "status": "posted",
     "videoId": "eORs5RcoXYg",
     "url": "https://youtube.com/shorts/eORs5RcoXYg"
+  },
+  {
+    "date": "2026-11-11",
+    "ts": "2026-11-11T16:55:54-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "life-after-the-machines",
+    "angle": "hook",
+    "style": "mixed",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "If humanity is being harvested and not destroyed, is the harvesting actually worse?",
+    "a": "Worse",
+    "b": "Destruction is worse",
+    "footage": [
+      "clips/hive_07.mp4",
+      "clips/hive_10.mp4",
+      "clips/hive_02.mp4",
+      "hive_hive_rise_300.jpg",
+      "hive_hive_rise_100.jpg",
+      "cover_life_after_the_machines.jpg"
+    ],
+    "hook": "Is being harvested worse than being destroyed?",
+    "title": "A or B: Is being harvested worse than being destroyed?",
+    "script": "If humanity is being harvested and not destroyed, is the harvesting actually worse? Dystopia: Life After The Machines is Book 1 of The Dystopia Series by Matthew Culwell. Twenty-foot war machines patrol every city under a red sky. Humanity is not being exterminated. It is being harvested. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited. A: Worse. B: Destruction is worse. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.021,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 34.0,
+    "file": "RSA_autopilot_2026-11-11_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "MeqZ48yv8Kg",
+    "url": "https://youtube.com/shorts/MeqZ48yv8Kg"
   }
 ]
