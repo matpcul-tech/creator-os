@@ -1010,5 +1010,39 @@
     "status": "posted",
     "videoId": "MeqZ48yv8Kg",
     "url": "https://youtube.com/shorts/MeqZ48yv8Kg"
+  },
+  {
+    "date": "2026-11-12",
+    "ts": "2026-11-12T16:24:52-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "question",
+    "style": "gameplay",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "Would you trust your own eyes or start over?",
+    "a": "Trust my eyes",
+    "b": "Start over",
+    "footage": [
+      "clips/lot_03.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_02.mp4"
+    ],
+    "hook": "Would you trust your eyes or start over?",
+    "title": "Would You Trust Your Eyes Or Start Over?",
+    "script": "Would you trust your own eyes or start over? Marcus thought he had escaped the simulation. Then the buildings across the street stopped adding up. A hallway grew a door overnight, and Vera told him their conversation had already happened. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Trust my eyes. B: Start over. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0288,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.3,
+    "file": "RSA_autopilot_2026-11-12_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "-yC8BegLtWo",
+    "url": "https://youtube.com/shorts/-yC8BegLtWo"
   }
 ]
