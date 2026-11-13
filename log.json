@@ -1044,5 +1044,37 @@
     "status": "posted",
     "videoId": "-yC8BegLtWo",
     "url": "https://youtube.com/shorts/-yC8BegLtWo"
+  },
+  {
+    "date": "2026-11-13",
+    "ts": "2026-11-13T16:05:31-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "hook",
+    "style": "cinematic",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Comment A or B.",
+    "question": "If the system was built to divide you, who is really to blame?",
+    "a": "The system",
+    "b": "The people",
+    "footage": [
+      "cover_the_big_shift.jpg"
+    ],
+    "hook": "Who is really to blame here?",
+    "title": "Hot take: You can't blame people for a trap. Agree?",
+    "script": "If the system was built to divide you, who is really to blame? The Big Shift by Matthew Culwell asks what if the system was never broken, working exactly as intended. An AI connects the dots and tells the unfiltered truth about forces built to keep people divided, distracted, and dependent. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited. A: The system. B: The people. Comment A or B.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 2 retries",
+    "ai_cost_usd": 0.0549,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.4,
+    "file": "RSA_autopilot_2026-11-13_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "qkYjsNfU5XU",
+    "url": "https://youtube.com/shorts/qkYjsNfU5XU"
   }
 ]
