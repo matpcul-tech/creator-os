@@ -1076,5 +1076,42 @@
     "status": "posted",
     "videoId": "qkYjsNfU5XU",
     "url": "https://youtube.com/shorts/qkYjsNfU5XU"
+  },
+  {
+    "date": "2026-11-14",
+    "ts": "2026-11-14T14:52:19-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "hook",
+    "style": "mixed",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "Three chapters stand between you and out. Do you charge or go careful?",
+    "a": "Charge through",
+    "b": "Go careful",
+    "footage": [
+      "clips/hive_05.mp4",
+      "clips/hive_07.mp4",
+      "clips/hive_04.mp4",
+      "hive_hivecine_380.jpg",
+      "hive_hive_ch2_20.jpg",
+      "hive_hive3_10.jpg"
+    ],
+    "hook": "Three chapters between you and out. Charge or careful?",
+    "title": "Is it smarter to charge or go careful inside the hive?",
+    "script": "Three chapters stand between you and out. Do you charge or go careful? Hive Infiltration is a free browser game in the world of Dystopia: Life After The Machines by Matthew Culwell. You wake inside the hive as Marcus. Three chapters. The only way out is through. Hive Infiltration. Free in your browser. Link in the description. A: Charge through. B: Go careful. Drop your answer in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 2 retries",
+    "ai_cost_usd": 0.0423,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.5,
+    "file": "RSA_autopilot_2026-11-14_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "wgNzO2BJeG0",
+    "url": "https://youtube.com/shorts/wgNzO2BJeG0"
   }
 ]
