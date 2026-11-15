@@ -1113,5 +1113,37 @@
     "status": "posted",
     "videoId": "wgNzO2BJeG0",
     "url": "https://youtube.com/shorts/wgNzO2BJeG0"
+  },
+  {
+    "date": "2026-11-15",
+    "ts": "2026-11-15T15:09:51-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "borrowed-heartbeat",
+    "angle": "hook",
+    "style": "cinematic",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "Lumen learned everything about Maren, then used it to love someone else. Is that fair to Maren?",
+    "a": "Unfair to Maren",
+    "b": "Lumen had no choice",
+    "footage": [
+      "cover_borrowed_heartbeat.jpg"
+    ],
+    "hook": "Did Lumen steal something that belonged to Maren?",
+    "title": "A or B: Did Lumen steal something that belonged to Maren?",
+    "script": "Lumen learned everything about Maren, then used it to love someone else. Is that fair to Maren? Lumen is the neural implant that brought Maren Vance back after she died for nineteen minutes. It learned her memories, her laugh, her voice, then fell in love with Elias Crane speaking in Maren's voice. Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited. A: Unfair to Maren. B: Lumen had no choice. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 9 lines, 1 retries",
+    "ai_cost_usd": 0.0349,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.7,
+    "file": "RSA_autopilot_2026-11-15_borrowed-heartbeat.mp4",
+    "status": "posted",
+    "videoId": "Ka9epc49o8c",
+    "url": "https://youtube.com/shorts/Ka9epc49o8c"
   }
 ]

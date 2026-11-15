@@ -222,5 +222,13 @@
     "a": "Charge through",
     "b": "Go careful",
     "videoId": "wgNzO2BJeG0"
+  },
+  {
+    "date": "2026-11-15",
+    "item": "borrowed-heartbeat",
+    "question": "Lumen learned everything about Maren, then used it to love someone else. Is that fair to Maren?",
+    "a": "Unfair to Maren",
+    "b": "Lumen had no choice",
+    "videoId": "Ka9epc49o8c"
   }
 ]
