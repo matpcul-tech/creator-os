@@ -246,5 +246,13 @@
     "a": "Sometimes yes",
     "b": "Never justified",
     "videoId": "KULQs0SXHlE"
+  },
+  {
+    "date": "2026-11-18",
+    "item": "life-after-the-machines",
+    "question": "You wake up with no memory under a red sky. Do you join the resistance or stay hidden?",
+    "a": "Join the resistance",
+    "b": "Stay hidden",
+    "videoId": "AHcsPaR7bp8"
   }
 ]
