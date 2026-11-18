@@ -1179,5 +1179,42 @@
     "status": "posted",
     "videoId": "xEnNCUGyV34",
     "url": "https://youtube.com/shorts/xEnNCUGyV34"
+  },
+  {
+    "date": "2026-11-17",
+    "ts": "2026-11-17T17:55:16-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "hook",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If you woke up tasting copper with orders to follow, is obeying ever justified?",
+    "a": "Sometimes yes",
+    "b": "Never justified",
+    "footage": [
+      "clips/waking_04.mp4",
+      "clips/waking_03.mp4",
+      "clips/waking_02.mp4",
+      "hive_hivecine_200.jpg",
+      "hive_hive_rise_100.jpg",
+      "hive_hivecine_560.jpg"
+    ],
+    "hook": "Is following orders ever justified?",
+    "title": "Hot take: Blind obedience keeps you alive longer. Agree?",
+    "script": "If you woke up tasting copper with orders to follow, is obeying ever justified? Dystopia: The Waking is a free browser game based on Dystopia: Life After The Machines by Matthew Culwell. Marcus comes to tasting copper, pulse rifle in hand, with orders to head for the river. Humanity is not being exterminated. It is being harvested. Dystopia, The Waking. Free in your browser. Link in the description. A: Sometimes yes. B: Never justified. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 2 retries",
+    "ai_cost_usd": 0.043,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 35.2,
+    "file": "RSA_autopilot_2026-11-17_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "KULQs0SXHlE",
+    "url": "https://youtube.com/shorts/KULQs0SXHlE"
   }
 ]
