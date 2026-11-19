@@ -1251,5 +1251,42 @@
     "status": "posted",
     "videoId": "AHcsPaR7bp8",
     "url": "https://youtube.com/shorts/AHcsPaR7bp8"
+  },
+  {
+    "date": "2026-11-19",
+    "ts": "2026-11-19T17:09:38-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "hook",
+    "style": "mixed",
+    "opener": "flash",
+    "title_pattern": "ab",
+    "question_type": "moral",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "If your world kept proving itself fake, are your actions still real?",
+    "a": "Still real",
+    "b": "Not real",
+    "footage": [
+      "clips/lot_03.mp4",
+      "clips/lot_01.mp4",
+      "clips/lot_02.mp4",
+      "lot_s01.jpg",
+      "lot_s04.jpg",
+      "cover_layers_of_truth.jpg"
+    ],
+    "hook": "Are your actions real in a fake world?",
+    "title": "A or B: Are your actions real in a fake world?",
+    "script": "If your world kept proving itself fake, are your actions still real? Marcus thought he had escaped the simulation, but buildings stopped adding up and a hallway grew a door overnight. Vera told him their conversation had already happened. Dystopia: Layers of Truth is Book 2 of The Dystopia Series by Matthew Culwell. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Still real. B: Not real. Drop your answer in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 2 retries",
+    "ai_cost_usd": 0.0531,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.6,
+    "file": "RSA_autopilot_2026-11-19_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "vEq9oY9vzlw",
+    "url": "https://youtube.com/shorts/vEq9oY9vzlw"
   }
 ]

@@ -254,5 +254,13 @@
     "a": "Join the resistance",
     "b": "Stay hidden",
     "videoId": "AHcsPaR7bp8"
+  },
+  {
+    "date": "2026-11-19",
+    "item": "layers-of-truth",
+    "question": "If your world kept proving itself fake, are your actions still real?",
+    "a": "Still real",
+    "b": "Not real",
+    "videoId": "vEq9oY9vzlw"
   }
 ]
