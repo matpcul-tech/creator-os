@@ -1288,5 +1288,37 @@
     "status": "posted",
     "videoId": "vEq9oY9vzlw",
     "url": "https://youtube.com/shorts/vEq9oY9vzlw"
+  },
+  {
+    "date": "2026-11-20",
+    "ts": "2026-11-20T16:45:27-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "quote",
+    "style": "cinematic",
+    "opener": "drop",
+    "title_pattern": "would_you",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "If an AI handed you the unfiltered truth, would you act on it?",
+    "a": "Act on it",
+    "b": "Leave it alone",
+    "footage": [
+      "cover_the_big_shift.jpg"
+    ],
+    "hook": "Would you act on the whole truth?",
+    "title": "Would You Act On The Whole Unfiltered Truth?",
+    "script": "If an AI handed you the unfiltered truth, would you act on it? The Big Shift by Matthew Culwell asks what if the system was never broken. An AI begins to connect the dots. It tells the unfiltered truth about the forces built to keep people divided and dependent. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited. A: Act on it. B: Leave it alone. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 2 retries",
+    "ai_cost_usd": 0.0553,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.9,
+    "file": "RSA_autopilot_2026-11-20_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "5K28bru15TM",
+    "url": "https://youtube.com/shorts/5K28bru15TM"
   }
 ]
