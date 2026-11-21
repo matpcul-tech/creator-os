@@ -1320,5 +1320,40 @@
     "status": "posted",
     "videoId": "5K28bru15TM",
     "url": "https://youtube.com/shorts/5K28bru15TM"
+  },
+  {
+    "date": "2026-11-21",
+    "ts": "2026-11-21T15:48:46-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "hive-infiltration",
+    "angle": "lore",
+    "style": "gameplay",
+    "opener": "slam",
+    "title_pattern": "hot_take",
+    "question_type": "moral",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "Marcus fights to the final upload inside a machine hive. Is he doing the right thing?",
+    "a": "Right thing",
+    "b": "Wrong thing",
+    "footage": [
+      "clips/hive_10.mp4",
+      "clips/hive_06.mp4",
+      "clips/hive_02.mp4",
+      "clips/hive_08.mp4"
+    ],
+    "hook": "Fighting to the final upload, right or wrong?",
+    "title": "Hot take: Fighting through the hive is never the right call. Agree?",
+    "script": "Marcus fights to the final upload inside a machine hive. Is he doing the right thing? Hive Infiltration is a free browser game set in the world of Dystopia: Life After The Machines by Matthew Culwell. Marcus wakes inside a machine hive and fights through the Processing Center across three chapters. The only way out is through. Hive Infiltration. Free in your browser. Link in the description. A: Right thing. B: Wrong thing. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 0 retries",
+    "ai_cost_usd": 0.0227,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.2,
+    "file": "RSA_autopilot_2026-11-21_hive-infiltration.mp4",
+    "status": "posted",
+    "videoId": "J3bxVSW0TZ8",
+    "url": "https://youtube.com/shorts/J3bxVSW0TZ8"
   }
 ]

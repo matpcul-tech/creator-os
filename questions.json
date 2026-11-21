@@ -270,5 +270,13 @@
     "a": "Act on it",
     "b": "Leave it alone",
     "videoId": "5K28bru15TM"
+  },
+  {
+    "date": "2026-11-21",
+    "item": "hive-infiltration",
+    "question": "Marcus fights to the final upload inside a machine hive. Is he doing the right thing?",
+    "a": "Right thing",
+    "b": "Wrong thing",
+    "videoId": "J3bxVSW0TZ8"
   }
 ]
