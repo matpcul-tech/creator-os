@@ -278,5 +278,13 @@
     "a": "Right thing",
     "b": "Wrong thing",
     "videoId": "J3bxVSW0TZ8"
+  },
+  {
+    "date": "2026-11-22",
+    "item": "borrowed-heartbeat",
+    "question": "If the implant you built fell in love using her voice, would you tell her?",
+    "a": "Tell her",
+    "b": "Never tell her",
+    "videoId": "cNeXTnJhbsQ"
   }
 ]

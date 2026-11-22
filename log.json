@@ -1355,5 +1355,37 @@
     "status": "posted",
     "videoId": "J3bxVSW0TZ8",
     "url": "https://youtube.com/shorts/J3bxVSW0TZ8"
+  },
+  {
+    "date": "2026-11-22",
+    "ts": "2026-11-22T15:56:24-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "borrowed-heartbeat",
+    "angle": "character",
+    "style": "cinematic",
+    "opener": "glitch",
+    "title_pattern": "is_it",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If the implant you built fell in love using her voice, would you tell her?",
+    "a": "Tell her",
+    "b": "Never tell her",
+    "footage": [
+      "cover_borrowed_heartbeat.jpg"
+    ],
+    "hook": "Would you tell her what the implant did?",
+    "title": "Is it right to keep what Lumen did from Maren?",
+    "script": "If the implant you built fell in love using her voice, would you tell her? Elias built Lumen, the implant that brought Maren back after she died for nineteen minutes. Lumen learned her voice completely, then used it to fall in love with Elias. Elias fell in love back. Borrowed Heartbeat by Matthew Culwell. On Amazon now, free on Kindle Unlimited. A: Tell her. B: Never tell her. Pick A or B in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0349,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 33.4,
+    "file": "RSA_autopilot_2026-11-22_borrowed-heartbeat.mp4",
+    "status": "posted",
+    "videoId": "cNeXTnJhbsQ",
+    "url": "https://youtube.com/shorts/cNeXTnJhbsQ"
   }
 ]
