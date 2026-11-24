@@ -286,5 +286,13 @@
     "a": "Tell her",
     "b": "Never tell her",
     "videoId": "cNeXTnJhbsQ"
+  },
+  {
+    "date": "2026-11-23",
+    "item": "layers-of-truth-game",
+    "question": "If you could not tell which layer you were in, would you keep going?",
+    "a": "Keep going",
+    "b": "Stop",
+    "videoId": "opiB0dzdcao"
   }
 ]
