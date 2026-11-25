@@ -1424,5 +1424,40 @@
     "status": "posted",
     "videoId": "opiB0dzdcao",
     "url": "https://youtube.com/shorts/opiB0dzdcao"
+  },
+  {
+    "date": "2026-11-24",
+    "ts": "2026-11-24T18:58:55-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "dystopia-the-waking",
+    "angle": "question",
+    "style": "gameplay",
+    "opener": "drop",
+    "title_pattern": "ab",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Drop your answer in the comments.",
+    "question": "Humanity is being harvested. Do you fight back or run?",
+    "a": "Fight back",
+    "b": "Run",
+    "footage": [
+      "clips/waking_01.mp4",
+      "clips/waking_02.mp4",
+      "clips/waking_03.mp4",
+      "clips/waking_04.mp4"
+    ],
+    "hook": "Humanity is being harvested. Do you fight back or run?",
+    "title": "A or B: Humanity is being harvested. Do you fight back or run?",
+    "script": "Humanity is being harvested. Do you fight back or run? The player is Marcus. Marcus tastes copper as he comes to. The player carries a pulse rifle and is told to head for the river. Humanity is not being exterminated. It is being harvested. Dystopia, The Waking. Free in your browser. Link in the description. A: Fight back. B: Run. Drop your answer in the comments.",
+    "script_source": "fallback",
+    "note": "AI script rejected (question must be 5 to 18 words), used fallback question; rejected lines: Marcus comes to tasting copper, pulse rifle already in his hands. | You have orders and no memory. Do you go? | A or B: You have orders and no memory. Do you go?",
+    "ai_cost_usd": 0,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.1,
+    "file": "RSA_autopilot_2026-11-24_dystopia-the-waking.mp4",
+    "status": "posted",
+    "videoId": "0VybgButdQI",
+    "url": "https://youtube.com/shorts/0VybgButdQI"
   }
 ]

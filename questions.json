@@ -294,5 +294,13 @@
     "a": "Keep going",
     "b": "Stop",
     "videoId": "opiB0dzdcao"
+  },
+  {
+    "date": "2026-11-24",
+    "item": "dystopia-the-waking",
+    "question": "Humanity is being harvested. Do you fight back or run?",
+    "a": "Fight back",
+    "b": "Run",
+    "videoId": "0VybgButdQI"
   }
 ]
