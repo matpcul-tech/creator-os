@@ -1459,5 +1459,42 @@
     "status": "posted",
     "videoId": "0VybgButdQI",
     "url": "https://youtube.com/shorts/0VybgButdQI"
+  },
+  {
+    "date": "2026-11-25",
+    "ts": "2026-11-25T18:35:42-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "life-after-the-machines",
+    "angle": "character",
+    "style": "mixed",
+    "opener": "slam",
+    "title_pattern": "would_you",
+    "question_type": "moral",
+    "comment_prompt": "A or B? Comment below.",
+    "question": "Marcus can read the machines that are harvesting humanity. Does that make him responsible for what happens next?",
+    "a": "He is responsible",
+    "b": "Not his burden",
+    "footage": [
+      "clips/hive_10.mp4",
+      "clips/hive_08.mp4",
+      "clips/hive_04.mp4",
+      "hive_hive_rise_300.jpg",
+      "hive_hive_rise_100.jpg",
+      "cover_life_after_the_machines.jpg"
+    ],
+    "hook": "Can he read them and walk away?",
+    "title": "Would You Accept Responsibility For What You Can Read?",
+    "script": "Marcus can read the machines that are harvesting humanity. Does that make him responsible for what happens next? Twenty-foot war machines patrol every city under a red sky. Humanity is not being exterminated. It is being harvested. Marcus wakes in the ruins with no memory, then discovers he can read the machines. Dystopia: Life After The Machines by Matthew Culwell. Free on Kindle Unlimited. A: He is responsible. B: Not his burden. A or B? Comment below.",
+    "script_source": "ai",
+    "note": "fact checked 11 lines, 1 retries",
+    "ai_cost_usd": 0.0326,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 34.5,
+    "file": "RSA_autopilot_2026-11-25_life-after-the-machines.mp4",
+    "status": "posted",
+    "videoId": "T9oESYj-kek",
+    "url": "https://youtube.com/shorts/T9oESYj-kek"
   }
 ]

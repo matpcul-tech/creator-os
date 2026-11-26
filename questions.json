@@ -302,5 +302,13 @@
     "a": "Fight back",
     "b": "Run",
     "videoId": "0VybgButdQI"
+  },
+  {
+    "date": "2026-11-25",
+    "item": "life-after-the-machines",
+    "question": "Marcus can read the machines that are harvesting humanity. Does that make him responsible for what happens next?",
+    "a": "He is responsible",
+    "b": "Not his burden",
+    "videoId": "T9oESYj-kek"
   }
 ]
