@@ -1496,5 +1496,39 @@
     "status": "posted",
     "videoId": "T9oESYj-kek",
     "url": "https://youtube.com/shorts/T9oESYj-kek"
+  },
+  {
+    "date": "2026-11-26",
+    "ts": "2026-11-26T18:43:46-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "layers-of-truth",
+    "angle": "lore",
+    "style": "gameplay",
+    "opener": "glitch",
+    "title_pattern": "hot_take",
+    "question_type": "what_would_you_do",
+    "comment_prompt": "Tell me in the comments.",
+    "question": "A hallway grows a door overnight. Do you walk through it or walk away?",
+    "a": "Walk through",
+    "b": "Walk away",
+    "footage": [
+      "clips/lot_01.mp4",
+      "clips/lot_03.mp4",
+      "clips/lot_02.mp4"
+    ],
+    "hook": "A new door appeared overnight. What do you do?",
+    "title": "Hot take: walking away is the only sane call. Agree?",
+    "script": "A hallway grows a door overnight. Do you walk through it or walk away? Marcus thought he had escaped the simulation. Then the buildings stopped adding up. A hallway grew a door overnight. Dystopia: Layers of Truth is Book 2 of The Dystopia Series by Matthew Culwell. Dystopia: Layers of Truth by Matthew Culwell. Free on Kindle Unlimited. A: Walk through. B: Walk away. Tell me in the comments.",
+    "script_source": "ai",
+    "note": "fact checked 10 lines, 1 retries",
+    "ai_cost_usd": 0.0419,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.4,
+    "file": "RSA_autopilot_2026-11-26_layers-of-truth.mp4",
+    "status": "posted",
+    "videoId": "R8MrnsgOM9M",
+    "url": "https://youtube.com/shorts/R8MrnsgOM9M"
   }
 ]
