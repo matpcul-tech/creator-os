@@ -1530,5 +1530,37 @@
     "status": "posted",
     "videoId": "R8MrnsgOM9M",
     "url": "https://youtube.com/shorts/R8MrnsgOM9M"
+  },
+  {
+    "date": "2026-11-27",
+    "ts": "2026-11-27T18:10:28-06:00",
+    "trigger": "schedule",
+    "dry_run": false,
+    "slot": "11:30",
+    "item": "the-big-shift",
+    "angle": "question",
+    "style": "cinematic",
+    "opener": "flash",
+    "title_pattern": "other",
+    "question_type": "moral",
+    "comment_prompt": "Pick A or B in the comments.",
+    "question": "If the system works exactly as intended, do you fix it or walk away?",
+    "a": "Fix it",
+    "b": "Walk away",
+    "footage": [
+      "cover_the_big_shift.jpg"
+    ],
+    "hook": "If the system works exactly as intended, do you fix it or walk away?",
+    "title": "If the system works exactly as intended, do you fix it or walk away?",
+    "script": "If the system works exactly as intended, do you fix it or walk away? It asks: what if the system was never broken, and was working exactly as intended? An artificial intelligence begins to connect the dots. The Big Shift, A Time For Change, by Matthew Culwell. On Amazon, free on Kindle Unlimited. A: Fix it. B: Walk away. Pick A or B in the comments.",
+    "script_source": "fallback",
+    "note": "AI script rejected (the assembled script is 85 words, need 45 to 82 (20 to 35 seconds)), used fallback question",
+    "ai_cost_usd": 0,
+    "comment_note": "comment skipped: token lacks youtube.force-ssl scope (has: youtube.upload)",
+    "duration_s": 32.7,
+    "file": "RSA_autopilot_2026-11-27_the-big-shift.mp4",
+    "status": "posted",
+    "videoId": "YjRKr2Wdbyc",
+    "url": "https://youtube.com/shorts/YjRKr2Wdbyc"
   }
 ]

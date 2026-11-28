@@ -318,5 +318,13 @@
     "a": "Walk through",
     "b": "Walk away",
     "videoId": "R8MrnsgOM9M"
+  },
+  {
+    "date": "2026-11-27",
+    "item": "the-big-shift",
+    "question": "If the system works exactly as intended, do you fix it or walk away?",
+    "a": "Fix it",
+    "b": "Walk away",
+    "videoId": "YjRKr2Wdbyc"
   }
 ]
